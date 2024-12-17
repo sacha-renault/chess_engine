@@ -1,24 +1,40 @@
 use super::{board::Color, static_positions};
 
-fn l_op(x: u64, y: u64) -> u64 {
+/// Compute bit lshift
+fn lshift(x: u64, y: u64) -> u64 {
     x << y
 }
 
-fn r_op(x: u64, y: u64) -> u64 {
+/// Compute bit rshift
+fn rshift(x: u64, y: u64) -> u64 {
     x >> y
 }
 
+/// Computes legal moves along a ray in a specified direction.
+///
+/// This function shifts a piece's position bitboard repeatedly, adding valid moves while stopping
+/// at same-color pieces (blockage) or opponent pieces (capture).
+///
+/// # Parameters
+/// - `piece_bitboard`: The bitboard of the piece's position.
+/// - `direction`: `true` for left/upward shifts, `false` for right/downward shifts.
+/// - `shift_value`: Number of bits to shift for the ray (e.g., 1 for horizontal, 8 for vertical).
+/// - `same_color_bitboard`: Bitboard of same-color pieces.
+/// - `other_color_bitboard`: Bitboard of opponent pieces.
+///
+/// # Returns
+/// A `u64` bitboard representing valid moves along the ray.
 fn ray_scanning(piece_bitboard: u64, direction: bool, shift_value: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
     let mut moves = 0u64;
     let mut ray = piece_bitboard;
 
     // Choose the operation based on direction
-    let op: fn(u64, u64) -> u64 = if direction { l_op } else { r_op };
+    let shift_fn: fn(u64, u64) -> u64 = if direction { lshift } else { rshift };
     let file_mask = if direction { !static_positions::FILE_A } else { !static_positions::FILE_H };
 
 
     // Shift ray in the chosen direction
-    ray = op(ray, shift_value) & file_mask;
+    ray = shift_fn(ray, shift_value) & file_mask;
     while ray != 0 {
         // If the same color piece is encountered, stop the scan in that direction
         if same_color_bitboard & ray != 0 {
@@ -35,12 +51,13 @@ fn ray_scanning(piece_bitboard: u64, direction: bool, shift_value: u64, same_col
         moves |= ray;
 
         // Continue scanning
-        ray = op(ray, shift_value) & file_mask;
+        ray = shift_fn(ray, shift_value) & file_mask;
     }
 
     moves
 }
 
+/// Compute all rooks move available from the bitboard
 pub fn rooks_moves(rook_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
     ray_scanning(rook_bitboard, false, 8, same_color_bitboard, other_color_bitboard)
     | ray_scanning(rook_bitboard, true, 8, same_color_bitboard, other_color_bitboard)
@@ -62,9 +79,9 @@ pub fn queen_moves(queen_bitboard: u64, same_color_bitboard: u64, other_color_bi
 
 pub fn pawn_moves(pawn_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64, color: Color) -> u64 {
     let empty_squares = !(same_color_bitboard | other_color_bitboard);
-    let op = match color {
-        Color::Black => r_op,
-        Color::White => l_op
+    let shift_fn = match color {
+        Color::Black => rshift,
+        Color::White => lshift
     };
     let double_move_rank = match color {
         Color::Black => static_positions::RANK6,
@@ -76,16 +93,16 @@ pub fn pawn_moves(pawn_bitboard: u64, same_color_bitboard: u64, other_color_bitb
     };
 
     // Single push for white pawns
-    let single_push = op(pawn_bitboard, 8) & empty_squares;
+    let single_push = shift_fn(pawn_bitboard, 8) & empty_squares;
 
     // Double push (only from the second rank for white pawns)
-    let double_push = op(single_push & double_move_rank, 8) & empty_squares;
+    let double_push = shift_fn(single_push & double_move_rank, 8) & empty_squares;
 
     // Left capture (diagonal capture to the left for white pawns)
-    let left_capture = op(pawn_bitboard, 7) & other_color_bitboard & !file1;
+    let left_capture = shift_fn(pawn_bitboard, 7) & other_color_bitboard & !file1;
 
     // Right capture (diagonal capture to the right for white pawns)
-    let right_capture = op(pawn_bitboard, 9) & other_color_bitboard & !file2;
+    let right_capture = shift_fn(pawn_bitboard, 9) & other_color_bitboard & !file2;
 
     single_push | double_push | left_capture | right_capture
 }
