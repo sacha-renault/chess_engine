@@ -24,14 +24,23 @@ fn rshift(x: u64, y: u64) -> u64 {
 ///
 /// # Returns
 /// A `u64` bitboard representing valid moves along the ray.
-fn ray_scanning(piece_bitboard: u64, direction: bool, shift_value: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
+fn ray_scanning(
+    piece_bitboard: u64,
+    direction: bool,
+    shift_value: u64,
+    same_color_bitboard: u64,
+    other_color_bitboard: u64,
+) -> u64 {
     let mut moves = 0u64;
     let mut ray = piece_bitboard;
 
     // Choose the operation based on direction
     let shift_fn: fn(u64, u64) -> u64 = if direction { lshift } else { rshift };
-    let file_mask = if direction { !static_positions::FILE_A } else { !static_positions::FILE_H };
-
+    let file_mask = if direction {
+        !static_positions::FILE_A
+    } else {
+        !static_positions::FILE_H
+    };
 
     // Shift ray in the chosen direction
     ray = shift_fn(ray, shift_value) & file_mask;
@@ -59,37 +68,92 @@ fn ray_scanning(piece_bitboard: u64, direction: bool, shift_value: u64, same_col
 
 /// Compute all rooks move available from the bitboard
 pub fn rooks_moves(rook_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
-    ray_scanning(rook_bitboard, false, 8, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(rook_bitboard, true, 8, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(rook_bitboard, false, 1, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(rook_bitboard, true, 1, same_color_bitboard, other_color_bitboard)
+    ray_scanning(
+        rook_bitboard,
+        false,
+        8,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        rook_bitboard,
+        true,
+        8,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        rook_bitboard,
+        false,
+        1,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        rook_bitboard,
+        true,
+        1,
+        same_color_bitboard,
+        other_color_bitboard,
+    )
 }
 
-pub fn bishops_moves(bishop_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
-    ray_scanning(bishop_bitboard, false, 7, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(bishop_bitboard, true, 7, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(bishop_bitboard, false, 9, same_color_bitboard, other_color_bitboard)
-    | ray_scanning(bishop_bitboard, true, 9, same_color_bitboard, other_color_bitboard)
+pub fn bishops_moves(
+    bishop_bitboard: u64,
+    same_color_bitboard: u64,
+    other_color_bitboard: u64,
+) -> u64 {
+    ray_scanning(
+        bishop_bitboard,
+        false,
+        7,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        bishop_bitboard,
+        true,
+        7,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        bishop_bitboard,
+        false,
+        9,
+        same_color_bitboard,
+        other_color_bitboard,
+    ) | ray_scanning(
+        bishop_bitboard,
+        true,
+        9,
+        same_color_bitboard,
+        other_color_bitboard,
+    )
 }
 
-pub fn queen_moves(queen_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
+pub fn queen_moves(
+    queen_bitboard: u64,
+    same_color_bitboard: u64,
+    other_color_bitboard: u64,
+) -> u64 {
     rooks_moves(queen_bitboard, same_color_bitboard, other_color_bitboard)
-    | bishops_moves(queen_bitboard, same_color_bitboard, other_color_bitboard)
+        | bishops_moves(queen_bitboard, same_color_bitboard, other_color_bitboard)
 }
 
-pub fn pawn_moves(pawn_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64, color: Color) -> u64 {
+pub fn pawn_moves(
+    pawn_bitboard: u64,
+    same_color_bitboard: u64,
+    other_color_bitboard: u64,
+    color: &Color,
+) -> u64 {
     let empty_squares = !(same_color_bitboard | other_color_bitboard);
     let shift_fn = match color {
         Color::Black => rshift,
-        Color::White => lshift
+        Color::White => lshift,
     };
     let double_move_rank = match color {
         Color::Black => static_positions::RANK6,
-        Color::White => static_positions::RANK3
+        Color::White => static_positions::RANK3,
     };
     let (file1, file2) = match color {
         Color::Black => (static_positions::FILE_H, static_positions::FILE_A),
-        Color::White => (static_positions::FILE_A, static_positions::FILE_H)
+        Color::White => (static_positions::FILE_A, static_positions::FILE_H),
     };
 
     // Single push for white pawns

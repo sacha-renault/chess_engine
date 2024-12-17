@@ -1,13 +1,24 @@
 mod simple_engine;
 
-use simple_engine::board::{Board, Color};
+use simple_engine::engine::Engine;
 use simple_engine::moves;
 
 fn main() {
-    let board = Board::new();
-    println!("board : {}", board.any_piece_position());
-    println!("Queen moves : {}", moves::queen_moves(board.white.queen, board.white.bitboard(), board.black.bitboard()));
-    println!("Knights moves : {}", moves::knight_moves(board.white.knight, board.white.bitboard()));
-    println!("White pawn moves : {}", moves::pawn_moves(board.white.pawn, board.white.bitboard(), board.black.bitboard(), Color::White));
-    println!("Black pawn moves : {}", moves::pawn_moves(board.black.pawn, board.black.bitboard(), board.white.bitboard(), Color::Black));
+    let mut engine = Engine::new();
+
+    // White's turn: Move a pawn from e2 (1,4) to e4 (3,4)
+    let correct_move = engine.play((1, 4), (2, 4)); // White moves a pawn two squares forward
+
+    match correct_move {
+        Ok(_) => println!("Correct move!"),
+        Err(string) => println!("Failed to make the move. {}", string),
+    }
+
+    // White's turn: Attempt to move a pawn from e2 (1,4) to e5 (4,4), which is not a legal move
+    let incorrect_move = engine.play((1, 4), (4, 4)); // White tries to move the pawn three squares forward, which is illegal
+
+    match incorrect_move {
+        Ok(_) => println!("Correct move!"),
+        Err(string) => println!("Failed to make the move.{}", string), // This should print since it's an invalid move
+    }
 }

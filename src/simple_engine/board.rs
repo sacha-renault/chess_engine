@@ -1,9 +1,11 @@
 use super::static_positions as init;
 
 pub enum Color {
-    Black, White
+    Black,
+    White,
 }
 
+#[derive(Clone)]
 pub struct ColorBoard {
     pub pawn: u64,
     pub knight: u64,
@@ -19,6 +21,7 @@ impl ColorBoard {
     }
 }
 
+#[derive(Clone)]
 pub struct Board {
     pub white: ColorBoard,
     pub black: ColorBoard,
@@ -42,12 +45,11 @@ impl Board {
                 rook: init::BLACK_ROOKS,
                 queen: init::BLACK_QUEEN,
                 king: init::BLACK_KING,
-            }
+            },
         }
     }
 
-    pub fn any_piece_position(&self) -> u64 {
+    pub fn bitboard(&self) -> u64 {
         self.white.bitboard() | self.black.bitboard()
     }
 }
-
