@@ -32,8 +32,8 @@ const fn precompute_king_moves() -> [u64; 64] {
         let position = 1u64 << square;
 
         let mut king_moves = 0u64;
-        king_moves |= (position << 8); // North
-        king_moves |= (position >> 8); // South
+        king_moves |= position << 8; // North
+        king_moves |= position >> 8; // South
 
         king_moves |= (position << 1) & !FILE_A; // East
         king_moves |= (position >> 1) & !FILE_H; // West
@@ -69,8 +69,15 @@ pub const FILE_A: u64 = 0x0101010101010101;
 pub const FILE_B: u64 = 0x0101010101010101;
 pub const FILE_G: u64 = 0x8080808080808080;
 pub const FILE_H: u64 = 0x8080808080808080;
-pub const RANK3: u64 = 0x000000FF00000000;
-pub const RANK6: u64 = 0x00000000FF000000;
+pub const RANK3: u64 = 16711680;
+pub const RANK6: u64 = 280375465082880;
+pub const RANK1: u64 = 0xFF00000000000000; // All ranks except rank 8
+pub const RANK8: u64 = 0x00000000000000FF;
 
 pub const KNIGHTS_MOVES: [u64; 64] = precompute_knight_moves();
 pub const KING_MOVES: [u64; 64] = precompute_king_moves();
+
+// ANSI CODE
+pub const WHITE_BG: &str = "\x1b[48;5;15m";
+pub const BLACK_BG: &str = "\x1b[48;5;0m";
+pub const RESET: &str = "\x1b[0m";
