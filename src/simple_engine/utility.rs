@@ -4,6 +4,14 @@ use super::color_board::ColorBoard;
 use super::moves::*;
 use super::pieces::Pieces;
 
+/// Returns the type of piece on a given square in the color board.
+///
+/// # Arguments
+/// * `color_board` - A reference to the `ColorBoard`.
+/// * `square` - A `u64` representing the square.
+///
+/// # Returns
+/// An `Option<Pieces>` indicating the type of piece on the square.
 pub fn get_piece_type(color_board: &ColorBoard, square: u64) -> Option<Pieces> {
     if color_board.pawn & square != 0 {
         return Some(Pieces::Pawn);
@@ -31,6 +39,13 @@ pub fn get_piece_type(color_board: &ColorBoard, square: u64) -> Option<Pieces> {
     None
 }
 
+/// Converts board coordinates to a bitboard representation.
+///
+/// # Arguments
+/// * `position` - A tuple `(usize, usize)` representing the row and column.
+///
+/// # Returns
+/// A `u64` representing the bitboard position.
 pub fn coordinates_to_u64(position: (usize, usize)) -> u64 {
     let (row, col) = position;
 
@@ -46,6 +61,17 @@ pub fn coordinates_to_u64(position: (usize, usize)) -> u64 {
     1u64 << square_index
 }
 
+/// Returns the possible moves for a given piece.
+///
+/// # Arguments
+/// * `piece` - A reference to the `Pieces` type.
+/// * `start_square` - A `u64` representing the starting square.
+/// * `same_color_bitboard` - A `u64` representing the bitboard of the same color.
+/// * `other_color_bitboard` - A `u64` representing the bitboard of the other color.
+/// * `color` - A reference to the `Color` type.
+///
+/// # Returns
+/// A `u64` representing the possible moves.
 pub fn get_possible_move(
     piece: &Pieces,
     start_square: u64,
@@ -64,6 +90,13 @@ pub fn get_possible_move(
     }
 }
 
+/// Returns the color based on the turn.
+///
+/// # Arguments
+/// * `white_turn` - A `bool` indicating if it's white's turn.
+///
+/// # Returns
+/// A `Color` representing the current turn's color.
 pub fn get_color(white_turn: bool) -> Color {
     if white_turn {
         Color::White
@@ -72,6 +105,17 @@ pub fn get_color(white_turn: bool) -> Color {
     }
 }
 
+/// Moves a piece from one square to another on the board.
+///
+/// # Arguments
+/// * `board` - A `Board` instance.
+/// * `current_square` - A `u64` representing the current square.
+/// * `target_square` - A `u64` representing the target square.
+/// * `color` - A reference to the `Color` type.
+/// * `piece_type` - A reference to the `Pieces` type.
+///
+/// # Returns
+/// An updated `Board` instance.
 pub fn move_piece(
     mut board: Board,
     current_square: u64,
@@ -117,6 +161,15 @@ pub fn move_piece(
     board
 }
 
+/// Returns all possible moves for a given color board.
+///
+/// # Arguments
+/// * `board` - A reference to the `ColorBoard`.
+/// * `opponent_board` - A reference to the `ColorBoard` of the opponent.
+/// * `color` - A reference to the `Color` type.
+///
+/// # Returns
+/// A `u64` representing all possible moves.
 pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color: &Color) -> u64 {
     king_moves(board.king, board.bitboard())
         | queen_moves(board.queen, board.bitboard(), opponent_board.bitboard())
@@ -131,6 +184,16 @@ pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color
         )
 }
 
+/// Checks if the king is in check.
+///
+/// # Arguments
+/// * `king_bitboard` - A `u64` representing the king's bitboard.
+/// * `board` - A reference to the `ColorBoard`.
+/// * `opponent_board` - A reference to the `ColorBoard` of the opponent.
+/// * `color` - A reference to the `Color` type.
+///
+/// # Returns
+/// A `bool` indicating if the king is in check.
 pub fn is_king_checked(
     king_bitboard: u64,
     board: &ColorBoard,
