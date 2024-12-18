@@ -61,6 +61,28 @@ pub fn coordinates_to_u64(position: (usize, usize)) -> u64 {
     1u64 << square_index
 }
 
+/// Converts a bitboard representation to board coordinates.
+///
+/// # Arguments
+/// * `bitboard` - A `u64` representing the bitboard position.
+///
+/// # Returns
+/// A tuple `(usize, usize)` representing the row and column.
+pub fn u64_to_coordinates(bitboard: u64) -> (usize, usize) {
+    assert_eq!(
+        bitboard.count_ones(),
+        1,
+        "Bitboard must have exactly one bit set. Got: {}",
+        bitboard.count_ones()
+    );
+
+    let square_index = bitboard.trailing_zeros() as usize;
+    let row = square_index / 8;
+    let col = square_index % 8;
+
+    (row, col)
+}
+
 /// Returns the possible moves for a given piece.
 ///
 /// # Arguments
