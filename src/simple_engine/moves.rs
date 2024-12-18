@@ -1,4 +1,4 @@
-use super::{board::Color, static_positions};
+use super::{color::Color, static_positions};
 
 /// Performs a bitwise left shift operation on a 64-bit unsigned integer.
 ///
@@ -249,7 +249,6 @@ pub fn pawn_moves(
 
     single_push | double_push | left_capture | right_capture
 }
-
 
 /// Computes all possible moves for knights on the chessboard.
 ///

@@ -1,6 +1,8 @@
-use super::board::{Board, Color};
+use super::board::Board;
+use super::color::Color;
+use super::color_board::ColorBoard;
 use super::moves::*;
-use super::{board::ColorBoard, pieces::Pieces};
+use super::pieces::Pieces;
 
 pub fn get_piece_type(color_board: &ColorBoard, square: u64) -> Option<Pieces> {
     if color_board.pawn & square != 0 {

@@ -1,4 +1,6 @@
-use super::board::{Board, ColorBoard, Color};
+use super::board::Board;
+use super::color::Color;
+use super::color_board::ColorBoard;
 use super::pieces::Pieces;
 use super::utility::{
     coordinates_to_u64, get_color, get_piece_type, get_possible_move, is_king_checked, move_piece,
@@ -43,7 +45,6 @@ impl Engine {
         Ok(())
     }
 
-
     /// Validate the move before overwrite board state
     fn validate_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
         let (player_board, opponent_board) = self.get_half_turn_boards();
@@ -72,7 +73,8 @@ impl Engine {
         }
 
         // Simulate the move and check if the king is in check
-        let simulated_board = self.simulate_and_check_move(current_square, target_square, &piece, &color)?;
+        let simulated_board =
+            self.simulate_and_check_move(current_square, target_square, &piece, &color)?;
 
         Ok(simulated_board)
     }
@@ -86,7 +88,13 @@ impl Engine {
         color: &Color,
     ) -> Result<Board, String> {
         // Simulate the move
-        let simulated_board = move_piece(self.board.clone(), current_square, target_square, color, piece);
+        let simulated_board = move_piece(
+            self.board.clone(),
+            current_square,
+            target_square,
+            color,
+            piece,
+        );
 
         // Get the simulated player's and opponent's boards
         let (player_board, opponent_board) = if *color == Color::White {
