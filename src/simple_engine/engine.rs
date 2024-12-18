@@ -6,6 +6,14 @@ use super::utility::{
     coordinates_to_u64, get_color, get_piece_type, get_possible_move, is_king_checked, move_piece,
 };
 
+/// Represents the state of the chess engine.
+///
+/// Fields:
+///
+/// - `board`: The current state of the chess board.
+/// - `white_turn`: A boolean indicating if it's white's turn to move.
+/// - `halfmove_clock`: The number of halfmoves since the last pawn move or capture.
+/// - `fullmove_number`: The number of full moves in the game.
 pub struct Engine {
     // rules
     board: Board,
@@ -17,6 +25,21 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Creates a new instance of the `Engine` struct with the initial board setup.
+    ///
+    /// # Returns
+    ///
+    /// A new `Engine` instance with the following initial state:
+    /// - `board`: A new `Board` instance representing the initial chessboard setup.
+    /// - `white_turn`: A boolean set to `true`, indicating that it is White's turn to move.
+    /// - `halfmove_clock`: An integer set to `0`, representing the number of half-moves since the last capture or pawn advance.
+    /// - `fullmove_number`: An integer set to `0`, representing the number of full moves in the game.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let engine = Engine::new();
+    /// ```
     pub fn new() -> Self {
         Engine {
             board: Board::new(),
@@ -28,7 +51,31 @@ impl Engine {
         }
     }
 
-    /// Main play function
+    /// Executes a move from the current position to the target position.
+    ///
+    /// # Arguments
+    ///
+    /// * `current` - A tuple representing the coordinates (row, column) of the piece to be moved.
+    /// * `target` - A tuple representing the coordinates (row, column) of the target position.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the move is valid and successfully executed.
+    /// * `Err(String)` if the move is invalid, with an error message describing the reason.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// * There is no piece at the current position.
+    /// * The target position is not a valid move for the piece.
+    /// * The move leaves the king in check.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut engine = Engine::new();
+    /// engine.play((6, 4), (4, 4)).unwrap();
+    /// ```
     pub fn play(&mut self, current: (usize, usize), target: (usize, usize)) -> Result<(), String> {
         let current_square = coordinates_to_u64(current);
         let target_square = coordinates_to_u64(target);
@@ -46,6 +93,16 @@ impl Engine {
     }
 
     /// Validate the move before overwrite board state
+    ///
+    /// # Arguments
+    ///
+    /// * `current_square` - The current position of the piece as a bitboard.
+    /// * `target_square` - The target position of the piece as a bitboard.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Board)` if the move is valid and the new board state.
+    /// * `Err(String)` if the move is invalid, with an error message describing the reason.
     fn validate_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
         let (player_board, opponent_board) = self.get_half_turn_boards();
         let piece_type = get_piece_type(player_board, current_square);
@@ -80,6 +137,18 @@ impl Engine {
     }
 
     /// Simulate and check if the king is in check
+    ///
+    /// # Arguments
+    ///
+    /// * `current_square` - The current position of the piece as a bitboard.
+    /// * `target_square` - The target position of the piece as a bitboard.
+    /// * `piece` - The type of the piece being moved.
+    /// * `color` - The color of the piece being moved.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Board)` if the move is valid and the new board state.
+    /// * `Err(String)` if the move leaves the king in check, with an error message describing the reason.
     fn simulate_and_check_move(
         &self,
         current_square: u64,
@@ -114,6 +183,8 @@ impl Engine {
     }
 
     /// Finalize the turn after a move
+    ///
+    /// This function updates the turn, halfmove clock, and fullmove number.
     fn finalize_turn(&mut self) {
         self.halfmove_clock += 1;
         if !self.white_turn {
@@ -122,6 +193,11 @@ impl Engine {
         self.white_turn = !self.white_turn;
     }
 
+    /// Get the boards for the current player and the opponent
+    ///
+    /// # Returns
+    ///
+    /// * A tuple containing references to the current player's board and the opponent's board.
     fn get_half_turn_boards(&self) -> (&ColorBoard, &ColorBoard) {
         let board = if self.white_turn {
             &self.board.white
