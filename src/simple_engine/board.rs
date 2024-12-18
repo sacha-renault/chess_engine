@@ -3,6 +3,7 @@ use super::color_board::ColorBoard;
 use super::pieces::Pieces;
 use super::static_positions as init;
 
+/// Represents a chess board with separate bitboards for white and black pieces.
 #[derive(Clone)]
 pub struct Board {
     pub white: ColorBoard,
@@ -10,6 +11,10 @@ pub struct Board {
 }
 
 impl Board {
+    /// Creates a new `Board` with initial positions for white and black pieces.
+    ///
+    /// # Returns
+    /// A new `Board` instance.
     pub fn new() -> Self {
         Board {
             white: ColorBoard {
@@ -31,10 +36,22 @@ impl Board {
         }
     }
 
+    /// Returns a combined bitboard of all pieces on the board.
+    ///
+    /// # Returns
+    /// A `u64` representing the combined bitboard.
     pub fn bitboard(&self) -> u64 {
         self.white.bitboard() | self.black.bitboard()
     }
 
+    /// Returns the bitboard for a specific piece type and color.
+    ///
+    /// # Arguments
+    /// * `piece` - A reference to the `Pieces` type.
+    /// * `color` - A reference to the `Color` type.
+    ///
+    /// # Returns
+    /// A `u64` representing the bitboard for the specified piece and color.
     pub fn get_bitboard_by_type(&self, piece: &Pieces, color: &Color) -> u64 {
         match color {
             Color::White => self.white.get_bitboard_by_type(&piece),
@@ -42,6 +59,12 @@ impl Board {
         }
     }
 
+    /// Sets the bitboard for a specific piece type and color.
+    ///
+    /// # Arguments
+    /// * `piece` - A reference to the `Pieces` type.
+    /// * `color` - A reference to the `Color` type.
+    /// * `new_bitboard` - A `u64` representing the new bitboard.
     pub fn set_bitboard_by_type(&mut self, piece: &Pieces, color: &Color, new_bitboard: u64) {
         match color {
             Color::White => self.white.set_bitboard_by_type(&piece, new_bitboard),
@@ -49,6 +72,10 @@ impl Board {
         }
     }
 
+    /// Returns a vector of tuples containing the bitboard, piece type, and color for each piece.
+    ///
+    /// # Returns
+    /// A `Vec` of tuples where each tuple contains a `u64` bitboard, a reference to `Pieces`, and a reference to `Color`.
     pub fn individual_pieces(&self) -> Vec<(u64, &Pieces, &Color)> {
         let black_pieces = self
             .black
