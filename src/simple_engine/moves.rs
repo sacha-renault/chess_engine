@@ -1,11 +1,29 @@
 use super::{board::Color, static_positions};
 
-/// Compute bit lshift
+/// Performs a bitwise left shift operation on a 64-bit unsigned integer.
+///
+/// # Arguments
+///
+/// * `x` - The 64-bit unsigned integer to be shifted
+/// * `y` - The number of positions to shift the bits to the left
+///
+/// # Returns
+///
+/// A 64-bit unsigned integer with bits shifted left by `y` positions
 fn lshift(x: u64, y: u64) -> u64 {
     x << y
 }
 
-/// Compute bit rshift
+/// Performs a bitwise right shift operation on a 64-bit unsigned integer.
+///
+/// # Arguments
+///
+/// * `x` - The 64-bit unsigned integer to be shifted
+/// * `y` - The number of positions to shift the bits to the right
+///
+/// # Returns
+///
+/// A 64-bit unsigned integer with bits shifted right by `y` positions
 fn rshift(x: u64, y: u64) -> u64 {
     x >> y
 }
@@ -36,14 +54,30 @@ fn ray_scanning(
 
     // Choose the operation based on direction
     let shift_fn: fn(u64, u64) -> u64 = if direction { lshift } else { rshift };
-    let file_mask = if direction {
-        !static_positions::FILE_A
-    } else {
-        !static_positions::FILE_H
+
+    // Define mask to prevent wrapping and constrain movement
+    let file_mask = match (direction, shift_value) {
+        // Horizontal movement (shift of 1)
+        (true, 1) => !static_positions::FILE_H,
+        (false, 1) => !static_positions::FILE_A,
+
+        // Vertical movement (shift of 8)
+        (true, 8) => !static_positions::RANK1,
+        (false, 8) => !static_positions::RANK8,
+
+        // Diagonal movements
+        (true, 7) => !static_positions::FILE_H | !static_positions::RANK1,
+        (false, 7) => !static_positions::FILE_A | !static_positions::RANK8,
+        (true, 9) => !static_positions::FILE_A | !static_positions::RANK1,
+        (false, 9) => !static_positions::FILE_H | !static_positions::RANK8,
+
+        // Default case (should not occur with current usage)
+        _ => 0xFFFFFFFFFFFFFFFF,
     };
 
-    // Shift ray in the chosen direction
+    // Initial shift and mask
     ray = shift_fn(ray, shift_value) & file_mask;
+
     while ray != 0 {
         // If the same color piece is encountered, stop the scan in that direction
         if same_color_bitboard & ray != 0 {
@@ -59,14 +93,32 @@ fn ray_scanning(
         // Collect the current ray positions
         moves |= ray;
 
-        // Continue scanning
+        // Continue scanning with file masking to prevent wrapping
         ray = shift_fn(ray, shift_value) & file_mask;
     }
 
     moves
 }
 
-/// Compute all rooks move available from the bitboard
+/// Computes all possible moves for a rook on the chessboard.
+///
+/// # Arguments
+///
+/// * `rook_bitboard` - Bitboard representing the rook's current position
+/// * `same_color_bitboard` - Bitboard of all pieces of the same color
+/// * `other_color_bitboard` - Bitboard of all pieces of the opposite color
+///
+/// # Returns
+///
+/// A bitboard representing all valid moves for the rook
+///
+/// # Notes
+///
+/// Calculates moves in four directions:
+/// - Vertical downward (false, 8)
+/// - Vertical upward (true, 8)
+/// - Horizontal leftward (false, 1)
+/// - Horizontal rightward (true, 1)
 pub fn rooks_moves(rook_bitboard: u64, same_color_bitboard: u64, other_color_bitboard: u64) -> u64 {
     ray_scanning(
         rook_bitboard,
@@ -95,6 +147,17 @@ pub fn rooks_moves(rook_bitboard: u64, same_color_bitboard: u64, other_color_bit
     )
 }
 
+/// Computes all possible moves for a bishop on the chessboard.
+///
+/// # Arguments
+///
+/// * `bishop_bitboard` - Bitboard representing the bishop's current position
+/// * `same_color_bitboard` - Bitboard of all pieces of the same color
+/// * `other_color_bitboard` - Bitboard of all pieces of the opposite color
+///
+/// # Returns
+///
+/// A bitboard representing all valid moves for the bishop
 pub fn bishops_moves(
     bishop_bitboard: u64,
     same_color_bitboard: u64,
@@ -127,6 +190,7 @@ pub fn bishops_moves(
     )
 }
 
+/// equivalent to `bishops_moves() | rooks_move()`
 pub fn queen_moves(
     queen_bitboard: u64,
     same_color_bitboard: u64,
@@ -136,6 +200,21 @@ pub fn queen_moves(
         | bishops_moves(queen_bitboard, same_color_bitboard, other_color_bitboard)
 }
 
+/// Computes all possible moves for a pawn on the chessboard.
+///
+/// # Arguments
+///
+/// * `pawn_bitboard` - Bitboard representing the pawn's current position
+/// * `same_color_bitboard` - Bitboard of all pieces of the same color
+/// * `other_color_bitboard` - Bitboard of all pieces of the opposite color
+/// * `color` - Color of the pawn (determines movement direction)
+///
+/// # Returns
+///
+/// A bitboard representing all valid moves for the pawn, including:
+/// - Single square push
+/// - Double square push (from starting rank)
+/// - Left and right diagonal captures
 pub fn pawn_moves(
     pawn_bitboard: u64,
     same_color_bitboard: u64,
@@ -171,6 +250,21 @@ pub fn pawn_moves(
     single_push | double_push | left_capture | right_capture
 }
 
+
+/// Computes all possible moves for knights on the chessboard.
+///
+/// # Arguments
+///
+/// * `knights_bitboard` - Bitboard representing the positions of all knights
+/// * `same_color_bitboard` - Bitboard of all pieces of the same color
+///
+/// # Returns
+///
+/// A bitboard representing all valid moves for the knights
+///
+/// # Notes
+///
+/// Uses precomputed move sets and iterates through all knights on the board
 pub fn knight_moves(knights_bitboard: u64, same_color_bitboard: u64) -> u64 {
     let mut moves = 0u64;
     let mut knights = knights_bitboard; // Copy of knights bitboard
@@ -188,6 +282,20 @@ pub fn knight_moves(knights_bitboard: u64, same_color_bitboard: u64) -> u64 {
     moves
 }
 
+/// Computes all possible moves for a king on the chessboard.
+///
+/// # Arguments
+///
+/// * `king_bitboard` - Bitboard representing the king's current position
+/// * `same_color_bitboard` - Bitboard of all pieces of the same color
+///
+/// # Returns
+///
+/// A bitboard representing all valid moves for the king
+///
+/// # Notes
+///
+/// Uses a precomputed move set for the king's current square
 pub fn king_moves(king_bitboard: u64, same_color_bitboard: u64) -> u64 {
     static_positions::KING_MOVES[king_bitboard.trailing_zeros() as usize] & !same_color_bitboard
 }
