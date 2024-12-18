@@ -83,45 +83,33 @@ pub fn move_piece(
         Color::Black => (&mut board.black, &mut board.white),
     };
 
-    // If the target square has an opponent's piece, we need to remove it
+    // Clear the current square from the moving piece
     match piece_type {
-        Pieces::Pawn => {
-            color_board.pawn &= !current_square; // Clear the pawn from the current square
-            color_board.pawn |= target_square; // Place the pawn on the target square
-                                               // Remove opponent's pawn (if present)
-            opponent_board.pawn &= !target_square;
-        }
-        Pieces::Knight => {
-            color_board.knight &= !current_square; // Clear the knight
-            color_board.knight |= target_square; // Place the knight
-                                                 // Remove opponent's knight (if present)
-            opponent_board.knight &= !target_square;
-        }
-        Pieces::Bishop => {
-            color_board.bishop &= !current_square; // Clear the bishop
-            color_board.bishop |= target_square; // Place the bishop
-                                                 // Remove opponent's bishop (if present)
-            opponent_board.bishop &= !target_square;
-        }
-        Pieces::Rook => {
-            color_board.rook &= !current_square; // Clear the rook
-            color_board.rook |= target_square; // Place the rook
-                                               // Remove opponent's rook (if present)
-            opponent_board.rook &= !target_square;
-        }
-        Pieces::Queen => {
-            color_board.queen &= !current_square; // Clear the queen
-            color_board.queen |= target_square; // Place the queen
-                                                // Remove opponent's queen (if present)
-            opponent_board.queen &= !target_square;
-        }
-        Pieces::King => {
-            color_board.king &= !current_square; // Clear the king
-            color_board.king |= target_square; // Place the king
-                                               // Remove opponent's king (if present)
-            opponent_board.king &= !target_square;
-        }
-    }
+        Pieces::Pawn => color_board.pawn &= !current_square,
+        Pieces::Knight => color_board.knight &= !current_square,
+        Pieces::Bishop => color_board.bishop &= !current_square,
+        Pieces::Rook => color_board.rook &= !current_square,
+        Pieces::Queen => color_board.queen &= !current_square,
+        Pieces::King => color_board.king &= !current_square,
+    };
+
+    // Place the piece on the target square
+    match piece_type {
+        Pieces::Pawn => color_board.pawn |= target_square,
+        Pieces::Knight => color_board.knight |= target_square,
+        Pieces::Bishop => color_board.bishop |= target_square,
+        Pieces::Rook => color_board.rook |= target_square,
+        Pieces::Queen => color_board.queen |= target_square,
+        Pieces::King => color_board.king |= target_square,
+    };
+
+    // Clear the target square from all opponent pieces
+    opponent_board.pawn &= !target_square;
+    opponent_board.knight &= !target_square;
+    opponent_board.bishop &= !target_square;
+    opponent_board.rook &= !target_square;
+    opponent_board.queen &= !target_square;
+    opponent_board.king &= !target_square;
 
     // Return the updated board
     board
