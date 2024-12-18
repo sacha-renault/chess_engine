@@ -1,5 +1,5 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum Color {
-    Black,
-    White,
+    Black = -1,
+    White = 1,
 }
