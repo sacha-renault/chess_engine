@@ -60,15 +60,18 @@ impl ColorBoard {
     /// A `Vec` of tuples where each tuple contains a `u64` bitboard position and a reference to `Pieces`.
     pub fn individual_pieces(&self) -> Vec<(u64, &Pieces)> {
         let mut result = Vec::new();
+
         for piece in ALL_PIECES.iter() {
             let bitboard = self.get_bitboard_by_type(&piece);
+
             let mut bitboard_copy = bitboard;
             while bitboard_copy != 0 {
-                let position = bitboard_copy.trailing_zeros() as u64;
-                result.push((position, piece));
-                bitboard_copy &= bitboard_copy - 1;
+                let mask = bitboard_copy & (!bitboard_copy + 1); // Isolate LSB as a mask
+                result.push((mask, piece));
+                bitboard_copy &= bitboard_copy - 1; // Clear the LSB
             }
         }
+
         result
     }
 }
