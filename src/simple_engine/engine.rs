@@ -264,6 +264,7 @@ impl Engine {
         Ok(possible_moves)
     }
 
+    /// Get the current board
     pub fn board(&self) -> &Board {
         &self.board
     }
