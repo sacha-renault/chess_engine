@@ -212,6 +212,65 @@ impl Engine {
         (board, opponent_board)
     }
 
+    /// Returns the possible legal moves for a piece at the given square.
+    ///
+    /// # Arguments
+    /// * `current_square` - A `u64` representing the current square of the piece.
+    ///
+    /// # Returns
+    /// * `Ok(u64)` - A `u64` bitboard representing the possible legal moves.
+    /// * `Err(String)` - An error message if there is no piece at the current square.
+    ///
+    /// # Example
+    /// ```
+    /// let mut engine = Engine::new();
+    /// let moves = engine.get_moves(coordinates_to_u64((6, 4))).unwrap();
+    /// ```
+    pub fn get_moves(&self, current_square: u64) -> Result<u64, String> {
+        let (player_board, opponent_board) = self.get_half_turn_boards();
+        let piece_type = get_piece_type(player_board, current_square);
+
+        // Ensure there is a piece at the current square
+        if piece_type.is_none() {
+            return Err("No piece at this location".to_string());
+        }
+
+        let piece = piece_type.unwrap();
+        let color = get_color(self.white_turn);
+
+        // Get the possible moves for the piece
+        let legal_moves = get_possible_move(
+            &piece,
+            current_square,
+            player_board.bitboard(),
+            opponent_board.bitboard(),
+            &color,
+        );
+
+        // Initialize a bitboard for filtered moves
+        let mut possible_moves = 0u64;
+        let mut moves_to_check = legal_moves;
+
+        // Iterate through each set bit in legal_moves
+        while moves_to_check != 0 {
+            // Get the least significant set bit
+            let target_square = 1u64 << moves_to_check.trailing_zeros();
+
+            // If the move doesn't leave king in check, add it to possible moves
+            if self
+                .simulate_and_check_move(current_square, target_square, &piece, &color)
+                .is_ok()
+            {
+                possible_moves |= target_square;
+            }
+
+            // Clear the processed bit
+            moves_to_check &= !target_square;
+        }
+
+        Ok(possible_moves)
+    }
+
     pub fn board(&self) -> &Board {
         &self.board
     }
