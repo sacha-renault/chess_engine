@@ -1,4 +1,9 @@
-use super::{color::Color, static_positions};
+use super::{
+    color::Color,
+    static_positions::{
+        FILE_A, FILE_B, FILE_G, FILE_H, KING_MOVES, KNIGHTS_MOVES, RANK1, RANK3, RANK6, RANK8,
+    },
+};
 
 /// Performs a bitwise left shift operation on a 64-bit unsigned integer.
 ///
@@ -52,49 +57,56 @@ fn ray_scanning(
     let mut moves = 0u64;
     let mut ray = piece_bitboard;
 
-    // Choose the operation based on direction
     let shift_fn: fn(u64, u64) -> u64 = if direction { lshift } else { rshift };
 
-    // Define mask to prevent wrapping and constrain movement
-    let file_mask = match (direction, shift_value) {
-        // Horizontal movement (shift of 1)
-        (true, 1) => !static_positions::FILE_H,
-        (false, 1) => !static_positions::FILE_A,
+    // Define masks for movement constraints
+    let movement_mask = match (direction, shift_value) {
+        // Horizontal movement
+        (true, 1) => !FILE_A,  // Moving left
+        (false, 1) => !FILE_H, // Moving right
 
-        // Vertical movement (shift of 8)
-        (true, 8) => !static_positions::RANK1,
-        (false, 8) => !static_positions::RANK8,
+        // Vertical movement
+        (true, 8) => !RANK1,  // Moving up
+        (false, 8) => !RANK8, // Moving down
 
-        // Diagonal movements
-        (true, 7) => !static_positions::FILE_H | !static_positions::RANK1,
-        (false, 7) => !static_positions::FILE_A | !static_positions::RANK8,
-        (true, 9) => !static_positions::FILE_A | !static_positions::RANK1,
-        (false, 9) => !static_positions::FILE_H | !static_positions::RANK8,
+        // Diagonal movements - now properly masking both relevant files and ranks
+        // Moving up-left: need to consider both A file and rank 8
+        (true, 7) => !(FILE_H | RANK1),
+        // Moving down-right: need to consider both H file and rank 1
+        (false, 7) => !(FILE_A | RANK8),
+        // Moving up-right: need to consider both H file and rank 8
+        (true, 9) => !(FILE_A | RANK1),
+        // Moving down-left: need to consider both A file and rank 1
+        (false, 9) => !(FILE_H | RANK8),
 
-        // Default case (should not occur with current usage)
         _ => 0xFFFFFFFFFFFFFFFF,
     };
 
-    // Initial shift and mask
-    ray = shift_fn(ray, shift_value) & file_mask;
+    // Do the first shift
+    ray = shift_fn(ray, shift_value);
 
     while ray != 0 {
-        // If the same color piece is encountered, stop the scan in that direction
+        // Apply the movement mask
+        ray &= movement_mask;
+
+        if ray == 0 {
+            break;
+        }
+
+        // If encounter same color, it can't take, we just break
         if same_color_bitboard & ray != 0 {
             break;
         }
 
-        // If an opponent's piece is encountered, stop and add it to the moves (capture)
+        // if it is an other color, it can capture
+        // so we add postion to possible moves
         if other_color_bitboard & ray != 0 {
             moves |= ray;
             break;
         }
 
-        // Collect the current ray positions
         moves |= ray;
-
-        // Continue scanning with file masking to prevent wrapping
-        ray = shift_fn(ray, shift_value) & file_mask;
+        ray = shift_fn(ray, shift_value);
     }
 
     moves
@@ -227,12 +239,12 @@ pub fn pawn_moves(
         Color::White => lshift,
     };
     let double_move_rank = match color {
-        Color::Black => static_positions::RANK6,
-        Color::White => static_positions::RANK3,
+        Color::Black => RANK6,
+        Color::White => RANK3,
     };
     let (file1, file2) = match color {
-        Color::Black => (static_positions::FILE_H, static_positions::FILE_A),
-        Color::White => (static_positions::FILE_A, static_positions::FILE_H),
+        Color::Black => (FILE_H, FILE_A),
+        Color::White => (FILE_A, FILE_H),
     };
 
     // Single push for white pawns
@@ -272,7 +284,7 @@ pub fn knight_moves(knights_bitboard: u64, same_color_bitboard: u64) -> u64 {
         let square_index = knights.trailing_zeros() as usize;
 
         // Add the precomputed knight moves for this square, masking out same-color pieces
-        moves |= static_positions::KNIGHTS_MOVES[square_index] & !same_color_bitboard;
+        moves |= KNIGHTS_MOVES[square_index] & !same_color_bitboard;
 
         // Remove the processed knight from the bitboard
         knights &= knights - 1;
@@ -296,5 +308,5 @@ pub fn knight_moves(knights_bitboard: u64, same_color_bitboard: u64) -> u64 {
 ///
 /// Uses a precomputed move set for the king's current square
 pub fn king_moves(king_bitboard: u64, same_color_bitboard: u64) -> u64 {
-    static_positions::KING_MOVES[king_bitboard.trailing_zeros() as usize] & !same_color_bitboard
+    KING_MOVES[king_bitboard.trailing_zeros() as usize] & !same_color_bitboard
 }
