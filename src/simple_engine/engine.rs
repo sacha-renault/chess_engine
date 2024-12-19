@@ -13,7 +13,6 @@ use super::utility::{
 /// - `board`: The current state of the chess board.
 /// - `white_turn`: A boolean indicating if it's white's turn to move.
 /// - `halfmove_clock`: The number of halfmoves since the last pawn move or capture.
-/// - `fullmove_number`: The number of full moves in the game.
 pub struct Engine {
     // rules
     board: Board,
@@ -21,7 +20,6 @@ pub struct Engine {
     // en_passant: Option<usize>, // Optional field for en passant target square
     // castling_rights: (bool, bool, bool, bool), // (white_king_side, white_queen_side, black_king_side, black_queen_side)
     halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
-    fullmove_number: u32, // Number of full moves in the game
 }
 
 impl Engine {
@@ -33,7 +31,6 @@ impl Engine {
     /// - `board`: A new `Board` instance representing the initial chessboard setup.
     /// - `white_turn`: A boolean set to `true`, indicating that it is White's turn to move.
     /// - `halfmove_clock`: An integer set to `0`, representing the number of half-moves since the last capture or pawn advance.
-    /// - `fullmove_number`: An integer set to `0`, representing the number of full moves in the game.
     ///
     /// # Example
     ///
@@ -47,7 +44,6 @@ impl Engine {
             // en_passant: None,
             // castling_rights: (true, true, true, true),
             halfmove_clock: 0,
-            fullmove_number: 0,
         }
     }
 
@@ -187,9 +183,6 @@ impl Engine {
     /// This function updates the turn, halfmove clock, and fullmove number.
     fn finalize_turn(&mut self) {
         self.halfmove_clock += 1;
-        if !self.white_turn {
-            self.fullmove_number += 1;
-        }
         self.white_turn = !self.white_turn;
     }
 
@@ -273,5 +266,28 @@ impl Engine {
 
     pub fn board(&self) -> &Board {
         &self.board
+    }
+
+    /// Resets the engine to the initial state.
+    pub fn reset(&mut self) {
+        self.board = Board::new();
+        self.white_turn = true;
+        self.halfmove_clock = 0;
+    }
+
+    /// Returns the number of full moves in the game.
+    ///
+    /// # Returns
+    /// A `u32` representing the number of full moves.
+    pub fn fullmove_number(&self) -> u32 {
+        (self.halfmove_clock + 1) / 2
+    }
+
+    /// Returns the number of halfmoves since the last pawn move or capture.
+    ///
+    /// # Returns
+    /// A `u32` representing the number of halfmoves.
+    pub fn halfmove_clock(&self) -> u32 {
+        self.halfmove_clock
     }
 }
