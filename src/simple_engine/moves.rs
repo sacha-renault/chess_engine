@@ -70,13 +70,9 @@ fn ray_scanning(
         (false, 8) => !RANK8, // Moving down
 
         // Diagonal movements - now properly masking both relevant files and ranks
-        // Moving up-left: need to consider both A file and rank 8
         (true, 7) => !(FILE_H | RANK1),
-        // Moving down-right: need to consider both H file and rank 1
         (false, 7) => !(FILE_A | RANK8),
-        // Moving up-right: need to consider both H file and rank 8
         (true, 9) => !(FILE_A | RANK1),
-        // Moving down-left: need to consider both A file and rank 1
         (false, 9) => !(FILE_H | RANK8),
 
         _ => 0xFFFFFFFFFFFFFFFF,
@@ -95,14 +91,14 @@ fn ray_scanning(
 
         // If encounter same color, it can't take, we just break
         if same_color_bitboard & ray != 0 {
-            break;
+            ray &= !same_color_bitboard;
         }
 
         // if it is an other color, it can capture
         // so we add postion to possible moves
         if other_color_bitboard & ray != 0 {
             moves |= ray;
-            break;
+            ray &= !other_color_bitboard;
         }
 
         moves |= ray;
@@ -243,8 +239,8 @@ pub fn pawn_moves(
         Color::White => RANK3,
     };
     let (file1, file2) = match color {
-        Color::Black => (FILE_H, FILE_A),
-        Color::White => (FILE_A, FILE_H),
+        Color::Black => (FILE_A, FILE_H),
+        Color::White => (FILE_H, FILE_A),
     };
 
     // Single push for white pawns
