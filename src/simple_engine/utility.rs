@@ -224,3 +224,15 @@ pub fn is_king_checked(
 ) -> bool {
     king_bitboard & all_possible_moves(&board, &opponent_board, &color) != 0
 }
+
+/// Get the boards for the current player and the opponent
+///
+/// # Returns
+///
+/// * A tuple containing references to the current player's board and the opponent's board.
+pub fn get_half_turn_boards(board: &Board, color: Color) -> (&ColorBoard, &ColorBoard) {
+    match color {
+        Color::White => (&board.white, &board.black),
+        Color::Black => (&board.black, &board.white),
+    }
+}

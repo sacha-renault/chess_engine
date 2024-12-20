@@ -1,9 +1,11 @@
 use super::board::Board;
 use super::color::Color;
 use super::color_board::ColorBoard;
+use super::debug::print_board;
 use super::pieces::Pieces;
 use super::utility::{
-    coordinates_to_u64, get_color, get_piece_type, get_possible_move, is_king_checked, move_piece,
+    coordinates_to_u64, get_color, get_half_turn_boards, get_piece_type, get_possible_move,
+    is_king_checked, move_piece,
 };
 
 /// Represents the state of the chess engine.
@@ -73,6 +75,7 @@ impl Engine {
     /// engine.play((6, 4), (4, 4)).unwrap();
     /// ```
     pub fn play(&mut self, current: (usize, usize), target: (usize, usize)) -> Result<(), String> {
+        // Get coordinates as square
         let current_square = coordinates_to_u64(current);
         let target_square = coordinates_to_u64(target);
 
@@ -100,7 +103,8 @@ impl Engine {
     /// * `Ok(Board)` if the move is valid and the new board state.
     /// * `Err(String)` if the move is invalid, with an error message describing the reason.
     fn validate_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
-        let (player_board, opponent_board) = self.get_half_turn_boards();
+        let (player_board, opponent_board) =
+            get_half_turn_boards(&self.board, get_color(self.white_turn));
         let piece_type = get_piece_type(player_board, current_square);
 
         // Ensure there is a piece at the current square
@@ -127,7 +131,7 @@ impl Engine {
 
         // Simulate the move and check if the king is in check
         let simulated_board =
-            self.simulate_and_check_move(current_square, target_square, &piece, &color)?;
+            self.validate_move_safety(current_square, target_square, &piece, &color)?;
 
         Ok(simulated_board)
     }
@@ -145,7 +149,7 @@ impl Engine {
     ///
     /// * `Ok(Board)` if the move is valid and the new board state.
     /// * `Err(String)` if the move leaves the king in check, with an error message describing the reason.
-    fn simulate_and_check_move(
+    fn validate_move_safety(
         &self,
         current_square: u64,
         target_square: u64,
@@ -162,19 +166,20 @@ impl Engine {
         );
 
         // Get the simulated player's and opponent's boards
-        let (player_board, opponent_board) = if *color == Color::White {
-            (&simulated_board.white, &simulated_board.black)
-        } else {
-            (&simulated_board.black, &simulated_board.white)
-        };
+        let (player_board, opponent_board) =
+            get_half_turn_boards(&simulated_board, get_color(!self.white_turn));
 
         // Check if the king is in check in the simulated state
         // For that, we check all possible moves for next round (bulk computed all opponent moves)
         // and check if kinng_bitbord & all_moves == 0 => no check
-        if is_king_checked(player_board.king, opponent_board, player_board, color) {
+        if is_king_checked(
+            opponent_board.king,
+            &player_board,
+            &opponent_board,
+            &get_color(!self.white_turn),
+        ) {
             return Err("Move leaves the king in check".to_string());
         }
-
         Ok(simulated_board)
     }
 
@@ -184,25 +189,6 @@ impl Engine {
     fn finalize_turn(&mut self) {
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
-    }
-
-    /// Get the boards for the current player and the opponent
-    ///
-    /// # Returns
-    ///
-    /// * A tuple containing references to the current player's board and the opponent's board.
-    fn get_half_turn_boards(&self) -> (&ColorBoard, &ColorBoard) {
-        let board = if self.white_turn {
-            &self.board.white
-        } else {
-            &self.board.black
-        };
-        let opponent_board = if self.white_turn {
-            &self.board.black
-        } else {
-            &self.board.white
-        };
-        (board, opponent_board)
     }
 
     /// Returns the possible legal moves for a piece at the given square.
@@ -220,7 +206,8 @@ impl Engine {
     /// let moves = engine.get_moves(coordinates_to_u64((6, 4))).unwrap();
     /// ```
     pub fn get_moves(&self, current_square: u64) -> Result<u64, String> {
-        let (player_board, opponent_board) = self.get_half_turn_boards();
+        let (player_board, opponent_board) =
+            get_half_turn_boards(&self.board, get_color(self.white_turn));
         let piece_type = get_piece_type(player_board, current_square);
 
         // Ensure there is a piece at the current square
@@ -251,7 +238,7 @@ impl Engine {
 
             // If the move doesn't leave king in check, add it to possible moves
             if self
-                .simulate_and_check_move(current_square, target_square, &piece, &color)
+                .validate_move_safety(current_square, target_square, &piece, &color)
                 .is_ok()
             {
                 possible_moves |= target_square;
@@ -264,16 +251,13 @@ impl Engine {
         Ok(possible_moves)
     }
 
-    /// Get the current board
+    // Utility methods
     pub fn board(&self) -> &Board {
         &self.board
     }
 
-    /// Resets the engine to the initial state.
     pub fn reset(&mut self) {
-        self.board = Board::new();
-        self.white_turn = true;
-        self.halfmove_clock = 0;
+        *self = Self::new();
     }
 
     /// Returns the number of full moves in the game.

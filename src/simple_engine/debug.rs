@@ -88,3 +88,17 @@ pub fn print_board(board: &Board) {
         println!(); // Move to the next line after each row
     }
 }
+
+pub fn print_bitboard(bitboard: u64) {
+    for rank in (0..8).rev() {
+        for file in 0..8 {
+            let bit = 1u64 << (rank * 8 + file);
+            if bitboard & bit != 0 {
+                print!(" X ");
+            } else {
+                print!(" . ");
+            }
+        }
+        println!(); // Move to the next rank
+    }
+}
