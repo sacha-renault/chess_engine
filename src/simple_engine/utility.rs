@@ -1,6 +1,7 @@
 use super::board::Board;
 use super::color::Color;
 use super::color_board::ColorBoard;
+use super::debug::print_bitboard;
 use super::moves::*;
 use super::pieces::Pieces;
 
@@ -197,7 +198,7 @@ pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color
         | queen_moves(board.queen, board.bitboard(), opponent_board.bitboard())
         | rooks_moves(board.rook, board.bitboard(), opponent_board.bitboard())
         | bishops_moves(board.bishop, board.bitboard(), opponent_board.bitboard())
-        | knight_moves(board.bishop, board.bitboard())
+        | knight_moves(board.knight, board.bitboard())
         | pawn_moves(
             board.pawn,
             board.bitboard(),
