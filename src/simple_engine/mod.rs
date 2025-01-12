@@ -5,5 +5,6 @@ pub mod debug;
 pub mod engine;
 pub mod moves;
 pub mod pieces;
+pub mod player_move;
 mod static_positions;
 pub mod utility;

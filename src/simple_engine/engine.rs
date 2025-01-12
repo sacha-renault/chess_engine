@@ -1,8 +1,7 @@
 use super::board::Board;
 use super::color::Color;
-use super::color_board::ColorBoard;
-use super::debug::print_board;
 use super::pieces::Pieces;
+use super::player_move::PlayerMove;
 use super::utility::{
     coordinates_to_u64, get_color, get_half_turn_boards, get_piece_type, get_possible_move,
     is_king_checked, move_piece,
@@ -74,21 +73,25 @@ impl Engine {
     /// let mut engine = Engine::new();
     /// engine.play((6, 4), (4, 4)).unwrap();
     /// ```
-    pub fn play(&mut self, current: (usize, usize), target: (usize, usize)) -> Result<(), String> {
-        // Get coordinates as square
-        let current_square = coordinates_to_u64(current);
-        let target_square = coordinates_to_u64(target);
+    pub fn play(&mut self, chess_move: PlayerMove) -> Result<(), String> {
+        match chess_move {
+            PlayerMove::NormalMove(normal_move) => {
+                // get squares
+                let (current_square, target_square) = normal_move.squares();
 
-        // Validate the move and get the new board state
-        let new_board = self.validate_move(current_square, target_square)?;
+                // Validate the move and get the new board state
+                let new_board = self.validate_move(current_square, target_square)?;
 
-        // Apply the new board state
-        self.board = new_board;
+                // Apply the new board state
+                self.board = new_board;
 
-        // Finalize the turn
-        self.finalize_turn();
+                // Finalize the turn
+                self.finalize_turn();
 
-        Ok(())
+                Ok(())
+            }
+            PlayerMove::Castling(castling_side) => Err("Not implement yet".to_string()),
+        }
     }
 
     /// Validate the move before overwrite board state
@@ -103,8 +106,11 @@ impl Engine {
     /// * `Ok(Board)` if the move is valid and the new board state.
     /// * `Err(String)` if the move is invalid, with an error message describing the reason.
     fn validate_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
+        // get player and opponent board
         let (player_board, opponent_board) =
             get_half_turn_boards(&self.board, get_color(self.white_turn));
+
+        // Get piece type
         let piece_type = get_piece_type(player_board, current_square);
 
         // Ensure there is a piece at the current square
