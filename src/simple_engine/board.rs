@@ -1,5 +1,5 @@
 use super::color::Color;
-use super::color_board::ColorBoard;
+use super::color_board::{CastlingRights, ColorBoard};
 use super::pieces::Pieces;
 use super::static_positions as init;
 
@@ -24,6 +24,7 @@ impl Board {
                 rook: init::WHITE_ROOKS,
                 queen: init::WHITE_QUEEN,
                 king: init::WHITE_KING,
+                castling_rights: CastlingRights::new(),
             },
             black: ColorBoard {
                 pawn: init::BLACK_PAWNS,
@@ -32,6 +33,7 @@ impl Board {
                 rook: init::BLACK_ROOKS,
                 queen: init::BLACK_QUEEN,
                 king: init::BLACK_KING,
+                castling_rights: CastlingRights::new(),
             },
         }
     }

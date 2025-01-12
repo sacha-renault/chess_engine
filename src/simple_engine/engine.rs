@@ -1,10 +1,10 @@
 use super::board::Board;
 use super::color::Color;
 use super::pieces::Pieces;
-use super::player_move::PlayerMove;
+use super::player_move::{Castling, PlayerMove};
 use super::utility::{
-    coordinates_to_u64, get_color, get_half_turn_boards, get_piece_type, get_possible_move,
-    is_king_checked, move_piece,
+    get_color, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions,
+    get_piece_type, get_possible_move, is_king_checked, move_piece,
 };
 
 /// Represents the state of the chess engine.
@@ -191,8 +191,26 @@ impl Engine {
 
     /// Finalize the turn after a move
     ///
-    /// This function updates the turn, halfmove clock, and fullmove number.
+    /// This function updates the turn, halfmove clock, and fullmove number adn castling rights.
     fn finalize_turn(&mut self) {
+        // get player and opponent board
+        let (player_board, _) =
+            get_half_turn_boards_mut(&mut self.board, get_color(self.white_turn));
+
+        // Get the initial position by color
+        let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
+            get_initial_castling_positions(&get_color(self.white_turn));
+
+        // Update castling rights directly on the player's board
+        player_board.castling_rights.update_castling_rights(
+            player_board.king,
+            player_board.rook,
+            initial_king_pos,
+            initial_short_rook_pos,
+            initial_long_rook_pos,
+        );
+
+        // we get the initial position depending on the color
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
     }

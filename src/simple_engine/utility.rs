@@ -4,6 +4,7 @@ use super::color_board::ColorBoard;
 use super::debug::print_bitboard;
 use super::moves::*;
 use super::pieces::Pieces;
+use super::static_positions::{BLACK_KING, BLACK_ROOKS, FILE_A, FILE_H, WHITE_KING, WHITE_ROOKS};
 
 /// Returns the type of piece on a given square in the color board.
 ///
@@ -235,5 +236,23 @@ pub fn get_half_turn_boards(board: &Board, color: Color) -> (&ColorBoard, &Color
     match color {
         Color::White => (&board.white, &board.black),
         Color::Black => (&board.black, &board.white),
+    }
+}
+
+/// Same as `get_half_turn_boards` but matable
+pub fn get_half_turn_boards_mut(
+    board: &mut Board,
+    color: Color,
+) -> (&mut ColorBoard, &mut ColorBoard) {
+    match color {
+        Color::White => (&mut board.white, &mut board.black),
+        Color::Black => (&mut board.black, &mut board.white),
+    }
+}
+
+pub fn get_initial_castling_positions(color: &Color) -> (u64, u64, u64) {
+    match color {
+        Color::White => (WHITE_KING, WHITE_ROOKS & FILE_A, WHITE_ROOKS & FILE_H),
+        Color::Black => (BLACK_KING, BLACK_ROOKS & FILE_A, BLACK_ROOKS & FILE_H),
     }
 }
