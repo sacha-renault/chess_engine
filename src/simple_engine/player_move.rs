@@ -1,6 +1,6 @@
 use super::utility::coordinates_to_u64;
 
-pub enum Castling {
+pub enum CastlingMove {
     Long,
     Short,
 }
@@ -31,6 +31,6 @@ impl NormalMove {
 }
 
 pub enum PlayerMove {
-    NormalMove(NormalMove),
-    Castling(Castling),
+    Normal(NormalMove),
+    Castling(CastlingMove),
 }

@@ -1,7 +1,7 @@
 use super::board::Board;
 use super::color::Color;
 use super::pieces::Pieces;
-use super::player_move::{Castling, PlayerMove};
+use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
     get_color, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions,
     get_piece_type, get_possible_move, is_king_checked, move_piece,
@@ -75,7 +75,7 @@ impl Engine {
     /// ```
     pub fn play(&mut self, chess_move: PlayerMove) -> Result<(), String> {
         match chess_move {
-            PlayerMove::NormalMove(normal_move) => {
+            PlayerMove::Normal(normal_move) => {
                 // get squares
                 let (current_square, target_square) = normal_move.squares();
 
@@ -213,6 +213,45 @@ impl Engine {
         // we get the initial position depending on the color
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
+    }
+
+    fn perform_castling(&mut self, castling: CastlingMove) -> Result<(), String> {
+        // get player and opponent board
+        let (player_board, _) = get_half_turn_boards(&self.board, get_color(self.white_turn));
+
+        // get the full bitboard to ensure castling is available
+        let full_bitboard = self.board.bitboard();
+
+        match castling {
+            CastlingMove::Long => {
+                // First get need_empty for the side + color
+                // let need_empty_squares = get_castling_empty_squares(CastlingMove::Long, get_color(self.white_turn))
+
+                // Check if caslting is available
+                if player_board
+                    .castling_rights
+                    .long_casting_available(full_bitboard)
+                {
+                    Ok(())
+                } else {
+                    Err("Cannot perform castling on this side".to_string())
+                }
+            }
+            CastlingMove::Short => {
+                // First get need_empty for the side + color
+                // let need_empty_squares = get_castling_empty_squares(CastlingMove::Long, get_color(self.white_turn))
+
+                // Check if caslting is available
+                if player_board
+                    .castling_rights
+                    .short_casting_available(full_bitboard)
+                {
+                    Ok(())
+                } else {
+                    Err("Cannot perform castling on this side".to_string())
+                }
+            }
+        }
     }
 
     /// Returns the possible legal moves for a piece at the given square.
