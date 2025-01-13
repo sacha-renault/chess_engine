@@ -9,24 +9,23 @@ use super::utility::{
     get_required_empty_squares, is_king_checked, move_piece,
 };
 
-/// Represents the state of the chess engine.
+/// Represents a chess engine that manages game state and move validation.
 ///
-/// Fields:
-///
-/// - `board`: The current state of the chess board.
-/// - `white_turn`: A boolean indicating if it's white's turn to move.
-/// - `halfmove_clock`: The number of halfmoves since the last pawn move or capture.
+/// The engine handles:
+/// - Game state (board position, turn, move counters)
+/// - Move validation and execution
+/// - Special moves (castling, promotion)
+/// - Move generation and validation
 pub struct Engine {
     // rules
     board: Board,
     white_turn: bool,
-    // en_passant: Option<usize>, // Optional field for en passant target square
     halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
     promoted: bool,
 }
 
 impl Engine {
-    /// Creates a new instance of the `Engine` struct with the initial board setup.
+    /// Creates a new chess engine with the standard starting position.
     ///
     /// # Returns
     ///
@@ -44,23 +43,19 @@ impl Engine {
         Engine {
             board: Board::new(),
             white_turn: true,
-            // en_passant: None,
             halfmove_clock: 0,
             promoted: false,
         }
     }
 
-    /// Executes a move from the current position to the target position.
+    /// Executes a chess move, handling both normal moves and castling.
     ///
     /// # Arguments
-    ///
-    /// * `current` - A tuple representing the coordinates (row, column) of the piece to be moved.
-    /// * `target` - A tuple representing the coordinates (row, column) of the target position.
+    /// * `chess_move` - The move to execute, either normal move or castling
     ///
     /// # Returns
-    ///
-    /// * `Ok(())` if the move is valid and successfully executed.
-    /// * `Err(String)` if the move is invalid, with an error message describing the reason.
+    /// * `Ok(CorrectMoveResults)` - Move executed successfully
+    /// * `Err(IncorrectMoveResults)` - Move validation failed
     ///
     /// # Errors
     ///
@@ -105,7 +100,12 @@ impl Engine {
         Ok(self.finalize_turn())
     }
 
-    /// Validate the move before overwrite board state
+    /// Validates and simulates a move before execution.
+    ///
+    /// Checks if:
+    /// - There is a piece at the starting square
+    /// - The move is legal for the piece
+    /// - The move doesn't leave the king in check
     ///
     /// # Arguments
     ///
@@ -342,14 +342,14 @@ impl Engine {
         Err(IncorrectMoveResults::CastlingNotAllowed)
     }
 
-    /// Returns the possible legal moves for a piece at the given square.
+    /// Returns all legal moves for a piece at the given square.
     ///
     /// # Arguments
-    /// * `current_square` - A `u64` representing the current square of the piece.
+    /// * `current_square` - Bitboard with a single bit set representing the piece's position
     ///
     /// # Returns
-    /// * `Ok(u64)` - A `u64` bitboard representing the possible legal moves.
-    /// * `Err(String)` - An error message if there is no piece at the current square.
+    /// * `Ok(u64)` - Bitboard where set bits represent legal destination squares
+    /// * `Err(String)` - Error if no piece exists at the square
     pub fn get_moves(&self, current_square: u64) -> Result<u64, String> {
         let (player_board, opponent_board) =
             get_half_turn_boards(&self.board, get_color(self.white_turn));
@@ -421,6 +421,14 @@ impl Engine {
         self.halfmove_clock
     }
 
+    /// Promotes a pawn that has reached the opposite end of the board.
+    ///
+    /// # Arguments
+    /// * `piece` - The piece type to promote the pawn to
+    ///
+    /// # Returns
+    /// * `Ok(CorrectMoveResults)` - Promotion successful
+    /// * `Err(IncorrectMoveResults)` - Promotion not possible
     pub fn promote_pawn(&mut self, piece: Pieces) -> MoveResult {
         // we check if there should be a promotion
         if !self.promoted {
@@ -445,5 +453,35 @@ impl Engine {
 
         // then we finilize turn !
         Ok(self.finalize_turn())
+    }
+
+    /// Returns all possible moves for all pieces of the current player.
+    ///
+    /// This function calculates all legal moves for each piece belonging to the current player
+    /// (determined by `white_turn`). For each piece, it returns its position, type, and a
+    /// bitboard representing all its possible moves.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing:
+    /// - `Ok(Vec<(u64, Pieces, u64)>)`: A vector of tuples where each tuple contains:
+    ///   - `u64`: The position of the piece as a bitboard (single bit set)
+    ///   - `Piece`: The type of the piece (e.g., Pawn, Knight, etc.)
+    ///   - `u64`: A bitboard representing all possible moves for this piece
+    /// - `Err(String)`: An error message if move generation fails
+    pub fn get_all_moves(&self) -> Result<Vec<(u64, Pieces, u64)>, String> {
+        // get the correct color board
+        let color = get_color(self.white_turn);
+        let (player_board, _) = get_half_turn_boards(&self.board, color);
+
+        // then get all the pieces
+        let pieces = player_board.individual_pieces();
+
+        let pieces_with_moves = pieces
+            .into_iter()
+            .map(|it| self.get_moves(it.0).map(|moves| (it.0, it.1, moves)))
+            .collect::<Result<Vec<_>, String>>()?;
+
+        Ok(pieces_with_moves)
     }
 }
