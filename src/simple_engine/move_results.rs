@@ -13,6 +13,7 @@ pub enum IncorrectMoveResults {
     NoPieceAtLocation,
     IncorrectMove,
     CastlingNotAllowed,
+    WaitingForPromotion,
 }
 
 pub type MoveResult = Result<CorrectMoveResults, IncorrectMoveResults>;

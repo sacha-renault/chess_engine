@@ -5,8 +5,8 @@ use super::pieces::Pieces;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
     get_color, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut,
-    get_initial_castling_positions, get_piece_type, get_possible_move, get_required_empty_squares,
-    is_king_checked, move_piece,
+    get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color,
+    get_required_empty_squares, is_king_checked, move_piece,
 };
 
 /// Represents the state of the chess engine.
@@ -21,8 +21,8 @@ pub struct Engine {
     board: Board,
     white_turn: bool,
     // en_passant: Option<usize>, // Optional field for en passant target square
-    // castling_rights: (bool, bool, bool, bool), // (white_king_side, white_queen_side, black_king_side, black_queen_side)
     halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
+    promoted: bool,
 }
 
 impl Engine {
@@ -45,8 +45,8 @@ impl Engine {
             board: Board::new(),
             white_turn: true,
             // en_passant: None,
-            // castling_rights: (true, true, true, true),
             halfmove_clock: 0,
+            promoted: false,
         }
     }
 
@@ -76,6 +76,12 @@ impl Engine {
     /// engine.play((6, 4), (4, 4)).unwrap();
     /// ```
     pub fn play(&mut self, chess_move: PlayerMove) -> MoveResult {
+        // First check if there is any promotion
+        if self.promoted {
+            return Err(IncorrectMoveResults::WaitingForPromotion);
+        }
+
+        // else we can play normal
         match chess_move {
             PlayerMove::Normal(normal_move) => {
                 // get squares
@@ -96,9 +102,7 @@ impl Engine {
             }
         };
         // Finalize the turn
-        self.finalize_turn();
-
-        Ok(CorrectMoveResults::Ok)
+        Ok(self.finalize_turn())
     }
 
     /// Validate the move before overwrite board state
@@ -203,10 +207,11 @@ impl Engine {
     /// Finalize the turn after a move
     ///
     /// This function updates the turn, halfmove clock, and fullmove number adn castling rights.
-    fn finalize_turn(&mut self) {
+    fn finalize_turn(&mut self) -> CorrectMoveResults {
+        // get the color
+        let color = get_color(self.white_turn);
         // get player and opponent board
-        let (player_board, _) =
-            get_half_turn_boards_mut(&mut self.board, get_color(self.white_turn));
+        let (player_board, _) = get_half_turn_boards_mut(&mut self.board, color);
 
         // Get the initial position by color
         let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
@@ -221,9 +226,19 @@ impl Engine {
             initial_long_rook_pos,
         );
 
+        // Check if the pawn is having promotion
+        // in that case, we will raise a flag,
+        // promotion needed
+        if player_board.pawn & get_promotion_rank_by_color(color) != 0 {
+            self.promoted = true;
+            return CorrectMoveResults::Promote;
+        }
+
         // we get the initial position depending on the color
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
+
+        CorrectMoveResults::Ok
     }
 
     fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {

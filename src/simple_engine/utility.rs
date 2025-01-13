@@ -1,3 +1,5 @@
+use std::os::linux::raw::stat;
+
 use super::board::Board;
 use super::color::{self, Color};
 use super::color_board::ColorBoard;
@@ -299,5 +301,12 @@ pub fn get_required_empty_squares(castling: CastlingMove, color: Color) -> u64 {
         } else {
             return static_positions::BLACK_LONG_CASTLING_EMPTY;
         }
+    }
+}
+
+pub fn get_promotion_rank_by_color(color: Color) -> u64 {
+    match color {
+        Color::White => static_positions::RANK8,
+        Color::Black => static_positions::RANK1,
     }
 }
