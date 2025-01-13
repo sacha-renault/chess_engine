@@ -1,5 +1,6 @@
 use super::board::Board;
 use super::color::Color;
+use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::pieces::Pieces;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
@@ -74,7 +75,7 @@ impl Engine {
     /// let mut engine = Engine::new();
     /// engine.play((6, 4), (4, 4)).unwrap();
     /// ```
-    pub fn play(&mut self, chess_move: PlayerMove) -> Result<(), String> {
+    pub fn play(&mut self, chess_move: PlayerMove) -> MoveResult {
         match chess_move {
             PlayerMove::Normal(normal_move) => {
                 // get squares
@@ -97,7 +98,7 @@ impl Engine {
         // Finalize the turn
         self.finalize_turn();
 
-        Ok(())
+        Ok(CorrectMoveResults::Ok)
     }
 
     /// Validate the move before overwrite board state
@@ -111,7 +112,11 @@ impl Engine {
     ///
     /// * `Ok(Board)` if the move is valid and the new board state.
     /// * `Err(String)` if the move is invalid, with an error message describing the reason.
-    fn perform_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
+    fn perform_move(
+        &self,
+        current_square: u64,
+        target_square: u64,
+    ) -> Result<Board, IncorrectMoveResults> {
         // get player and opponent board
         let (player_board, opponent_board) =
             get_half_turn_boards(&self.board, get_color(self.white_turn));
@@ -121,7 +126,7 @@ impl Engine {
 
         // Ensure there is a piece at the current square
         if piece_type.is_none() {
-            return Err("No piece at this location".to_string());
+            return Err(IncorrectMoveResults::NoPieceAtLocation);
         }
 
         let piece = piece_type.unwrap();
@@ -138,7 +143,7 @@ impl Engine {
 
         // Check if the target square is a valid move
         if target_square & possible_moves == 0 {
-            return Err("This isn't a possible move".to_string());
+            return Err(IncorrectMoveResults::IncorrectMove);
         }
 
         // Simulate the move and check if the king is in check
@@ -167,7 +172,7 @@ impl Engine {
         target_square: u64,
         piece: Pieces,
         color: Color,
-    ) -> Result<Board, String> {
+    ) -> Result<Board, IncorrectMoveResults> {
         // Simulate the move
         let simulated_board = move_piece(
             self.board.clone(),
@@ -190,7 +195,7 @@ impl Engine {
             &opponent_board,
             get_color(!self.white_turn),
         ) {
-            return Err("Move leaves the king in check".to_string());
+            return Err(IncorrectMoveResults::KingStillChecked);
         }
         Ok(simulated_board)
     }
@@ -221,7 +226,7 @@ impl Engine {
         self.white_turn = !self.white_turn;
     }
 
-    fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, String> {
+    fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
         // get color
         let color = get_color(self.white_turn);
 
@@ -275,7 +280,7 @@ impl Engine {
             );
 
             // simutate move of rook
-            let final_board = move_piece(
+            let simulated_board = move_piece(
                 board_intermediate.clone(),
                 initial_rook_pos,
                 final_rook_pos,
@@ -283,10 +288,22 @@ impl Engine {
                 Pieces::King,
             );
 
-            Ok(final_board)
-        } else {
-            Err("Cannot castle".to_string())
+            // Get the simulated player's and opponent's boards
+            let (player_board, opponent_board) =
+                get_half_turn_boards(&simulated_board, get_color(!self.white_turn));
+
+            // Check if the king is in check in the simulated state
+            if !is_king_checked(
+                opponent_board.king,
+                &player_board,
+                &opponent_board,
+                get_color(!self.white_turn),
+            ) {
+                return Ok(simulated_board);
+            }
         }
+
+        Err(IncorrectMoveResults::CastlingNotAllowed)
     }
 
     /// Returns the possible legal moves for a piece at the given square.
@@ -297,12 +314,6 @@ impl Engine {
     /// # Returns
     /// * `Ok(u64)` - A `u64` bitboard representing the possible legal moves.
     /// * `Err(String)` - An error message if there is no piece at the current square.
-    ///
-    /// # Example
-    /// ```
-    /// let mut engine = Engine::new();
-    /// let moves = engine.get_moves(coordinates_to_u64((6, 4))).unwrap();
-    /// ```
     pub fn get_moves(&self, current_square: u64) -> Result<u64, String> {
         let (player_board, opponent_board) =
             get_half_turn_boards(&self.board, get_color(self.white_turn));

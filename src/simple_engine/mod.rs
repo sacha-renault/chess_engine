@@ -3,6 +3,7 @@ mod color;
 mod color_board;
 pub mod debug;
 pub mod engine;
+pub mod move_results;
 pub mod moves;
 pub mod pieces;
 pub mod player_move;

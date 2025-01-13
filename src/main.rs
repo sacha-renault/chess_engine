@@ -12,7 +12,7 @@ fn main() {
 
     match correct_move {
         Ok(_) => println!("Correct move!"),
-        Err(string) => println!("Failed to make the move. {}", string),
+        Err(string) => println!("Failed to make the move. {:?}", string),
     }
 
     // White's turn: Attempt to move a pawn from e2 (1,4) to e5 (4,4), which is not a legal move
