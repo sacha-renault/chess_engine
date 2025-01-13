@@ -147,7 +147,7 @@ impl Engine {
 
         // Check if the target square is a valid move
         if target_square & possible_moves == 0 {
-            return Err(IncorrectMoveResults::IncorrectMove);
+            return Err(IncorrectMoveResults::IllegalMove);
         }
 
         // Simulate the move and check if the king is in check
@@ -207,9 +207,11 @@ impl Engine {
     /// Finalize the turn after a move
     ///
     /// This function updates the turn, halfmove clock, and fullmove number adn castling rights.
+    /// It also checks if there isn't running promotions
     fn finalize_turn(&mut self) -> CorrectMoveResults {
         // get the color
         let color = get_color(self.white_turn);
+
         // get player and opponent board
         let (player_board, _) = get_half_turn_boards_mut(&mut self.board, color);
 
@@ -241,6 +243,25 @@ impl Engine {
         CorrectMoveResults::Ok
     }
 
+    /// Performs a castling move for the current player.
+    ///
+    /// # Arguments
+    ///
+    /// * `castling` - A `CastlingMove` enum indicating whether it's a long (queenside) or short (kingside) castling.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Board)` - A new board state if the castling move is valid and successfully executed.
+    /// * `Err(IncorrectMoveResults)` - An error if the castling is not allowed, with `CastlingNotAllowed` as the reason.
+    ///
+    /// # Details
+    ///
+    /// This function:
+    /// 1. Verifies if castling is available based on:
+    ///    - Required squares being empty
+    ///    - Castling rights being maintained
+    /// 2. Moves both the king and rook to their respective positions
+    /// 3. Ensures the king is not in check after the move
     fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
         // get color
         let color = get_color(self.white_turn);
@@ -398,5 +419,31 @@ impl Engine {
     /// A `u32` representing the number of halfmoves.
     pub fn halfmove_clock(&self) -> u32 {
         self.halfmove_clock
+    }
+
+    pub fn promote_pawn(&mut self, piece: Pieces) -> MoveResult {
+        // we check if there should be a promotion
+        if !self.promoted {
+            return Err(IncorrectMoveResults::IllegalPromotion);
+        }
+        // we first remove the promotion flag
+        self.promoted = false;
+
+        // we change the piece at the location
+        let color = get_color(self.white_turn);
+        let promotion_rank = get_promotion_rank_by_color(color);
+        let (player_board, _) = get_half_turn_boards_mut(&mut self.board, color);
+
+        // we get the pawns on the player board and we remove it
+        let pawns = player_board.pawn;
+        let promoted_square = promotion_rank & pawns;
+        player_board.pawn = pawns & !promoted_square; // remove the pawns from the square
+        player_board.set_bitboard_by_type(
+            piece,
+            player_board.get_bitboard_by_type(piece) | promoted_square,
+        );
+
+        // then we finilize turn !
+        Ok(self.finalize_turn())
     }
 }

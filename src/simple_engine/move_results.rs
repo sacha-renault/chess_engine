@@ -11,9 +11,10 @@ pub enum CorrectMoveResults {
 pub enum IncorrectMoveResults {
     KingStillChecked,
     NoPieceAtLocation,
-    IncorrectMove,
+    IllegalMove,
     CastlingNotAllowed,
     WaitingForPromotion,
+    IllegalPromotion,
 }
 
 pub type MoveResult = Result<CorrectMoveResults, IncorrectMoveResults>;
