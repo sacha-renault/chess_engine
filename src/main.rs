@@ -1,6 +1,7 @@
 pub mod boards;
 pub mod game_engine;
 pub mod pieces;
+pub mod smart_engine;
 
 // Define the prelude module
 pub mod prelude {
@@ -14,6 +15,7 @@ pub mod prelude {
 
 use game_engine::debug::print_bitboard;
 use prelude::{create_normal_move, iter_into_u64, Engine, NormalMove, PlayerMove};
+use smart_engine::tree::TreeNode;
 
 fn main() {
     let engine = Engine::new();
@@ -22,11 +24,8 @@ fn main() {
     // let m = PlayerMove::Normal(NormalMove::new_from_coordinates((1, 4), (3, 4)));
     // let correct_move = engine.play(m); // White moves a pawn two squares forward
 
-    for piece_moves in engine.get_all_moves_by_piece().unwrap() {
-        for possible_move in iter_into_u64(piece_moves.2) {
-            let mut new_engine = engine.clone();
-            let m = create_normal_move(piece_moves.0, 1 << possible_move);
-            new_engine.play(m).unwrap();
-        }
-    }
+    let root = TreeNode::create_root_node(engine.clone());
+    TreeNode::generate_tree(root.clone(), 5);
+    let result = TreeNode::get_tree_size(root);
+    println!("tree size is {}", result);
 }

@@ -1,6 +1,7 @@
 pub mod boards;
 pub mod game_engine;
 pub mod pieces;
+pub mod smart_engine;
 
 // Define the prelude module
 pub mod prelude {
