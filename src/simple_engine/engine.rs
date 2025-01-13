@@ -295,8 +295,8 @@ impl Engine {
         else if opponent_board.en_passant & target_square != 0 {
             // retrieve the position of the pawn that triggered en passant
             let pawn_position = match color {
-                Color::White => target_square << 8,
-                Color::Black => target_square >> 8,
+                Color::White => target_square >> 8,
+                Color::Black => target_square << 8,
             };
 
             // we delete the pawn from the board
