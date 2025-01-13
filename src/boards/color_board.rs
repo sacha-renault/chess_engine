@@ -1,7 +1,7 @@
 use crate::pieces::Piece;
 
 // it checks if the castling is authorized
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct CastlingRights {
     short: bool,
     long: bool,
@@ -57,7 +57,7 @@ impl CastlingRights {
 }
 
 /// Represents a color-specific board with bitboards for each piece type.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ColorBoard {
     pub pawn: u64,
     pub knight: u64,

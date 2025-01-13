@@ -16,6 +16,7 @@ use crate::pieces::Piece;
 /// - Move validation and execution
 /// - Special moves (castling, promotion)
 /// - Move generation and validation
+#[derive(Debug, Clone)]
 pub struct Engine {
     // rules
     board: Board,
@@ -382,14 +383,14 @@ impl Engine {
             );
 
             // Get the simulated player's and opponent's boards
-            let (player_board, opponent_board) =
+            let (sim_player_board, sim_opponent_board) =
                 get_half_turn_boards(&simulated_board, get_color(!self.white_turn));
 
             // Check if the king is in check in the simulated state
             if !is_king_checked(
-                opponent_board.king,
-                &player_board,
-                &opponent_board,
+                sim_opponent_board.king,
+                &sim_player_board,
+                &sim_opponent_board,
                 get_color(!self.white_turn),
             ) {
                 return Ok(simulated_board);

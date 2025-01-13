@@ -2,7 +2,7 @@ use super::color_board::{CastlingRights, ColorBoard};
 use crate::pieces::{static_positions as init, Color, Piece};
 
 /// Represents a chess board with separate bitboards for white and black pieces.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Board {
     pub white: ColorBoard,
     pub black: ColorBoard,
