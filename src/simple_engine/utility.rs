@@ -258,8 +258,8 @@ pub fn get_half_turn_boards_mut(
 
 pub fn get_initial_castling_positions(color: Color) -> (u64, u64, u64) {
     match color {
-        Color::White => (WHITE_KING, WHITE_ROOKS & FILE_A, WHITE_ROOKS & FILE_H),
-        Color::Black => (BLACK_KING, BLACK_ROOKS & FILE_A, BLACK_ROOKS & FILE_H),
+        Color::White => (WHITE_KING, WHITE_ROOKS & FILE_H, WHITE_ROOKS & FILE_A),
+        Color::Black => (BLACK_KING, BLACK_ROOKS & FILE_H, BLACK_ROOKS & FILE_A),
     }
 }
 
