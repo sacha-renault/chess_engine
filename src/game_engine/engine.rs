@@ -1,14 +1,13 @@
-use super::board::Board;
-use super::color::Color;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::piece::Piece;
-use super::player_move::NormalMove;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
     get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards,
     get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move,
     get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, move_piece,
 };
+use crate::boards::Board;
+use crate::pieces::Color;
+use crate::pieces::Piece;
 
 /// Represents a chess engine that manages game state and move validation.
 ///

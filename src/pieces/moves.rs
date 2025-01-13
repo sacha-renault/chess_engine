@@ -1,8 +1,6 @@
 use super::{
     color::Color,
-    static_positions::{
-        FILE_A, FILE_B, FILE_G, FILE_H, KING_MOVES, KNIGHTS_MOVES, RANK1, RANK3, RANK6, RANK8,
-    },
+    static_positions::{FILE_A, FILE_H, KING_MOVES, KNIGHTS_MOVES, RANK1, RANK3, RANK6, RANK8},
 };
 
 /// Performs a bitwise left shift operation on a 64-bit unsigned integer.

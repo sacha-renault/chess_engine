@@ -1,10 +1,12 @@
-use super::board::Board;
-use super::color::Color;
-use super::color_board::ColorBoard;
-use super::piece::Piece;
 use super::player_move::CastlingMove;
-use super::static_positions::{BLACK_KING, BLACK_ROOKS, FILE_A, FILE_H, WHITE_KING, WHITE_ROOKS};
-use super::{moves::*, static_positions};
+use crate::boards::Board;
+use crate::boards::ColorBoard;
+use crate::pieces::static_positions::{
+    BLACK_KING, BLACK_ROOKS, FILE_A, FILE_H, WHITE_KING, WHITE_ROOKS,
+};
+use crate::pieces::Color;
+use crate::pieces::Piece;
+use crate::pieces::{moves::*, static_positions};
 
 /// Returns the type of piece on a given square in the color board.
 ///

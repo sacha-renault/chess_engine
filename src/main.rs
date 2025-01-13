@@ -1,8 +1,16 @@
-mod simple_engine;
+pub mod boards;
+pub mod game_engine;
+pub mod pieces;
 
-use simple_engine::debug::print_bitboard;
-use simple_engine::engine::Engine;
-use simple_engine::player_move::{NormalMove, PlayerMove};
+// Define the prelude module
+pub mod prelude {
+    pub use super::game_engine::engine::Engine;
+    pub use super::game_engine::move_results::{CorrectMoveResults, IncorrectMoveResults};
+    pub use super::game_engine::player_move::{CastlingMove, NormalMove, PlayerMove};
+    pub use super::game_engine::utility::{coordinates_to_u64, u64_to_coordinates};
+}
+use game_engine::debug::print_bitboard;
+use prelude::{Engine, NormalMove, PlayerMove};
 
 fn main() {
     let mut engine = Engine::new();

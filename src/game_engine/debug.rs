@@ -1,7 +1,7 @@
-use super::board::Board;
-use super::color::Color;
-use super::piece::Piece;
-use super::static_positions;
+use crate::boards::Board;
+use crate::pieces::static_positions;
+use crate::pieces::Color;
+use crate::pieces::Piece;
 
 fn piece_to_char(piece: Piece, color: Color) -> char {
     let piece_char = match piece {
