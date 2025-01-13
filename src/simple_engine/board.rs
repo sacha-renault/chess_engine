@@ -1,6 +1,6 @@
 use super::color::Color;
 use super::color_board::{CastlingRights, ColorBoard};
-use super::pieces::Piece;
+use super::piece::Piece;
 use super::static_positions as init;
 
 /// Represents a chess board with separate bitboards for white and black pieces.

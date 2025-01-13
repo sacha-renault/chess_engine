@@ -1,6 +1,6 @@
 use super::board::Board;
 use super::color::Color;
-use super::pieces::Piece;
+use super::piece::Piece;
 use super::static_positions;
 
 fn piece_to_char(piece: Piece, color: Color) -> char {

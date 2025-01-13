@@ -1,7 +1,7 @@
 use super::board::Board;
 use super::color::Color;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::pieces::Piece;
+use super::piece::Piece;
 use super::player_move::NormalMove;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{

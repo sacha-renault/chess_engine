@@ -1,4 +1,4 @@
-use super::pieces::{Piece, ALL_PIECES};
+use super::piece::{Piece, ALL_PIECES};
 
 // it checks if the castling is authorized
 #[derive(Clone, Copy)]
