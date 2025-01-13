@@ -324,7 +324,7 @@ impl Engine {
         let color = get_color(self.white_turn);
 
         // get player and opponent board
-        let (player_board, _) = get_half_turn_boards(&self.board, color);
+        let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
 
         // get the full bitboard to ensure castling is available
         let full_bitboard = self.board.bitboard();
@@ -353,7 +353,7 @@ impl Engine {
             }
         };
 
-        if can_castle {
+        if can_castle && !is_king_checked(player_board.king, player_board, opponent_board, color) {
             // get final positions
             let (final_king_pos, final_rook_pos) = get_final_castling_positions(castling, color);
 
