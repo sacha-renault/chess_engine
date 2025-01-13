@@ -3,8 +3,9 @@ use super::color::Color;
 use super::pieces::Pieces;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
-    get_color, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions,
-    get_piece_type, get_possible_move, get_required_empty_squares, is_king_checked, move_piece,
+    get_color, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut,
+    get_initial_castling_positions, get_piece_type, get_possible_move, get_required_empty_squares,
+    is_king_checked, move_piece,
 };
 
 /// Represents the state of the chess engine.
@@ -221,48 +222,71 @@ impl Engine {
     }
 
     fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, String> {
+        // get color
+        let color = get_color(self.white_turn);
+
         // get player and opponent board
-        let (player_board, _) = get_half_turn_boards(&self.board, get_color(self.white_turn));
+        let (player_board, _) = get_half_turn_boards(&self.board, color);
 
         // get the full bitboard to ensure castling is available
         let full_bitboard = self.board.bitboard();
 
         // get castling empty required squares
-        let required_empty: u64 = get_required_empty_squares(castling, get_color(self.white_turn));
+        let required_empty: u64 = get_required_empty_squares(castling, color);
 
-        let new_board = match castling {
+        // get initial positions
+        let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
+            get_initial_castling_positions(color);
+
+        // Check if can caslte
+        let can_castle = match castling {
             CastlingMove::Long => {
-                // First get need_empty for the side + color
-                // let need_empty_squares = get_castling_empty_squares(CastlingMove::Long, get_color(self.white_turn))
-
                 // Check if caslting is available
-                if player_board
+                player_board
                     .castling_rights
                     .long_casting_available(full_bitboard, required_empty)
-                {
-                    Ok(Board::new())
-                } else {
-                    Err("Cannot perform castling on this side".to_string())
-                }
             }
-            CastlingMove::Short => {
-                // First get need_empty for the side + color
-                // let need_empty_squares = get_castling_empty_squares(CastlingMove::Long, get_color(self.white_turn))
 
+            CastlingMove::Short => {
                 // Check if caslting is available
-                if player_board
+                player_board
                     .castling_rights
                     .short_casting_available(full_bitboard, required_empty)
-                {
-                    Ok(Board::new())
-                } else {
-                    Err("Cannot perform castling on this side".to_string())
-                }
             }
-        }?;
+        };
 
-        // return the resulting board
-        Ok(new_board)
+        if can_castle {
+            // get final positions
+            let (final_king_pos, final_rook_pos) = get_final_castling_positions(castling, color);
+
+            // match the initial rook pos
+            let initial_rook_pos = match castling {
+                CastlingMove::Long => initial_long_rook_pos,
+                CastlingMove::Short => initial_short_rook_pos,
+            };
+
+            // Simulate the move of king
+            let board_intermediate = move_piece(
+                self.board.clone(),
+                initial_king_pos,
+                final_king_pos,
+                color,
+                Pieces::King,
+            );
+
+            // simutate move of rook
+            let final_board = move_piece(
+                board_intermediate.clone(),
+                initial_rook_pos,
+                final_rook_pos,
+                color,
+                Pieces::King,
+            );
+
+            Ok(final_board)
+        } else {
+            Err("Cannot castle".to_string())
+        }
     }
 
     /// Returns the possible legal moves for a piece at the given square.

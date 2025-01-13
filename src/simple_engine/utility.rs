@@ -258,8 +258,36 @@ pub fn get_initial_castling_positions(color: Color) -> (u64, u64, u64) {
     }
 }
 
-pub fn get_required_empty_squares(castling_type: CastlingMove, color: Color) -> u64 {
-    if castling_type == CastlingMove::Long {
+pub fn get_final_castling_positions(castling: CastlingMove, color: Color) -> (u64, u64) {
+    if castling == CastlingMove::Short {
+        if color == Color::White {
+            return (
+                static_positions::WHITE_KING_SHORT_FINAL,
+                static_positions::WHITE_ROOK_SHORT_FINAL,
+            );
+        } else {
+            return (
+                static_positions::BLACK_KING_SHORT_FINAL,
+                static_positions::BLACK_ROOK_SHORT_FINAL,
+            );
+        }
+    } else {
+        if color == Color::White {
+            return (
+                static_positions::WHITE_KING_LONG_FINAL,
+                static_positions::WHITE_ROOK_LONG_FINAL,
+            );
+        } else {
+            return (
+                static_positions::BLACK_KING_LONG_FINAL,
+                static_positions::BLACK_ROOK_LONG_FINAL,
+            );
+        }
+    }
+}
+
+pub fn get_required_empty_squares(castling: CastlingMove, color: Color) -> u64 {
+    if castling == CastlingMove::Short {
         if color == Color::White {
             return static_positions::WHITE_SHORT_CASTLING_EMPTY;
         } else {
