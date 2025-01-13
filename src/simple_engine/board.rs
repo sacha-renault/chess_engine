@@ -54,10 +54,10 @@ impl Board {
     ///
     /// # Returns
     /// A `u64` representing the bitboard for the specified piece and color.
-    pub fn get_bitboard_by_type(&self, piece: &Pieces, color: &Color) -> u64 {
+    pub fn get_bitboard_by_type(&self, piece: Pieces, color: Color) -> u64 {
         match color {
-            Color::White => self.white.get_bitboard_by_type(&piece),
-            Color::Black => self.black.get_bitboard_by_type(&piece),
+            Color::White => self.white.get_bitboard_by_type(piece),
+            Color::Black => self.black.get_bitboard_by_type(piece),
         }
     }
 
@@ -67,10 +67,10 @@ impl Board {
     /// * `piece` - A reference to the `Pieces` type.
     /// * `color` - A reference to the `Color` type.
     /// * `new_bitboard` - A `u64` representing the new bitboard.
-    pub fn set_bitboard_by_type(&mut self, piece: &Pieces, color: &Color, new_bitboard: u64) {
+    pub fn set_bitboard_by_type(&mut self, piece: Pieces, color: Color, new_bitboard: u64) {
         match color {
-            Color::White => self.white.set_bitboard_by_type(&piece, new_bitboard),
-            Color::Black => self.black.set_bitboard_by_type(&piece, new_bitboard),
+            Color::White => self.white.set_bitboard_by_type(piece, new_bitboard),
+            Color::Black => self.black.set_bitboard_by_type(piece, new_bitboard),
         }
     }
 
@@ -78,18 +78,18 @@ impl Board {
     ///
     /// # Returns
     /// A `Vec` of tuples where each tuple contains a `u64` bitboard, a reference to `Pieces`, and a reference to `Color`.
-    pub fn individual_pieces(&self) -> Vec<(u64, &Pieces, &Color)> {
+    pub fn individual_pieces(&self) -> Vec<(u64, Pieces, Color)> {
         let black_pieces = self
             .black
             .individual_pieces()
             .iter()
-            .map(|x| (x.0, x.1, &Color::Black))
+            .map(|x| (x.0, x.1, Color::Black))
             .collect::<Vec<_>>();
         let white_pieces = self
             .white
             .individual_pieces()
             .iter()
-            .map(|x| (x.0, x.1, &Color::White))
+            .map(|x| (x.0, x.1, Color::White))
             .collect::<Vec<_>>();
         let mut all_pieces = black_pieces;
         all_pieces.extend(white_pieces);

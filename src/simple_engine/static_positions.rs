@@ -77,6 +77,11 @@ pub const RANK8: u64 = 0xFF00000000000000; // Top rank
 pub const KNIGHTS_MOVES: [u64; 64] = precompute_knight_moves();
 pub const KING_MOVES: [u64; 64] = precompute_king_moves();
 
+pub const WHITE_SHORT_CASTLING_EMPTY: u64 = 0x0000000000000060;
+pub const WHITE_LONG_CASTLING_EMPTY: u64 = 0x000000000000000E;
+pub const BLACK_SHORT_CASTLING_EMPTY: u64 = 0x6000000000000000;
+pub const BLACK_LONG_CASTLING_EMPTY: u64 = 0x0E00000000000000;
+
 // ANSI CODE
 pub const WHITE_BG: &str = "\x1b[48;5;15m";
 pub const BLACK_BG: &str = "\x1b[48;5;0m";

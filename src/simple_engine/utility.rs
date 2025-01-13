@@ -1,10 +1,11 @@
 use super::board::Board;
-use super::color::Color;
+use super::color::{self, Color};
 use super::color_board::ColorBoard;
 use super::debug::print_bitboard;
-use super::moves::*;
 use super::pieces::Pieces;
+use super::player_move::CastlingMove;
 use super::static_positions::{BLACK_KING, BLACK_ROOKS, FILE_A, FILE_H, WHITE_KING, WHITE_ROOKS};
+use super::{moves::*, static_positions};
 
 /// Returns the type of piece on a given square in the color board.
 ///
@@ -97,11 +98,11 @@ pub fn u64_to_coordinates(bitboard: u64) -> (usize, usize) {
 /// # Returns
 /// A `u64` representing the possible moves.
 pub fn get_possible_move(
-    piece: &Pieces,
+    piece: Pieces,
     start_square: u64,
     same_color_bitboard: u64,
     other_color_bitboard: u64,
-    color: &Color,
+    color: Color,
 ) -> u64 {
     let bitboard = start_square & same_color_bitboard;
     match piece {
@@ -110,7 +111,7 @@ pub fn get_possible_move(
         Pieces::Rook => rooks_moves(bitboard, same_color_bitboard, other_color_bitboard),
         Pieces::Knight => knight_moves(bitboard, same_color_bitboard),
         Pieces::Bishop => bishops_moves(bitboard, same_color_bitboard, other_color_bitboard),
-        Pieces::Pawn => pawn_moves(bitboard, same_color_bitboard, other_color_bitboard, &color),
+        Pieces::Pawn => pawn_moves(bitboard, same_color_bitboard, other_color_bitboard, color),
     }
 }
 
@@ -144,8 +145,8 @@ pub fn move_piece(
     mut board: Board,
     current_square: u64,
     target_square: u64,
-    color: &Color,
-    piece_type: &Pieces,
+    color: Color,
+    piece_type: Pieces,
 ) -> Board {
     // Determine which color's board is being modified
     let (color_board, opponent_board) = match color {
@@ -194,7 +195,7 @@ pub fn move_piece(
 ///
 /// # Returns
 /// A `u64` representing all possible moves.
-pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color: &Color) -> u64 {
+pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color: Color) -> u64 {
     king_moves(board.king, board.bitboard())
         | queen_moves(board.queen, board.bitboard(), opponent_board.bitboard())
         | rooks_moves(board.rook, board.bitboard(), opponent_board.bitboard())
@@ -204,7 +205,7 @@ pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color
             board.pawn,
             board.bitboard(),
             opponent_board.bitboard(),
-            &color,
+            color,
         )
 }
 
@@ -222,9 +223,9 @@ pub fn is_king_checked(
     king_bitboard: u64,
     board: &ColorBoard,
     opponent_board: &ColorBoard,
-    color: &Color,
+    color: Color,
 ) -> bool {
-    king_bitboard & all_possible_moves(&board, &opponent_board, &color) != 0
+    king_bitboard & all_possible_moves(&board, &opponent_board, color) != 0
 }
 
 /// Get the boards for the current player and the opponent
@@ -250,9 +251,25 @@ pub fn get_half_turn_boards_mut(
     }
 }
 
-pub fn get_initial_castling_positions(color: &Color) -> (u64, u64, u64) {
+pub fn get_initial_castling_positions(color: Color) -> (u64, u64, u64) {
     match color {
         Color::White => (WHITE_KING, WHITE_ROOKS & FILE_A, WHITE_ROOKS & FILE_H),
         Color::Black => (BLACK_KING, BLACK_ROOKS & FILE_A, BLACK_ROOKS & FILE_H),
+    }
+}
+
+pub fn get_required_empty_squares(castling_type: CastlingMove, color: Color) -> u64 {
+    if castling_type == CastlingMove::Long {
+        if color == Color::White {
+            return static_positions::WHITE_SHORT_CASTLING_EMPTY;
+        } else {
+            return static_positions::BLACK_SHORT_CASTLING_EMPTY;
+        }
+    } else {
+        if color == Color::White {
+            return static_positions::WHITE_LONG_CASTLING_EMPTY;
+        } else {
+            return static_positions::BLACK_LONG_CASTLING_EMPTY;
+        }
     }
 }

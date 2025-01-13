@@ -227,7 +227,7 @@ pub fn pawn_moves(
     pawn_bitboard: u64,
     same_color_bitboard: u64,
     other_color_bitboard: u64,
-    color: &Color,
+    color: Color,
 ) -> u64 {
     let empty_squares = !(same_color_bitboard | other_color_bitboard);
     let shift_fn = match color {

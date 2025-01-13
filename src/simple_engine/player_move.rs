@@ -1,5 +1,6 @@
 use super::utility::coordinates_to_u64;
 
+#[derive(PartialEq, Clone, Copy)]
 pub enum CastlingMove {
     Long,
     Short,

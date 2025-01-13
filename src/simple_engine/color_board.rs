@@ -47,12 +47,12 @@ impl CastlingRights {
         }
     }
 
-    pub fn long_casting_available(&self, full_bitboard: u64) -> bool {
-        self.long // && full_bitboard & castling_need_empty_position == 0
+    pub fn long_casting_available(&self, full_bitboard: u64, required_empty: u64) -> bool {
+        self.long && (full_bitboard & required_empty == 0)
     }
 
-    pub fn short_casting_available(&self, full_bitboard: u64) -> bool {
-        self.short // && full_bitboard & castling_need_empty_position == 0
+    pub fn short_casting_available(&self, full_bitboard: u64, required_empty: u64) -> bool {
+        self.short && (full_bitboard & required_empty == 0)
     }
 }
 
@@ -84,7 +84,7 @@ impl ColorBoard {
     ///
     /// # Returns
     /// A `u64` representing the bitboard for the specified piece.
-    pub fn get_bitboard_by_type(&self, piece: &Pieces) -> u64 {
+    pub fn get_bitboard_by_type(&self, piece: Pieces) -> u64 {
         match piece {
             Pieces::Pawn => self.pawn,
             Pieces::Knight => self.knight,
@@ -100,7 +100,7 @@ impl ColorBoard {
     /// # Arguments
     /// * `piece` - A reference to the `Pieces` type.
     /// * `new_bitboard` - A `u64` representing the new bitboard.
-    pub fn set_bitboard_by_type(&mut self, piece: &Pieces, new_bitboard: u64) {
+    pub fn set_bitboard_by_type(&mut self, piece: Pieces, new_bitboard: u64) {
         match piece {
             Pieces::Pawn => self.pawn = new_bitboard,
             Pieces::Knight => self.knight = new_bitboard,
@@ -115,14 +115,14 @@ impl ColorBoard {
     ///
     /// # Returns
     /// A `Vec` of tuples where each tuple contains a `u64` bitboard position and a reference to `Pieces`.
-    pub fn individual_pieces(&self) -> Vec<(u64, &Pieces)> {
-        let piece_bitboards: [(u64, &Pieces); 6] = [
-            (self.pawn, &Pieces::Pawn),
-            (self.knight, &Pieces::Knight),
-            (self.bishop, &Pieces::Bishop),
-            (self.rook, &Pieces::Rook),
-            (self.queen, &Pieces::Queen),
-            (self.king, &Pieces::King),
+    pub fn individual_pieces(&self) -> Vec<(u64, Pieces)> {
+        let piece_bitboards: [(u64, Pieces); 6] = [
+            (self.pawn, Pieces::Pawn),
+            (self.knight, Pieces::Knight),
+            (self.bishop, Pieces::Bishop),
+            (self.rook, Pieces::Rook),
+            (self.queen, Pieces::Queen),
+            (self.king, Pieces::King),
         ];
 
         let mut result = Vec::new();

@@ -4,7 +4,7 @@ use super::pieces::Pieces;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
     get_color, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions,
-    get_piece_type, get_possible_move, is_king_checked, move_piece,
+    get_piece_type, get_possible_move, get_required_empty_squares, is_king_checked, move_piece,
 };
 
 /// Represents the state of the chess engine.
@@ -80,18 +80,23 @@ impl Engine {
                 let (current_square, target_square) = normal_move.squares();
 
                 // Validate the move and get the new board state
-                let new_board = self.validate_move(current_square, target_square)?;
+                let new_board = self.perform_move(current_square, target_square)?;
 
                 // Apply the new board state
                 self.board = new_board;
-
-                // Finalize the turn
-                self.finalize_turn();
-
-                Ok(())
             }
-            PlayerMove::Castling(castling_side) => Err("Not implement yet".to_string()),
-        }
+            PlayerMove::Castling(castling_side) => {
+                // perform casting
+                let new_board = self.perform_castling(castling_side)?;
+
+                // Apply the new board state
+                self.board = new_board;
+            }
+        };
+        // Finalize the turn
+        self.finalize_turn();
+
+        Ok(())
     }
 
     /// Validate the move before overwrite board state
@@ -105,7 +110,7 @@ impl Engine {
     ///
     /// * `Ok(Board)` if the move is valid and the new board state.
     /// * `Err(String)` if the move is invalid, with an error message describing the reason.
-    fn validate_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
+    fn perform_move(&self, current_square: u64, target_square: u64) -> Result<Board, String> {
         // get player and opponent board
         let (player_board, opponent_board) =
             get_half_turn_boards(&self.board, get_color(self.white_turn));
@@ -123,11 +128,11 @@ impl Engine {
 
         // Get the possible moves for the piece
         let possible_moves = get_possible_move(
-            &piece,
+            piece,
             current_square,
             player_board.bitboard(),
             opponent_board.bitboard(),
-            &color,
+            color,
         );
 
         // Check if the target square is a valid move
@@ -137,7 +142,7 @@ impl Engine {
 
         // Simulate the move and check if the king is in check
         let simulated_board =
-            self.validate_move_safety(current_square, target_square, &piece, &color)?;
+            self.validate_move_safety(current_square, target_square, piece, color)?;
 
         Ok(simulated_board)
     }
@@ -159,8 +164,8 @@ impl Engine {
         &self,
         current_square: u64,
         target_square: u64,
-        piece: &Pieces,
-        color: &Color,
+        piece: Pieces,
+        color: Color,
     ) -> Result<Board, String> {
         // Simulate the move
         let simulated_board = move_piece(
@@ -182,7 +187,7 @@ impl Engine {
             opponent_board.king,
             &player_board,
             &opponent_board,
-            &get_color(!self.white_turn),
+            get_color(!self.white_turn),
         ) {
             return Err("Move leaves the king in check".to_string());
         }
@@ -199,7 +204,7 @@ impl Engine {
 
         // Get the initial position by color
         let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
-            get_initial_castling_positions(&get_color(self.white_turn));
+            get_initial_castling_positions(get_color(self.white_turn));
 
         // Update castling rights directly on the player's board
         player_board.castling_rights.update_castling_rights(
@@ -215,14 +220,17 @@ impl Engine {
         self.white_turn = !self.white_turn;
     }
 
-    fn perform_castling(&mut self, castling: CastlingMove) -> Result<(), String> {
+    fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, String> {
         // get player and opponent board
         let (player_board, _) = get_half_turn_boards(&self.board, get_color(self.white_turn));
 
         // get the full bitboard to ensure castling is available
         let full_bitboard = self.board.bitboard();
 
-        match castling {
+        // get castling empty required squares
+        let required_empty: u64 = get_required_empty_squares(castling, get_color(self.white_turn));
+
+        let new_board = match castling {
             CastlingMove::Long => {
                 // First get need_empty for the side + color
                 // let need_empty_squares = get_castling_empty_squares(CastlingMove::Long, get_color(self.white_turn))
@@ -230,9 +238,9 @@ impl Engine {
                 // Check if caslting is available
                 if player_board
                     .castling_rights
-                    .long_casting_available(full_bitboard)
+                    .long_casting_available(full_bitboard, required_empty)
                 {
-                    Ok(())
+                    Ok(Board::new())
                 } else {
                     Err("Cannot perform castling on this side".to_string())
                 }
@@ -244,14 +252,17 @@ impl Engine {
                 // Check if caslting is available
                 if player_board
                     .castling_rights
-                    .short_casting_available(full_bitboard)
+                    .short_casting_available(full_bitboard, required_empty)
                 {
-                    Ok(())
+                    Ok(Board::new())
                 } else {
                     Err("Cannot perform castling on this side".to_string())
                 }
             }
-        }
+        }?;
+
+        // return the resulting board
+        Ok(new_board)
     }
 
     /// Returns the possible legal moves for a piece at the given square.
@@ -283,11 +294,11 @@ impl Engine {
 
         // Get the possible moves for the piece
         let legal_moves = get_possible_move(
-            &piece,
+            piece,
             current_square,
             player_board.bitboard(),
             opponent_board.bitboard(),
-            &color,
+            color,
         );
 
         // Initialize a bitboard for filtered moves
@@ -301,7 +312,7 @@ impl Engine {
 
             // If the move doesn't leave king in check, add it to possible moves
             if self
-                .validate_move_safety(current_square, target_square, &piece, &color)
+                .validate_move_safety(current_square, target_square, piece, color)
                 .is_ok()
             {
                 possible_moves |= target_square;

@@ -3,7 +3,7 @@ use super::color::Color;
 use super::pieces::Pieces;
 use super::static_positions;
 
-fn piece_to_char(piece: &Pieces, color: Color) -> char {
+fn piece_to_char(piece: Pieces, color: Color) -> char {
     let piece_char = match piece {
         Pieces::King => 'K',
         Pieces::Queen => 'Q',
@@ -53,15 +53,15 @@ pub fn print_board(board: &Board) {
             ]
             .iter()
             {
-                let white_bitboard = board.white.get_bitboard_by_type(piece);
-                let black_bitboard = board.black.get_bitboard_by_type(piece);
+                let white_bitboard = board.white.get_bitboard_by_type(piece.clone());
+                let black_bitboard = board.black.get_bitboard_by_type(piece.clone());
 
                 // Check if the piece exists in this square for white pieces
                 if (white_bitboard & square) != 0 {
                     print!(
                         "{} {} {}",
                         bg_color,
-                        piece_to_char(piece, Color::White),
+                        piece_to_char(piece.clone(), Color::White),
                         static_positions::RESET
                     );
                     piece_displayed = true;
@@ -72,7 +72,7 @@ pub fn print_board(board: &Board) {
                     print!(
                         "{} {} {}",
                         bg_color,
-                        piece_to_char(piece, Color::Black),
+                        piece_to_char(piece.clone(), Color::Black),
                         static_positions::RESET
                     );
                     piece_displayed = true;
