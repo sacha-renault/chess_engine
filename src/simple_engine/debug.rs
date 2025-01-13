@@ -1,16 +1,16 @@
 use super::board::Board;
 use super::color::Color;
-use super::pieces::Pieces;
+use super::pieces::Piece;
 use super::static_positions;
 
-fn piece_to_char(piece: Pieces, color: Color) -> char {
+fn piece_to_char(piece: Piece, color: Color) -> char {
     let piece_char = match piece {
-        Pieces::King => 'K',
-        Pieces::Queen => 'Q',
-        Pieces::Rook => 'R',
-        Pieces::Bishop => 'B',
-        Pieces::Knight => 'N',
-        Pieces::Pawn => 'P',
+        Piece::King => 'K',
+        Piece::Queen => 'Q',
+        Piece::Rook => 'R',
+        Piece::Bishop => 'B',
+        Piece::Knight => 'N',
+        Piece::Pawn => 'P',
     };
     // Capitalize for white pieces, lowercase for black pieces
     if color == Color::White {
@@ -44,12 +44,12 @@ pub fn print_board(board: &Board) {
 
             // Check and print each piece for both white and black
             for piece in [
-                Pieces::Pawn,
-                Pieces::Knight,
-                Pieces::Bishop,
-                Pieces::Rook,
-                Pieces::Queen,
-                Pieces::King,
+                Piece::Pawn,
+                Piece::Knight,
+                Piece::Bishop,
+                Piece::Rook,
+                Piece::Queen,
+                Piece::King,
             ]
             .iter()
             {

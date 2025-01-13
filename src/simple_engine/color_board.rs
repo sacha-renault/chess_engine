@@ -1,4 +1,4 @@
-use super::pieces::{Pieces, ALL_PIECES};
+use super::pieces::{Piece, ALL_PIECES};
 
 // it checks if the castling is authorized
 #[derive(Clone, Copy)]
@@ -85,14 +85,14 @@ impl ColorBoard {
     ///
     /// # Returns
     /// A `u64` representing the bitboard for the specified piece.
-    pub fn get_bitboard_by_type(&self, piece: Pieces) -> u64 {
+    pub fn get_bitboard_by_type(&self, piece: Piece) -> u64 {
         match piece {
-            Pieces::Pawn => self.pawn,
-            Pieces::Knight => self.knight,
-            Pieces::Bishop => self.bishop,
-            Pieces::Rook => self.rook,
-            Pieces::Queen => self.queen,
-            Pieces::King => self.king,
+            Piece::Pawn => self.pawn,
+            Piece::Knight => self.knight,
+            Piece::Bishop => self.bishop,
+            Piece::Rook => self.rook,
+            Piece::Queen => self.queen,
+            Piece::King => self.king,
         }
     }
 
@@ -101,14 +101,14 @@ impl ColorBoard {
     /// # Arguments
     /// * `piece` - A reference to the `Pieces` type.
     /// * `new_bitboard` - A `u64` representing the new bitboard.
-    pub fn set_bitboard_by_type(&mut self, piece: Pieces, new_bitboard: u64) {
+    pub fn set_bitboard_by_type(&mut self, piece: Piece, new_bitboard: u64) {
         match piece {
-            Pieces::Pawn => self.pawn = new_bitboard,
-            Pieces::Knight => self.knight = new_bitboard,
-            Pieces::Bishop => self.bishop = new_bitboard,
-            Pieces::Rook => self.rook = new_bitboard,
-            Pieces::Queen => self.queen = new_bitboard,
-            Pieces::King => self.king = new_bitboard,
+            Piece::Pawn => self.pawn = new_bitboard,
+            Piece::Knight => self.knight = new_bitboard,
+            Piece::Bishop => self.bishop = new_bitboard,
+            Piece::Rook => self.rook = new_bitboard,
+            Piece::Queen => self.queen = new_bitboard,
+            Piece::King => self.king = new_bitboard,
         }
     }
 
@@ -116,14 +116,14 @@ impl ColorBoard {
     ///
     /// # Returns
     /// A `Vec` of tuples where each tuple contains a `u64` bitboard position and a reference to `Pieces`.
-    pub fn individual_pieces(&self) -> Vec<(u64, Pieces)> {
-        let piece_bitboards: [(u64, Pieces); 6] = [
-            (self.pawn, Pieces::Pawn),
-            (self.knight, Pieces::Knight),
-            (self.bishop, Pieces::Bishop),
-            (self.rook, Pieces::Rook),
-            (self.queen, Pieces::Queen),
-            (self.king, Pieces::King),
+    pub fn individual_pieces(&self) -> Vec<(u64, Piece)> {
+        let piece_bitboards: [(u64, Piece); 6] = [
+            (self.pawn, Piece::Pawn),
+            (self.knight, Piece::Knight),
+            (self.bishop, Piece::Bishop),
+            (self.rook, Piece::Rook),
+            (self.queen, Piece::Queen),
+            (self.king, Piece::King),
         ];
 
         let mut result = Vec::new();

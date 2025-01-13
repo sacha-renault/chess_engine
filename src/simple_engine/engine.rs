@@ -1,7 +1,7 @@
 use super::board::Board;
 use super::color::Color;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::pieces::Pieces;
+use super::pieces::Piece;
 use super::player_move::NormalMove;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
@@ -176,7 +176,7 @@ impl Engine {
         &self,
         current_square: u64,
         target_square: u64,
-        piece: Pieces,
+        piece: Piece,
         color: Color,
     ) -> Result<Board, IncorrectMoveResults> {
         // Simulate the move
@@ -373,7 +373,7 @@ impl Engine {
                 initial_king_pos,
                 final_king_pos,
                 color,
-                Pieces::King,
+                Piece::King,
             );
 
             // simutate move of rook
@@ -382,7 +382,7 @@ impl Engine {
                 initial_rook_pos,
                 final_rook_pos,
                 color,
-                Pieces::Rook,
+                Piece::Rook,
             );
 
             // Get the simulated player's and opponent's boards
@@ -495,7 +495,7 @@ impl Engine {
     /// # Returns
     /// * `Ok(CorrectMoveResults)` - Promotion successful
     /// * `Err(IncorrectMoveResults)` - Promotion not possible
-    pub fn promote_pawn(&mut self, piece: Pieces) -> MoveResult {
+    pub fn promote_pawn(&mut self, piece: Piece) -> MoveResult {
         // we check if there should be a promotion
         if !self.promoted {
             return Err(IncorrectMoveResults::IllegalPromotion);
@@ -535,7 +535,7 @@ impl Engine {
     ///   - `Piece`: The type of the piece (e.g., Pawn, Knight, etc.)
     ///   - `u64`: A bitboard representing all possible moves for this piece
     /// - `Err(String)`: An error message if move generation fails
-    pub fn get_all_moves(&self) -> Result<Vec<(u64, Pieces, u64)>, String> {
+    pub fn get_all_moves(&self) -> Result<Vec<(u64, Piece, u64)>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);
         let (player_board, _) = get_half_turn_boards(&self.board, color);

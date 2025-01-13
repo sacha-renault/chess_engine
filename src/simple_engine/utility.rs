@@ -1,7 +1,7 @@
 use super::board::Board;
 use super::color::Color;
 use super::color_board::ColorBoard;
-use super::pieces::Pieces;
+use super::pieces::Piece;
 use super::player_move::CastlingMove;
 use super::static_positions::{BLACK_KING, BLACK_ROOKS, FILE_A, FILE_H, WHITE_KING, WHITE_ROOKS};
 use super::{moves::*, static_positions};
@@ -14,29 +14,29 @@ use super::{moves::*, static_positions};
 ///
 /// # Returns
 /// An `Option<Pieces>` indicating the type of piece on the square.
-pub fn get_piece_type(color_board: &ColorBoard, square: u64) -> Option<Pieces> {
+pub fn get_piece_type(color_board: &ColorBoard, square: u64) -> Option<Piece> {
     if color_board.pawn & square != 0 {
-        return Some(Pieces::Pawn);
+        return Some(Piece::Pawn);
     }
 
     if color_board.knight & square != 0 {
-        return Some(Pieces::Knight);
+        return Some(Piece::Knight);
     }
 
     if color_board.bishop & square != 0 {
-        return Some(Pieces::Bishop);
+        return Some(Piece::Bishop);
     }
 
     if color_board.rook & square != 0 {
-        return Some(Pieces::Rook);
+        return Some(Piece::Rook);
     }
 
     if color_board.queen & square != 0 {
-        return Some(Pieces::Queen);
+        return Some(Piece::Queen);
     }
 
     if color_board.king & square != 0 {
-        return Some(Pieces::King);
+        return Some(Piece::King);
     }
     None
 }
@@ -97,7 +97,7 @@ pub fn u64_to_coordinates(bitboard: u64) -> (usize, usize) {
 /// # Returns
 /// A `u64` representing the possible moves.
 pub fn get_possible_move(
-    piece: Pieces,
+    piece: Piece,
     start_square: u64,
     same_color_bitboard: u64,
     other_color_bitboard: u64,
@@ -106,12 +106,12 @@ pub fn get_possible_move(
 ) -> u64 {
     let bitboard = start_square & same_color_bitboard;
     match piece {
-        Pieces::King => king_moves(bitboard, same_color_bitboard),
-        Pieces::Queen => queen_moves(bitboard, same_color_bitboard, other_color_bitboard),
-        Pieces::Rook => rooks_moves(bitboard, same_color_bitboard, other_color_bitboard),
-        Pieces::Knight => knight_moves(bitboard, same_color_bitboard),
-        Pieces::Bishop => bishops_moves(bitboard, same_color_bitboard, other_color_bitboard),
-        Pieces::Pawn => pawn_moves(
+        Piece::King => king_moves(bitboard, same_color_bitboard),
+        Piece::Queen => queen_moves(bitboard, same_color_bitboard, other_color_bitboard),
+        Piece::Rook => rooks_moves(bitboard, same_color_bitboard, other_color_bitboard),
+        Piece::Knight => knight_moves(bitboard, same_color_bitboard),
+        Piece::Bishop => bishops_moves(bitboard, same_color_bitboard, other_color_bitboard),
+        Piece::Pawn => pawn_moves(
             bitboard,
             same_color_bitboard,
             other_color_bitboard | en_passant_squares,
@@ -151,7 +151,7 @@ pub fn move_piece(
     current_square: u64,
     target_square: u64,
     color: Color,
-    piece_type: Pieces,
+    piece_type: Piece,
 ) -> Board {
     // Determine which color's board is being modified
     let (color_board, opponent_board) = match color {
@@ -161,22 +161,22 @@ pub fn move_piece(
 
     // Clear the current square from the moving piece
     match piece_type {
-        Pieces::Pawn => color_board.pawn &= !current_square,
-        Pieces::Knight => color_board.knight &= !current_square,
-        Pieces::Bishop => color_board.bishop &= !current_square,
-        Pieces::Rook => color_board.rook &= !current_square,
-        Pieces::Queen => color_board.queen &= !current_square,
-        Pieces::King => color_board.king &= !current_square,
+        Piece::Pawn => color_board.pawn &= !current_square,
+        Piece::Knight => color_board.knight &= !current_square,
+        Piece::Bishop => color_board.bishop &= !current_square,
+        Piece::Rook => color_board.rook &= !current_square,
+        Piece::Queen => color_board.queen &= !current_square,
+        Piece::King => color_board.king &= !current_square,
     };
 
     // Place the piece on the target square
     match piece_type {
-        Pieces::Pawn => color_board.pawn |= target_square,
-        Pieces::Knight => color_board.knight |= target_square,
-        Pieces::Bishop => color_board.bishop |= target_square,
-        Pieces::Rook => color_board.rook |= target_square,
-        Pieces::Queen => color_board.queen |= target_square,
-        Pieces::King => color_board.king |= target_square,
+        Piece::Pawn => color_board.pawn |= target_square,
+        Piece::Knight => color_board.knight |= target_square,
+        Piece::Bishop => color_board.bishop |= target_square,
+        Piece::Rook => color_board.rook |= target_square,
+        Piece::Queen => color_board.queen |= target_square,
+        Piece::King => color_board.king |= target_square,
     };
 
     // Clear the target square from all opponent pieces
