@@ -71,25 +71,21 @@ impl Engine {
         }
 
         // else we can play normal
-        match chess_move {
+        self.board = match chess_move {
             PlayerMove::Normal(normal_move) => {
                 // get squares
                 let (current_square, target_square) = normal_move.squares();
 
                 // Validate the move and get the new board state
-                let new_board = self.perform_move(current_square, target_square)?;
-
-                // Apply the new board state
-                self.board = new_board;
+                self.perform_move(current_square, target_square)?
             }
             PlayerMove::Castling(castling_side) => {
                 // perform casting
-                let new_board = self.perform_castling(castling_side)?;
-
-                // Apply the new board state
-                self.board = new_board;
+                self.perform_castling(castling_side)?
             }
+            PlayerMove::Promotion(piece) => self.promote_pawn(piece)?,
         };
+
         // Finalize the turn
         Ok(self.finalize_turn())
     }
@@ -492,7 +488,7 @@ impl Engine {
     /// # Returns
     /// * `Ok(CorrectMoveResults)` - Promotion successful
     /// * `Err(IncorrectMoveResults)` - Promotion not possible
-    pub fn promote_pawn(&mut self, piece: Piece) -> MoveResult {
+    fn promote_pawn(&mut self, piece: Piece) -> Result<Board, IncorrectMoveResults> {
         // we check if there should be a promotion
         if !self.promoting {
             return Err(IncorrectMoveResults::IllegalPromotion);
@@ -503,7 +499,8 @@ impl Engine {
         // we change the piece at the location
         let color = get_color(self.white_turn);
         let promotion_rank = get_promotion_rank_by_color(color);
-        let (player_board, _) = get_half_turn_boards_mut(&mut self.board, color);
+        let mut simulated_board = self.board.clone();
+        let (player_board, _) = get_half_turn_boards_mut(&mut simulated_board, color);
 
         // we get the pawns on the player board and we remove it
         let pawns = player_board.pawn;
@@ -514,8 +511,7 @@ impl Engine {
             player_board.get_bitboard_by_type(piece) | promoted_square,
         );
 
-        // then we finilize turn !
-        Ok(self.finalize_turn())
+        Ok(simulated_board)
     }
 
     /// Returns all possible moves for all pieces of the current player.
@@ -546,5 +542,54 @@ impl Engine {
             .collect::<Result<Vec<_>, String>>()?;
 
         Ok(pieces_with_moves)
+    }
+
+    /// PLAY UNSAFE
+    /// WE SET A PIECE AND POSITIONS OR CASTLING OPTIONS
+    /// NO CHECKS WILL BE PERFORMED
+    pub fn play_unsafe(&mut self, chess_move: PlayerMove, piece: Piece) -> MoveResult {
+        // First check if there is any promotion
+        if self.promoting {
+            return Err(IncorrectMoveResults::WaitingForPromotion);
+        }
+
+        // else we can play normal
+        self.board = match chess_move {
+            PlayerMove::Normal(normal_move) => {
+                // Validate the move and get the new board state
+                let (current_square, target_square) = normal_move.squares();
+                self.move_unsafe(current_square, target_square, piece)?
+            }
+            PlayerMove::Castling(castling_side) => self.perform_castling(castling_side)?,
+            PlayerMove::Promotion(piece) => self.promote_pawn(piece)?,
+        };
+
+        Ok(self.finalize_turn())
+    }
+
+    /// PLAY UNSAFE
+    /// WE SET A PIECE AND POSITIONS
+    /// NO CHECKS WILL BE PERFORMED
+    pub fn move_unsafe(
+        &self,
+        current_square: u64,
+        target_square: u64,
+        piece: Piece,
+    ) -> Result<Board, IncorrectMoveResults> {
+        todo!();
+    }
+
+    /// PLAY UNSAFE
+    /// WE SET A PIECE AND POSITIONS
+    /// NO CHECKS WILL BE PERFORMED
+    pub fn castle_unsafe(&self, castling_side: CastlingMove) -> MoveResult {
+        todo!();
+    }
+
+    /// PLAY UNSAFE
+    /// WE SET A PIECE AND POSITIONS
+    /// NO CHECKS WILL BE PERFORMED
+    pub fn promote_unsafe(&self, piece: Piece) -> MoveResult {
+        todo!();
     }
 }

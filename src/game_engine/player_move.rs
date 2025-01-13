@@ -1,4 +1,5 @@
 use super::utility::coordinates_to_u64;
+use crate::pieces::Piece;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum CastlingMove {
@@ -34,4 +35,5 @@ impl NormalMove {
 pub enum PlayerMove {
     Normal(NormalMove),
     Castling(CastlingMove),
+    Promotion(Piece),
 }
