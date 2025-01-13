@@ -25,6 +25,7 @@ impl Board {
                 queen: init::WHITE_QUEEN,
                 king: init::WHITE_KING,
                 castling_rights: CastlingRights::new(),
+                en_passant: 0,
             },
             black: ColorBoard {
                 pawn: init::BLACK_PAWNS,
@@ -34,6 +35,7 @@ impl Board {
                 queen: init::BLACK_QUEEN,
                 king: init::BLACK_KING,
                 castling_rights: CastlingRights::new(),
+                en_passant: 0,
             },
         }
     }

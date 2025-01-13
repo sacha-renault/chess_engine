@@ -250,7 +250,7 @@ pub fn pawn_moves(
     let double_push = shift_fn(single_push & double_move_rank, 8) & empty_squares;
 
     // Left capture (diagonal capture to the left for white pawns)
-    let left_capture = shift_fn(pawn_bitboard, 7) & other_color_bitboard & !file1;
+    let left_capture = shift_fn(pawn_bitboard, 7) & (other_color_bitboard) & !file1;
 
     // Right capture (diagonal capture to the right for white pawns)
     let right_capture = shift_fn(pawn_bitboard, 9) & other_color_bitboard & !file2;

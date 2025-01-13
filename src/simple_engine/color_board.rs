@@ -66,6 +66,7 @@ pub struct ColorBoard {
     pub queen: u64,
     pub king: u64,
     pub castling_rights: CastlingRights,
+    pub en_passant: u64,
 }
 
 impl ColorBoard {

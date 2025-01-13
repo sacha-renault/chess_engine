@@ -1,5 +1,6 @@
 mod simple_engine;
 
+use simple_engine::debug::print_bitboard;
 use simple_engine::engine::Engine;
 use simple_engine::player_move::{NormalMove, PlayerMove};
 
@@ -7,11 +8,12 @@ fn main() {
     let mut engine = Engine::new();
 
     // White's turn: Move a pawn from e2 (1,4) to e4 (3,4)
-    let m = PlayerMove::Normal(NormalMove::new_from_coordinates((1, 4), (2, 4)));
+    let m = PlayerMove::Normal(NormalMove::new_from_coordinates((1, 4), (3, 4)));
     let correct_move = engine.play(m); // White moves a pawn two squares forward
 
     match correct_move {
-        Ok(_) => println!("Correct move!"),
+        // Ok(_) => (),
+        Ok(_) => print_bitboard(engine.board().white.en_passant),
         Err(string) => println!("Failed to make the move. {:?}", string),
     }
 

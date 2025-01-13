@@ -101,6 +101,7 @@ pub fn get_possible_move(
     start_square: u64,
     same_color_bitboard: u64,
     other_color_bitboard: u64,
+    en_passant_squares: u64,
     color: Color,
 ) -> u64 {
     let bitboard = start_square & same_color_bitboard;
@@ -110,7 +111,12 @@ pub fn get_possible_move(
         Pieces::Rook => rooks_moves(bitboard, same_color_bitboard, other_color_bitboard),
         Pieces::Knight => knight_moves(bitboard, same_color_bitboard),
         Pieces::Bishop => bishops_moves(bitboard, same_color_bitboard, other_color_bitboard),
-        Pieces::Pawn => pawn_moves(bitboard, same_color_bitboard, other_color_bitboard, color),
+        Pieces::Pawn => pawn_moves(
+            bitboard,
+            same_color_bitboard,
+            other_color_bitboard | en_passant_squares,
+            color,
+        ),
     }
 }
 
@@ -203,7 +209,7 @@ pub fn all_possible_moves(board: &ColorBoard, opponent_board: &ColorBoard, color
         | pawn_moves(
             board.pawn,
             board.bitboard(),
-            opponent_board.bitboard(),
+            opponent_board.bitboard() | opponent_board.en_passant,
             color,
         )
 }
@@ -305,5 +311,13 @@ pub fn get_promotion_rank_by_color(color: Color) -> u64 {
     match color {
         Color::White => static_positions::RANK8,
         Color::Black => static_positions::RANK1,
+    }
+}
+
+pub fn get_en_passant_ranks(color: Color) -> u64 {
+    if color == Color::White {
+        return static_positions::RANK2 | static_positions::RANK4;
+    } else {
+        return static_positions::RANK7 | static_positions::RANK5;
     }
 }

@@ -2,11 +2,12 @@ use super::board::Board;
 use super::color::Color;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::pieces::Pieces;
+use super::player_move::NormalMove;
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
-    get_color, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut,
-    get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color,
-    get_required_empty_squares, is_king_checked, move_piece,
+    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards,
+    get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move,
+    get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, move_piece,
 };
 
 /// Represents a chess engine that manages game state and move validation.
@@ -142,6 +143,7 @@ impl Engine {
             current_square,
             player_board.bitboard(),
             opponent_board.bitboard(),
+            opponent_board.en_passant,
             color,
         );
 
@@ -178,13 +180,16 @@ impl Engine {
         color: Color,
     ) -> Result<Board, IncorrectMoveResults> {
         // Simulate the move
-        let simulated_board = move_piece(
+        let mut simulated_board = move_piece(
             self.board.clone(),
             current_square,
             target_square,
             color,
             piece,
         );
+
+        // perform en passant squares check
+        self.handle_en_passant(&mut simulated_board, current_square, target_square);
 
         // Get the simulated player's and opponent's boards
         let (player_board, opponent_board) =
@@ -213,7 +218,7 @@ impl Engine {
         let color = get_color(self.white_turn);
 
         // get player and opponent board
-        let (player_board, _) = get_half_turn_boards_mut(&mut self.board, color);
+        let (player_board, opponent_board) = get_half_turn_boards_mut(&mut self.board, color);
 
         // Get the initial position by color
         let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
@@ -236,11 +241,67 @@ impl Engine {
             return CorrectMoveResults::Promote;
         }
 
+        // reset the en passant squares for the opponent
+        opponent_board.en_passant = 0;
+
         // we get the initial position depending on the color
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
 
         CorrectMoveResults::Ok
+    }
+
+    /// Handles all en passant-related logic after a move, including both setting up and executing en passant captures.
+    ///
+    /// This function serves two purposes:
+    /// 1. If a pawn makes a two-square advance, it sets up the en passant opportunity
+    /// 2. If a pawn captures via en passant, it removes the captured pawn from the board
+    ///
+    /// # Arguments
+    ///
+    /// * `board` - Mutable reference to the game board
+    /// * `current_square` - The starting square of the move (as a bitboard with single bit set)
+    /// * `target_square` - The destination square of the move (as a bitboard with single bit set)
+    ///
+    /// # Note
+    ///
+    /// This function assumes the move has already been executed on the board,
+    /// meaning the moving piece should already be at the target square when this
+    /// function is called.
+    fn handle_en_passant(&self, board: &mut Board, current_square: u64, target_square: u64) {
+        // get the color and check if the current move can produce en passant square
+        let color = get_color(self.white_turn);
+        let ep_ranks = get_en_passant_ranks(color);
+        let (player_board, opponent_board) = get_half_turn_boards_mut(board, color);
+
+        // we first ensure the piece move is a pawn
+        // piece is already moved so it's located at destination square
+        if player_board.pawn & target_square == 0 {
+            return;
+        }
+
+        // We check if ranks & moves is exactly 2 (start and end positions)
+        // otherwise, we can't have any en passant
+        if (ep_ranks & (current_square | target_square)).count_ones() == 2 {
+            // If we got here, we have a valid two-square pawn move
+            // Set the en passant square to the square the pawn passed over
+            player_board.en_passant = match color {
+                Color::White => target_square >> 8,
+                Color::Black => target_square << 8,
+            };
+        }
+        // in this case we took the pawn with en passant
+        // if yes, we have to remove the pawn
+        else if opponent_board.en_passant & target_square != 0 {
+            // retrieve the position of the pawn that triggered en passant
+            let pawn_position = match color {
+                Color::White => target_square << 8,
+                Color::Black => target_square >> 8,
+            };
+
+            // we delete the pawn from the board
+            opponent_board.pawn &= !pawn_position
+        }
     }
 
     /// Performs a castling move for the current player.
@@ -321,7 +382,7 @@ impl Engine {
                 initial_rook_pos,
                 final_rook_pos,
                 color,
-                Pieces::King,
+                Pieces::Rook,
             );
 
             // Get the simulated player's and opponent's boards
@@ -360,7 +421,11 @@ impl Engine {
             return Err("No piece at this location".to_string());
         }
 
-        let piece = piece_type.unwrap();
+        // get piece and color
+        let piece = match piece_type {
+            Some(p) => p,
+            None => return Err("No piece at this location".to_string()),
+        };
         let color = get_color(self.white_turn);
 
         // Get the possible moves for the piece
@@ -369,6 +434,7 @@ impl Engine {
             current_square,
             player_board.bitboard(),
             opponent_board.bitboard(),
+            opponent_board.en_passant,
             color,
         );
 
