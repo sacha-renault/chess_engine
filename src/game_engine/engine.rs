@@ -126,7 +126,11 @@ impl Engine {
             return Err(IncorrectMoveResults::NoPieceAtLocation);
         }
 
-        let piece = piece_type.unwrap();
+        // Get piece + color
+        let piece = match piece_type {
+            Some(p) => p,
+            None => return Err(IncorrectMoveResults::NoPieceAtLocation),
+        };
         let color = get_color(self.white_turn);
 
         // Get the possible moves for the piece
