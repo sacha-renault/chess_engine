@@ -532,7 +532,7 @@ impl Engine {
     ///   - `Piece`: The type of the piece (e.g., Pawn, Knight, etc.)
     ///   - `u64`: A bitboard representing all possible moves for this piece
     /// - `Err(String)`: An error message if move generation fails
-    pub fn get_all_moves(&self) -> Result<Vec<(u64, Piece, u64)>, String> {
+    pub fn get_all_moves_by_piece(&self) -> Result<Vec<(u64, Piece, u64)>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);
         let (player_board, _) = get_half_turn_boards(&self.board, color);

@@ -1,4 +1,4 @@
-use super::player_move::CastlingMove;
+use super::player_move::{CastlingMove, NormalMove, PlayerMove};
 use crate::boards::Board;
 use crate::boards::ColorBoard;
 use crate::pieces::static_positions::{
@@ -85,6 +85,30 @@ pub fn u64_to_coordinates(bitboard: u64) -> (usize, usize) {
     let col = square_index % 8;
 
     (row, col)
+}
+
+/// Returns an iterator over the positions of set bits (1s) in a `u64` value.
+///
+/// The iterator yields the positions of the bits that are set to 1, starting from
+/// the least significant bit (position 0).
+///
+/// # Arguments
+///
+/// * `value` - A `u64` value to extract the set bit positions from.
+///
+/// # Returns
+///
+/// An iterator that yields `u32` values representing the positions of the set bits.
+pub fn iter_into_u64(mut value: u64) -> impl Iterator<Item = u32> {
+    std::iter::from_fn(move || {
+        if value == 0 {
+            None
+        } else {
+            let pos = value.trailing_zeros();
+            value &= value - 1;
+            Some(pos)
+        }
+    })
 }
 
 /// Returns the possible moves for a given piece.
@@ -322,4 +346,8 @@ pub fn get_en_passant_ranks(color: Color) -> u64 {
     } else {
         return static_positions::RANK7 | static_positions::RANK5;
     }
+}
+
+pub fn create_normal_move(current_square: u64, target_square: u64) -> PlayerMove {
+    PlayerMove::Normal(NormalMove::new(current_square, target_square))
 }
