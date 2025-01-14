@@ -84,15 +84,18 @@ impl Engine {
             PlayerMove::Normal(normal_move) => {
                 // get squares
                 let (current_square, target_square) = normal_move.squares();
-
-                // Validate the move and get the new board state
                 self.perform_move(current_square, target_square)?
             }
             PlayerMove::Castling(castling_side) => {
                 // perform casting
                 self.perform_castling(castling_side)?
             }
-            PlayerMove::Promotion(piece) => self.promote_pawn(piece)?,
+            PlayerMove::Promotion(promotion_move)    => {
+                // get squares
+                let (current_square, target_square) = promotion_move.squares();
+                self.perform_move(current_square, target_square)?;
+                self.promote_pawn(promotion_move.promotion_piece(), target_square)?
+            }
         };
 
         // Finalize the turn
@@ -325,7 +328,7 @@ impl Engine {
     ///    - Castling rights being maintained
     /// 2. Moves both the king and rook to their respective positions
     /// 3. Ensures the king is not in check after the move
-    fn perform_castling(&mut self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
+    fn perform_castling(&self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
         // get color
         let color = get_color(self.white_turn);
 
@@ -497,27 +500,28 @@ impl Engine {
     /// # Returns
     /// * `Ok(CorrectMoveResults)` - Promotion successful
     /// * `Err(IncorrectMoveResults)` - Promotion not possible
-    fn promote_pawn(&mut self, piece: Piece) -> Result<Board, IncorrectMoveResults> {
-        // we check if there should be a promotion
-        if !self.promoting {
-            return Err(IncorrectMoveResults::IllegalPromotion);
-        }
-        // we first remove the promotion flag
-        self.promoting = false;
+    fn promote_pawn(&self, piece: Piece, target_square: u64) -> Result<Board, IncorrectMoveResults> {
+        // get color
+        let color = get_color(self.white_turn);
 
         // we change the piece at the location
-        let color = get_color(self.white_turn);
         let promotion_rank = get_promotion_rank_by_color(color);
         let mut simulated_board = self.board.clone();
+
+        // Get the board
         let (player_board, _) = get_half_turn_boards_mut(&mut simulated_board, color);
 
+        // we check if there should be a promotion
+        if player_board.pawn & promotion_rank & target_square != 0 {
+            return Err(IncorrectMoveResults::IllegalPromotion);
+        }
+
         // we get the pawns on the player board and we remove it
-        let pawns = player_board.pawn;
-        let promoted_square = promotion_rank & pawns;
-        player_board.pawn = pawns & !promoted_square; // remove the pawns from the square
+        // then we add the new piece
+        player_board.pawn &= !target_square; // remove the pawns from the square
         player_board.set_bitboard_by_type(
             piece,
-            player_board.get_bitboard_by_type(piece) | promoted_square,
+            player_board.get_bitboard_by_type(piece) | target_square,
         );
 
         Ok(simulated_board)
@@ -587,12 +591,15 @@ impl Engine {
                     Ok(board) => {
                         // in the case the move is valid, we just as if we would for a normal move
                         let mut engine = self.clone_with_new_board(board);
-                        engine.finalize_turn();
+                        let move_result = engine.finalize_turn();
+
+                        // add the moverow to the vec
                         result.push(GetMoveRow {
                             engine,
                             player_move: PlayerMove::Normal(NormalMove::new(current_square, target_square)),
                             piece,
-                            color
+                            color,
+                            result: move_result,
                         })
                     }
                     _ => { /* Nothing to do ... just sad this move won't work right ? */}

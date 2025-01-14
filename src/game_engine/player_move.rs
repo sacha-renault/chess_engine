@@ -7,6 +7,23 @@ pub enum CastlingMove {
     Short,
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub struct PromotionMove {
+    current_square: u64,
+    target_square: u64,
+    promotion_piece: Piece,
+}
+
+impl PromotionMove {
+    pub fn squares(&self) -> (u64, u64) {
+        (self.current_square, self.target_square)
+    }
+
+    pub fn promotion_piece(&self) -> Piece {
+        self.promotion_piece
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct NormalMove {
     current_square: u64,
@@ -37,5 +54,5 @@ impl NormalMove {
 pub enum PlayerMove {
     Normal(NormalMove),
     Castling(CastlingMove),
-    Promotion(Piece),
+    Promotion(PromotionMove),
 }
