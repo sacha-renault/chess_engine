@@ -1,14 +1,13 @@
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove};
 use super::utility::{
-    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards,
-    get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move,
-    get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, move_piece,
+    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, iter_into_u64, move_piece
 };
 use crate::boards::Board;
 use crate::pieces::Color;
 use crate::pieces::Piece;
 use crate::prelude::NormalMove;
+use super::get_move_row::GetMoveRow;
 
 /// Represents a chess engine that manages game state and move validation.
 ///
@@ -47,6 +46,15 @@ impl Engine {
             white_turn: true,
             halfmove_clock: 0,
             promoting: false,
+        }
+    }
+
+    pub fn clone_with_new_board(&self, board: Board) -> Self {
+        Engine {
+            board: board,
+            white_turn: self.white_turn,
+            halfmove_clock: self.halfmove_clock,
+            promoting: self.promoting,
         }
     }
 
@@ -545,54 +553,53 @@ impl Engine {
         Ok(pieces_with_moves)
     }
 
-    /// PLAY UNSAFE
-    /// WE SET A PIECE AND POSITIONS OR CASTLING OPTIONS
-    /// NO CHECKS WILL BE PERFORMED
-    pub fn play_unsafe(&mut self, chess_move: PlayerMove, piece: Piece) -> MoveResult {
-        // First check if there is any promotion
-        if self.promoting {
-            return Err(IncorrectMoveResults::WaitingForPromotion);
+    pub fn generate_moves_with_engine_state(&self) -> Result<Vec<GetMoveRow>, String> {
+        // get the correct color board
+        let color = get_color(self.white_turn);
+        let (player_board, opponent_board) =
+            get_half_turn_boards(&self.board, color);
+
+        // then get all the pieces
+        let pieces = player_board.individual_pieces();
+
+        // init a vector for result
+        let mut result = Vec::new();
+
+        // iteratin INTO the pieces
+        for (current_square, piece) in pieces.into_iter() {
+            // Get the possible moves for the piece
+            let pseudo_legal_moves = get_possible_move(
+                piece,
+                current_square,
+                player_board.bitboard(),
+                opponent_board.bitboard(),
+                opponent_board.en_passant,
+                color,
+            );
+
+            // iterate over the legal moves
+            for target_index in iter_into_u64(pseudo_legal_moves) {
+                // Get the least significant set bit
+                let target_square = 1u64 << target_index;
+
+                // If the move doesn't leave king in check, add it to possible moves
+                match self.validate_move_safety(current_square, target_square, piece, color) {
+                    Ok(board) => {
+                        // in the case the move is valid, we just as if we would for a normal move
+                        let mut engine = self.clone_with_new_board(board);
+                        engine.finalize_turn();
+                        result.push(GetMoveRow {
+                            engine,
+                            player_move: PlayerMove::Normal(NormalMove::new(current_square, target_square)),
+                            piece,
+                            color
+                        })
+                    }
+                    _ => { /* Nothing to do ... just sad this move won't work right ? */}
+                }
+            }
         }
 
-        // else we can play normal
-        self.board = match chess_move {
-            PlayerMove::Castling(castling_side) => self.perform_castling(castling_side)?,
-
-            PlayerMove::Normal(normal_move) => {
-                // Validate the move and get the new board state
-                let (current_square, target_square) = normal_move.squares();
-                self.move_unsafe(current_square, target_square, piece)?
-            }
-
-            PlayerMove::Promotion(piece) => self.promote_pawn(piece)?,
-        };
-
-        Ok(self.finalize_turn())
-    }
-
-    /// PLAY UNSAFE
-    /// WE SET A PIECE AND POSITIONS
-    /// NO CHECKS WILL BE PERFORMED
-    pub fn move_unsafe(
-        &self,
-        current_square: u64,
-        target_square: u64,
-        piece: Piece,
-    ) -> Result<Board, IncorrectMoveResults> {
-        todo!();
-    }
-
-    /// PLAY UNSAFE
-    /// WE SET A PIECE AND POSITIONS
-    /// NO CHECKS WILL BE PERFORMED
-    pub fn castle_unsafe(&self, castling_side: CastlingMove) -> MoveResult {
-        todo!();
-    }
-
-    /// PLAY UNSAFE
-    /// WE SET A PIECE AND POSITIONS
-    /// NO CHECKS WILL BE PERFORMED
-    pub fn promote_unsafe(&self, piece: Piece) -> MoveResult {
-        todo!();
+        Ok(result)
     }
 }

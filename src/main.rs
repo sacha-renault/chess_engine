@@ -48,9 +48,12 @@ fn main() {
     let result = get_tree_size(root.clone());
     println!("tree size is {}", result);
 
-    for child in root.borrow().children() {
-        let score = child.borrow().recursive_score();
-        let m = child.borrow().chess_move().unwrap();
-        println!("Score for move {:?} is {}" , m, score);
+    // for child in root.borrow().children() {
+    //     let score = child.borrow().recursive_score();
+    //     let m = child.borrow().chess_move().unwrap();
+    //     println!("Score for move {:?} is {}" , m, score);
+    // }
+    for moves in engine.generate_moves_with_engine_state().unwrap() {
+        println!("{:?}, {:?}, {:?}", moves.piece, moves.player_move, moves.color);
     }
 }
