@@ -101,16 +101,21 @@ impl Tree {
             return;
         }
 
-        // Get moves from this nodes
-        let possible_moves = node
-            .borrow()
-            .engine
-            .generate_moves_with_engine_state()
-            .unwrap();
+        // check if children from this node already exists
+        if node.borrow().children().len() != 0 {
+            self.recursive_generate_tree(node, depth);
+        } else {
+            // Get moves from this nodes
+            let possible_moves = node
+                .borrow()
+                .engine
+                .generate_moves_with_engine_state()
+                .unwrap();
 
-        // iterate through all possible piece moving
-        for move_row in possible_moves {
-            self.create_new_node(node.clone(), move_row, depth);
+            // iterate through all possible piece moving
+            for move_row in possible_moves {
+                self.create_new_node(node.clone(), move_row, depth);
+            }
         }
     }
 
@@ -158,8 +163,25 @@ impl Tree {
             self.root = node;
             true
         } else {
-            false
+            panic!("Unknown chess move ????");
         }
+    }
+
+    pub fn get_best_move(&self) -> (PlayerMove, f32) {
+        let mut best_move = None;
+        let mut best_score = f32::NEG_INFINITY;
+
+        for child in self.root().borrow().children() {
+            let score = child.borrow().recursive_score();
+            let m = child.borrow().chess_move().unwrap();
+
+            if score > best_score {
+                best_score = score;
+                best_move = Some(m);
+            }
+        }
+
+        (best_move.expect("No moves available"), best_score)
     }
 }
 

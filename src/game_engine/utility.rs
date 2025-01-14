@@ -351,3 +351,62 @@ pub fn get_en_passant_ranks(color: Color) -> u64 {
 pub fn create_normal_move(current_square: u64, target_square: u64) -> PlayerMove {
     PlayerMove::Normal(NormalMove::new(current_square, target_square))
 }
+
+pub fn create_move_from_str(str_move: &str) -> PlayerMove {
+    if str_move == "O-O" {
+        PlayerMove::Castling(CastlingMove::Short)
+    } else if str_move == "O-O-O" {
+        PlayerMove::Castling(CastlingMove::Long)
+    } else if str_move.len() == 4 {
+        // Parse a regular move like "e2e4"
+        let chars: Vec<char> = str_move.chars().collect();
+        let current_file = chars[0];
+        let current_rank = chars[1];
+        let target_file = chars[2];
+        let target_rank = chars[3];
+
+        // Validate the input
+        if !('a'..='h').contains(&current_file)
+            || !('1'..='8').contains(&current_rank)
+            || !('a'..='h').contains(&target_file)
+            || !('1'..='8').contains(&target_rank)
+        {
+            panic!("Invalid chess move notation: {}", str_move);
+        }
+
+        // Convert file and rank to bitboard positions
+        let current_bitboard =
+            1u64 << ((current_rank as u64 - '1' as u64) * 8 + (current_file as u64 - 'a' as u64));
+        let target_bitboard =
+            1u64 << ((target_rank as u64 - '1' as u64) * 8 + (target_file as u64 - 'a' as u64));
+
+        // Create a normal move
+        PlayerMove::Normal(NormalMove::new(current_bitboard, target_bitboard))
+    } else {
+        panic!("Invalid move format: {}", str_move);
+    }
+}
+
+pub fn string_from_move(player_move: &PlayerMove) -> String {
+    match player_move {
+        PlayerMove::Castling(castling_move) => match castling_move {
+            CastlingMove::Short => String::from("O-O"),
+            CastlingMove::Long => String::from("O-O-O"),
+        },
+        PlayerMove::Normal(normal_move) => {
+            let (current, target) = normal_move.squares();
+            let (current_rank, current_file) = u64_to_coordinates(current);
+            let (target_rank, target_file) = u64_to_coordinates(target);
+
+            // Convert coordinates to chess notation
+            format!(
+                "{}{}{}{}",
+                ((b'a' + current_file as u8) as char),
+                ((b'1' + current_rank as u8) as char),
+                ((b'a' + target_file as u8) as char),
+                ((b'1' + target_rank as u8) as char)
+            )
+        }
+        _ => "PROMOTION".to_string(),
+    }
+}
