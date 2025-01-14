@@ -99,12 +99,12 @@ pub fn u64_to_coordinates(bitboard: u64) -> (usize, usize) {
 /// # Returns
 ///
 /// An iterator that yields `u32` values representing the positions of the set bits.
-pub fn iter_into_u64(mut value: u64) -> impl Iterator<Item = u32> {
+pub fn iter_into_u64(mut value: u64) -> impl Iterator<Item = u64> {
     std::iter::from_fn(move || {
         if value == 0 {
             None
         } else {
-            let pos = value.trailing_zeros();
+            let pos = value.trailing_zeros() as u64;
             value &= value - 1;
             Some(pos)
         }
