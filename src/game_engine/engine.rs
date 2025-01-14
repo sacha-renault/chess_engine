@@ -8,6 +8,7 @@ use super::utility::{
 use crate::boards::Board;
 use crate::pieces::Color;
 use crate::pieces::Piece;
+use crate::prelude::NormalMove;
 
 /// Represents a chess engine that manages game state and move validation.
 ///
@@ -528,7 +529,7 @@ impl Engine {
     ///   - `Piece`: The type of the piece (e.g., Pawn, Knight, etc.)
     ///   - `u64`: A bitboard representing all possible moves for this piece
     /// - `Err(String)`: An error message if move generation fails
-    pub fn get_all_moves_by_piece(&self) -> Result<Vec<(u64, Piece, u64)>, String> {
+    pub fn get_all_moves_by_piece(&self) -> Result<Vec<(Piece, PlayerMove)>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);
         let (player_board, _) = get_half_turn_boards(&self.board, color);
@@ -538,7 +539,7 @@ impl Engine {
 
         let pieces_with_moves = pieces
             .into_iter()
-            .map(|it| self.get_moves(it.0).map(|moves| (it.0, it.1, moves)))
+            .map(|it| self.get_moves(it.0).map(|moves| (it.1, PlayerMove::Normal(NormalMove::new(it.0, moves)))))
             .collect::<Result<Vec<_>, String>>()?;
 
         Ok(pieces_with_moves)
@@ -555,12 +556,14 @@ impl Engine {
 
         // else we can play normal
         self.board = match chess_move {
+            PlayerMove::Castling(castling_side) => self.perform_castling(castling_side)?,
+
             PlayerMove::Normal(normal_move) => {
                 // Validate the move and get the new board state
                 let (current_square, target_square) = normal_move.squares();
                 self.move_unsafe(current_square, target_square, piece)?
             }
-            PlayerMove::Castling(castling_side) => self.perform_castling(castling_side)?,
+
             PlayerMove::Promotion(piece) => self.promote_pawn(piece)?,
         };
 

@@ -1,12 +1,13 @@
 use super::utility::coordinates_to_u64;
 use crate::pieces::Piece;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum CastlingMove {
     Long,
     Short,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct NormalMove {
     current_square: u64,
     target_square: u64,
@@ -32,6 +33,7 @@ impl NormalMove {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum PlayerMove {
     Normal(NormalMove),
     Castling(CastlingMove),

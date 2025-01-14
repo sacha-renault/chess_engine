@@ -1,5 +1,6 @@
 use super::evaluate::Evaluator;
 use crate::pieces::{Color, Piece};
+use crate::boards::board::Board;
 
 const fn init_bishop_table() -> [f32; 64] {
     let mut values: [f32; 64] = [0.; 64];
@@ -50,7 +51,7 @@ const fn init_pawns(start: f32, end: f32) -> [f32; 64] {
     values
 }
 
-fn get_value_by_piece(piece: Piece) -> f32 {
+pub fn get_value_by_piece(piece: Piece) -> f32 {
     match piece {
         Piece::Pawn => 1.,
         Piece::Bishop => 3.,
@@ -86,7 +87,7 @@ impl ValueRuleSet {
 }
 
 impl Evaluator for ValueRuleSet {
-    fn evaluate(board: &crate::boards::Board) -> f32 {
+    fn evaluate(&self, board: &Board) -> f32 {
         let mut score: f32 = 0.;
         for it in board.individual_pieces() {
             let position = it.0;

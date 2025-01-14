@@ -16,3 +16,10 @@ pub const ALL_PIECES: [Piece; 6] = [
     Piece::Queen,
     Piece::King,
 ];
+
+pub const PROMOTE_PIECE: [Piece; 4] = [
+    Piece::Knight,
+    Piece::Bishop,
+    Piece::Rook,
+    Piece::Queen,
+];

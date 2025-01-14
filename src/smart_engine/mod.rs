@@ -1,3 +1,3 @@
 pub mod evaluate;
 pub mod tree;
-mod values;
+pub mod values;
