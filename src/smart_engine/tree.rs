@@ -108,16 +108,16 @@ impl TreeBuilder {
             // Move will always be correct (play_unsafe makes no checks)
             match new_engine.play(chess_move).unwrap() {
                 CorrectMoveResults::Promote => {
-                    // iterate over the possible promotion
-                    for piece in PROMOTE_PIECE {
-                        // create an engine for evey promotion piece
-                        let mut promoting_new_engine = new_engine.clone();
-                        let promotion_move = PlayerMove::Promotion(piece);
-                        promoting_new_engine.play(promotion_move).unwrap();
+                    // // iterate over the possible promotion
+                    // for piece in PROMOTE_PIECE {
+                    //     // create an engine for evey promotion piece
+                    //     let mut promoting_new_engine = new_engine.clone();
+                    //     let promotion_move = PlayerMove::Promotion(piece);
+                    //     promoting_new_engine.play(promotion_move).unwrap();
 
-                        // Create a new node for this possibility
-                        self.create_new_node(node.clone(), promoting_new_engine, promotion_move, depth);
-                    }
+                    //     // Create a new node for this possibility
+                    //     self.create_new_node(node.clone(), promoting_new_engine, promotion_move, depth);
+                    // }
                 }
                 _ => {
                     // Create a new node for this possibility
