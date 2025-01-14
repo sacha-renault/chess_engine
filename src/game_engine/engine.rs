@@ -22,7 +22,6 @@ pub struct Engine {
     board: Board,
     white_turn: bool,
     halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
-    promoting: bool,
 }
 
 impl Engine {
@@ -45,7 +44,6 @@ impl Engine {
             board: Board::new(),
             white_turn: true,
             halfmove_clock: 0,
-            promoting: false,
         }
     }
 
@@ -54,7 +52,6 @@ impl Engine {
             board: board,
             white_turn: self.white_turn,
             halfmove_clock: self.halfmove_clock,
-            promoting: self.promoting,
         }
     }
 
@@ -74,11 +71,6 @@ impl Engine {
     /// * The target position is not a valid move for the piece.
     /// * The move leaves the king in check.
     pub fn play(&mut self, chess_move: PlayerMove) -> MoveResult {
-        // First check if there is any promotion
-        if self.promoting {
-            return Err(IncorrectMoveResults::WaitingForPromotion);
-        }
-
         // else we can play normal
         self.board = match chess_move {
             PlayerMove::Normal(normal_move) => {
@@ -238,13 +230,11 @@ impl Engine {
             initial_long_rook_pos,
         );
 
-        // Check if the pawn is having promotion
-        // in that case, we will raise a flag,
-        // promotion needed
-        if player_board.pawn & get_promotion_rank_by_color(color) != 0 {
-            self.promoting = true;
-            return CorrectMoveResults::Promote;
-        }
+        // Check if there is still any pawns on the last rank
+        // a promotion move is needed instead of normal move
+        // if player_board.pawn & get_promotion_rank_by_color(color) != 0 {
+        //      return IncorrectMoveResults::PromotionExpected;
+        // }
 
         // reset the en passant squares for the opponent
         opponent_board.en_passant = 0;
@@ -592,6 +582,9 @@ impl Engine {
                         // in the case the move is valid, we just as if we would for a normal move
                         let mut engine = self.clone_with_new_board(board);
                         let move_result = engine.finalize_turn();
+
+                        // check if the move is a promotion
+
 
                         // add the moverow to the vec
                         result.push(GetMoveRow {

@@ -13,7 +13,7 @@ pub enum IncorrectMoveResults {
     NoPieceAtLocation,
     IllegalMove,
     CastlingNotAllowed,
-    WaitingForPromotion,
+    PromotionExpected,
     IllegalPromotion,
 }
 
