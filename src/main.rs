@@ -13,12 +13,12 @@ pub mod prelude {
     };
 }
 
+use boards::Board;
 use game_engine::debug::print_bitboard;
 use prelude::{create_normal_move, iter_into_u64, Engine, NormalMove, PlayerMove};
-use smart_engine::tree::{TreeNode, TreeBuilder, get_tree_size};
-use smart_engine::evaluate::{Evaluator};
+use smart_engine::evaluate::Evaluator;
+use smart_engine::tree::Tree;
 use smart_engine::values::get_value_by_piece;
-use boards::Board;
 
 struct Ev;
 impl Evaluator for Ev {
@@ -41,20 +41,20 @@ fn main() {
     // let m = PlayerMove::Normal(NormalMove::new_from_coordinates((1, 4), (3, 4)));
     // let correct_move = engine.play(m); // White moves a pawn two squares forward
 
-    let root = TreeNode::create_root_node(engine.clone());
-    let tree_builder = TreeBuilder::new(Box::new(Ev { } ));
-    tree_builder.generate_tree(root.clone(), 4);
-    println!("Finished building tree");
-    let result = get_tree_size(root.clone());
-    println!("tree size is {}", result);
+    let tree = Tree::new(engine, Box::new(Ev {}));
+    tree.generate_tree(5);
+    println!("tree size is {}", tree.get_tree_size());
 
-    for child in root.borrow().children() {
+    for child in tree.root().borrow().children() {
         let score = child.borrow().recursive_score();
         let m = child.borrow().chess_move().unwrap();
-        println!("Score for move {:?} is {}" , m, score);
+        println!("Score for move {:?} is {}", m, score);
     }
 
-    for moves in engine.generate_moves_with_engine_state().unwrap() {
-        println!("{:?}, {:?}, {:?}, {:?}", moves.piece, moves.player_move, moves.color, moves.result);
-    }
+    // for moves in engine.generate_moves_with_engine_state().unwrap() {
+    //     println!(
+    //         "{:?}, {:?}, {:?}, {:?}",
+    //         moves.piece, moves.player_move, moves.color, moves.result
+    //     );
+    // }
 }

@@ -24,7 +24,7 @@ impl PromotionMove {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub struct NormalMove {
     current_square: u64,
     target_square: u64,
@@ -50,7 +50,7 @@ impl NormalMove {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum PlayerMove {
     Normal(NormalMove),
     Castling(CastlingMove),

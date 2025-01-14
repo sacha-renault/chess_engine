@@ -1,7 +1,7 @@
-use crate::prelude::{create_normal_move, iter_into_u64, CorrectMoveResults, Engine, NormalMove};
-use crate::game_engine::player_move::PlayerMove;
 use super::evaluate::Evaluator;
-use crate::pieces::piece::PROMOTE_PIECE;
+use crate::game_engine::get_move_row::GetMoveRow;
+use crate::game_engine::player_move::PlayerMove;
+use crate::prelude::{create_normal_move, iter_into_u64, CorrectMoveResults, Engine, NormalMove};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -12,12 +12,16 @@ pub struct TreeNode {
     engine: Engine,
     children: Vec<NodeType>,
     score: f32,
-    chess_move: Option<PlayerMove>
+    chess_move: Option<PlayerMove>,
 }
 
 impl TreeNode {
     pub fn create_root_node(engine: Engine) -> NodeType {
         Rc::new(RefCell::new(TreeNode::new(engine, 0., None)))
+    }
+
+    pub fn new_cell(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> NodeType {
+        Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move)))
     }
 
     fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> Self {
@@ -26,7 +30,7 @@ impl TreeNode {
             engine,
             children: Vec::new(),
             score,
-            chess_move
+            chess_move,
         };
 
         // use `set_recursive_score` to make the score flow to root
@@ -48,7 +52,7 @@ impl TreeNode {
     pub fn recursive_score(&self) -> f32 {
         // check if it has child, otherwise, it's just score value
         let num_children = self.children.len();
-        if  num_children == 0 {
+        if num_children == 0 {
             return self.score;
         }
 
@@ -63,86 +67,103 @@ impl TreeNode {
         // weight by number of children
         self.score + rec_score / num_children as f32
     }
+
+    // Drop the refcount and therefore the entire branch is cleared
+    pub fn drop_branch(&mut self) {
+        self.children.clear();
+    }
 }
 
-pub struct TreeBuilder {
+pub struct Tree {
+    root: NodeType,
     evaluator: Box<dyn Evaluator>,
 }
 
-impl TreeBuilder {
-    pub fn new(evaluator: Box<dyn Evaluator>) -> Self {
-        TreeBuilder { evaluator }
+impl Tree {
+    pub fn new(engine: Engine, evaluator: Box<dyn Evaluator>) -> Self {
+        Tree {
+            root: TreeNode::create_root_node(engine),
+            evaluator,
+        }
     }
 
-    pub fn generate_tree(&self, node: NodeType, depth: usize) {
+    pub fn root(&self) -> NodeType {
+        self.root.clone()
+    }
+
+    pub fn generate_tree(&self, depth: usize) {
+        self.recursive_generate_tree(self.root.clone(), depth);
+    }
+
+    fn recursive_generate_tree(&self, node: NodeType, depth: usize) {
         // End tree building if reaching max depth
         if depth == 0 {
             return;
         }
 
-        // Clone the current engine
-        let current_engine = node.borrow().engine.clone();
+        // Get moves from this nodes
+        let possible_moves = node
+            .borrow()
+            .engine
+            .generate_moves_with_engine_state()
+            .unwrap();
 
         // iterate through all possible piece moving
-        for piece_moves in current_engine.get_all_moves_by_piece().unwrap() {
-            // Case normal move
-            match piece_moves.1 {
-                PlayerMove::Normal(normal_move) => self.handle_normal_moves(node.clone(), current_engine.clone(), normal_move, depth),
-                _ => { }
-            }
+        for move_row in possible_moves {
+            self.create_new_node(node.clone(), move_row, depth);
         }
     }
 
-    fn handle_normal_moves(&self, node: NodeType, engine: Engine, normal_move: NormalMove, depth: usize) {
-        // Get target and current
-        let (current_square, target_squares) = normal_move.squares();
-
-        // iterate through all possible
-        for possible_move in iter_into_u64(target_squares) {
-            // Clone the current engine to play a move
-            let mut new_engine = engine.clone();
-
-            // Create the chess move
-            let chess_move = create_normal_move(current_square, 1 << possible_move);
-
-            // Move will always be correct (play_unsafe makes no checks)
-            match new_engine.play(chess_move).unwrap() {
-                CorrectMoveResults::Promote => {
-                    // // iterate over the possible promotion
-                    // for piece in PROMOTE_PIECE {
-                    //     // create an engine for evey promotion piece
-                    //     let mut promoting_new_engine = new_engine.clone();
-                    //     let promotion_move = PlayerMove::Promotion(piece);
-                    //     promoting_new_engine.play(promotion_move).unwrap();
-
-                    //     // Create a new node for this possibility
-                    //     self.create_new_node(node.clone(), promoting_new_engine, promotion_move, depth);
-                    // }
-                }
-                _ => {
-                    // Create a new node for this possibility
-                    self.create_new_node(node.clone(), new_engine, chess_move, depth);
-                }
-            }
-        }
-    }
-
-    fn create_new_node(&self, node: NodeType, engine: Engine, chess_move: PlayerMove, depth: usize) {
+    fn create_new_node(&self, node: NodeType, move_row: GetMoveRow, depth: usize) {
         // Evaluate the board
-        let score = self.evaluator.evaluate(&engine.board());
+        let score = self.evaluator.evaluate(&move_row.engine.board());
 
         // create a new node for the child
-        let child_node = Rc::new(RefCell::new(TreeNode::new(engine, score, Some(chess_move))));
+        let child_node = Rc::new(RefCell::new(TreeNode::new(
+            move_row.engine,
+            score,
+            Some(move_row.player_move),
+        )));
 
         // we add children into the node
         node.borrow_mut().children.push(child_node.clone());
 
         // We keep generating until depth reach 0
-        self.generate_tree(child_node, depth - 1);
+        self.recursive_generate_tree(child_node, depth - 1);
+    }
+
+    pub fn get_tree_size(&self) -> u64 {
+        get_tree_size(self.root.clone())
+    }
+
+    pub fn select_branch(&mut self, chess_move: PlayerMove) -> bool {
+        let kept_node = {
+            // Find the node we want to keep
+            if let Some(node) = self
+                .root
+                .borrow()
+                .children
+                .iter()
+                .find(|child| child.borrow().chess_move == Some(chess_move))
+            {
+                // Clone the node we want to keep
+                Some(node.clone())
+            } else {
+                None
+            }
+        };
+
+        // Reassign root outside the borrowing scope
+        if let Some(node) = kept_node {
+            self.root = node;
+            true
+        } else {
+            false
+        }
     }
 }
 
-pub fn get_tree_size(root_node: NodeType) -> u64 {
+fn get_tree_size(root_node: NodeType) -> u64 {
     let node = root_node.borrow();
     let mut size = 1; // Count current node
 

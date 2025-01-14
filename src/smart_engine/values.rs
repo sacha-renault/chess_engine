@@ -1,6 +1,6 @@
 use super::evaluate::Evaluator;
-use crate::pieces::{Color, Piece};
 use crate::boards::board::Board;
+use crate::pieces::{Color, Piece};
 
 const fn init_bishop_table() -> [f32; 64] {
     let mut values: [f32; 64] = [0.; 64];
@@ -53,11 +53,11 @@ const fn init_pawns(start: f32, end: f32) -> [f32; 64] {
 
 pub fn get_value_by_piece(piece: Piece) -> f32 {
     match piece {
-        Piece::Pawn => 1.,
-        Piece::Bishop => 3.,
-        Piece::Knight => 3.,
-        Piece::Rook => 5.,
-        Piece::Queen => 9.,
+        Piece::Pawn => 10.,
+        Piece::Bishop => 30.,
+        Piece::Knight => 30.,
+        Piece::Rook => 50.,
+        Piece::Queen => 90.,
         Piece::King => 1e5 as f32,
     }
 }
