@@ -24,7 +24,7 @@ use prelude::{
 };
 use smart_engine::evaluate::Evaluator;
 use smart_engine::tree::Tree;
-use smart_engine::values::get_value_by_piece;
+use smart_engine::values::{get_value_by_piece, ValueRuleSet};
 
 
 use std::io::Write;
@@ -73,18 +73,25 @@ impl Evaluator for Ev {
 }
 
 fn play_robot_to_robot() {
-    let mut tree = Tree::new(Engine::new(), Box::new(Ev {}), 4);
+    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), 5);
 
     while tree.root().borrow().engine().get_all_moves_by_piece().unwrap().len() != 0 {
         tree.generate_tree();
         let moves = tree.get_sorted_moves();
         let best_move = moves[0];
-        tree.select_branch(best_move.0);
+        let _ = tree.select_branch(best_move.0);
+
+        // display the board
+        println!("{} - Computer played: {} with score : {}", tree.root().borrow().engine().halfmove_clock() / 2 , string_from_move(&best_move.0), best_move.1);
+        for (pm, score ) in moves.iter().skip(1).take(3) {
+            println!("     - also possible: {} with score: {}", string_from_move(&pm), score);
+        }
+
         print_board(tree.root().borrow().engine().board());
     }
 }
 
-fn play_against_computer(is_white: bool) {
+fn play_against_robot(is_white: bool, depth: usize) {
     let mut engine = Engine::new();
 
     if is_white {
@@ -94,7 +101,7 @@ fn play_against_computer(is_white: bool) {
     }
 
     // Create the tree from the engine
-    let mut tree = Tree::new(engine, Box::new(Ev {}), 4);
+    let mut tree = Tree::new(engine, Box::new(Ev {}), depth);
 
     loop {
         // Then the computer plays
@@ -103,13 +110,42 @@ fn play_against_computer(is_white: bool) {
         if moves.len() == 0 {
             break;
         }
-        let best_move = moves[0];
-        println!("Computer played: {}", string_from_move(&best_move.0));
-        tree.select_branch(best_move.0);
 
-        // we exepct an input for first move
-        let pm = input!(String, "Input a move: ");
-        tree.select_branch(create_move_from_str(&pm));
+        let best_move = moves[0];
+        for (pm, score ) in moves {
+            println!("Best moves: {} with score : {}", string_from_move(&pm), score);
+        }
+
+        let _ = tree.select_branch(best_move.0);
+        print_board(tree.root().borrow().engine().board());
+        println!("Computer played: {} with score {}. Tree size is : {}", string_from_move(&best_move.0), best_move.1, tree.size());
+        tree.generate_tree();
+
+        // user input
+        let mut incorrect_move = true;
+        while incorrect_move {
+            let pm = input!(String, "Input a move: ");
+            if pm == "moves".to_string() {
+                let moves = tree.get_sorted_moves();
+                println!("Incorrect move, please retry : {}", moves.len());
+                for (pm, score ) in moves {
+                    println!("Best moves: {} with score : {}", string_from_move(&pm), score);
+                }
+                continue;
+            }
+            match tree.select_branch(create_move_from_str(&pm)) {
+                Ok(()) => {
+                    incorrect_move = false;
+                }
+                Err(()) => {
+                    let moves = tree.get_sorted_moves();
+                    println!("Incorrect move, please retry : {}", moves.len());
+                    for (pm, score ) in moves {
+                        println!("Best moves: {} with score : {}", string_from_move(&pm), score);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -139,6 +175,6 @@ fn test_promotion() {
 }
 fn main() {
     // test_promotion();
-    // play_robot_to_robot();
-    play_against_computer(true);
+    play_robot_to_robot();
+    // play_against_robot(false, 4);
 }
