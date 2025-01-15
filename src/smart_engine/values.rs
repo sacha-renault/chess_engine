@@ -2,6 +2,8 @@ use super::evaluate::Evaluator;
 use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 
+pub const CHECK_MATE_VALUE: f32 = 1e5 as f32;
+
 const fn init_bishop_table() -> [f32; 64] {
     let mut values: [f32; 64] = [0.; 64];
     let mut i = 0;

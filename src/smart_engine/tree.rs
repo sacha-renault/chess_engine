@@ -1,7 +1,10 @@
 use super::evaluate::Evaluator;
 use crate::game_engine::get_move_row::GetMoveRow;
 use crate::game_engine::player_move::PlayerMove;
-use crate::prelude::{create_normal_move, iter_into_u64, CorrectMoveResults, Engine, NormalMove};
+use crate::game_engine::utility::get_color;
+use crate::prelude::Engine;
+use crate::pieces::Color;
+use super::values;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -11,8 +14,9 @@ type NodeType = Rc<RefCell<TreeNode>>;
 pub struct TreeNode {
     engine: Engine,
     children: Vec<NodeType>,
-    score: f32,
+    raw_score: f32,
     chess_move: Option<PlayerMove>,
+    computed: bool,
 }
 
 impl TreeNode {
@@ -24,13 +28,18 @@ impl TreeNode {
         Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move)))
     }
 
+    pub fn engine(&self) -> &Engine {
+        &self.engine
+    }
+
     fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> Self {
         // create the node
         let node = TreeNode {
             engine,
             children: Vec::new(),
-            score,
+            raw_score: score,
             chess_move,
+            computed: false,
         };
 
         // use `set_recursive_score` to make the score flow to root
@@ -38,7 +47,7 @@ impl TreeNode {
     }
 
     pub fn score(&self) -> f32 {
-        self.score
+        self.raw_score
     }
 
     pub fn children(&self) -> &Vec<NodeType> {
@@ -53,7 +62,7 @@ impl TreeNode {
         // check if it has child, otherwise, it's just score value
         let num_children = self.children.len();
         if num_children == 0 {
-            return self.score;
+            return self.raw_score;
         }
 
         // init a score
@@ -65,7 +74,7 @@ impl TreeNode {
         }
 
         // weight by number of children
-        self.score + rec_score / num_children as f32
+        self.raw_score + rec_score / num_children as f32
     }
 
     // Drop the refcount and therefore the entire branch is cleared
@@ -77,13 +86,15 @@ impl TreeNode {
 pub struct Tree {
     root: NodeType,
     evaluator: Box<dyn Evaluator>,
+    max_depth: usize,
 }
 
 impl Tree {
-    pub fn new(engine: Engine, evaluator: Box<dyn Evaluator>) -> Self {
+    pub fn new(engine: Engine, evaluator: Box<dyn Evaluator>, max_depth: usize) -> Self {
         Tree {
             root: TreeNode::create_root_node(engine),
             evaluator,
+            max_depth
         }
     }
 
@@ -91,19 +102,20 @@ impl Tree {
         self.root.clone()
     }
 
-    pub fn generate_tree(&self, depth: usize) {
-        self.recursive_generate_tree(self.root.clone(), depth);
+    pub fn generate_tree(&self) {
+        self.recursive_generate_tree(self.root.clone(), 0);
     }
 
     fn recursive_generate_tree(&self, node: NodeType, depth: usize) {
         // End tree building if reaching max depth
-        if depth == 0 {
+        if depth == self.max_depth {
             return;
         }
 
-        // check if children from this node already exists
-        if node.borrow().children().len() != 0 {
-            self.recursive_generate_tree(node, depth);
+        // avoid recomputation
+        if node.borrow_mut().computed {
+            // Go deeper in the tree
+            self.recursive_generate_tree(node, depth + 1);
         } else {
             // Get moves from this nodes
             let possible_moves = node
@@ -112,9 +124,25 @@ impl Tree {
                 .generate_moves_with_engine_state()
                 .unwrap();
 
-            // iterate through all possible piece moving
-            for move_row in possible_moves {
-                self.create_new_node(node.clone(), move_row, depth);
+            // at this moment, we can se node to be computed
+            node.borrow_mut().computed = true;
+
+            // We check if the number of possible moves is 0
+            if possible_moves.len() == 0 {
+                // update the score (it might mean stale mate of checkmate)
+                if node.borrow().engine.is_king_checked() {
+                    let color_checkmate = get_color(!node.borrow().engine.white_to_play());
+                    let multiplier: f32 = (color_checkmate as isize) as f32;
+                    node.borrow_mut().raw_score = values::CHECK_MATE_VALUE * multiplier;
+                } else {
+                    // That's a draw
+                    node.borrow_mut().raw_score = 0.;
+                }
+            } else {
+                // iterate through all possible piece moving
+                for move_row in possible_moves {
+                    self.create_new_node(node.clone(), move_row, depth + 1);
+                }
             }
         }
     }
@@ -134,7 +162,7 @@ impl Tree {
         node.borrow_mut().children.push(child_node.clone());
 
         // We keep generating until depth reach 0
-        self.recursive_generate_tree(child_node, depth - 1);
+        self.recursive_generate_tree(child_node, depth);
     }
 
     pub fn get_tree_size(&self) -> u64 {
@@ -167,21 +195,30 @@ impl Tree {
         }
     }
 
-    pub fn get_best_move(&self) -> (PlayerMove, f32) {
-        let mut best_move = None;
-        let mut best_score = f32::NEG_INFINITY;
+    pub fn get_sorted_moves(&self) -> Vec<(PlayerMove, f32)> {
+        // know who is it to play for this turn
+        let white_to_play: bool = self.root.borrow().engine.white_to_play();
 
-        for child in self.root().borrow().children() {
-            let score = child.borrow().recursive_score();
-            let m = child.borrow().chess_move().unwrap();
+        // Collect all moves and their scores
+        let mut moves: Vec<(PlayerMove, f32)> = self.root()
+            .borrow()
+            .children()
+            .iter()
+            .filter_map(|child| {
+                let score = child.borrow().recursive_score();
+                let m = child.borrow().chess_move().clone();
+                m.map(|mv| (mv, score))
+            })
+            .collect();
 
-            if score > best_score {
-                best_score = score;
-                best_move = Some(m);
-            }
+        // Sort moves based on the player
+        if white_to_play {
+            moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        } else {
+            moves.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         }
 
-        (best_move.expect("No moves available"), best_score)
+        moves
     }
 }
 

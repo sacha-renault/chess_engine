@@ -15,7 +15,10 @@ pub mod prelude {
 }
 
 use boards::Board;
+use chess_engine::game_engine::engine;
 use game_engine::debug::print_board;
+use game_engine::player_move::PromotionMove;
+use pieces::Piece;
 use prelude::{
     create_move_from_str, iter_into_u64, string_from_move, Engine, NormalMove, PlayerMove,
 };
@@ -37,7 +40,19 @@ impl Evaluator for Ev {
     }
 }
 
-fn main() {
+fn play_robot_to_robot() {
+    let mut tree = Tree::new(Engine::new(), Box::new(Ev {}), 4);
+
+    while tree.root().borrow().engine().get_all_moves_by_piece().unwrap().len() != 0 {
+        tree.generate_tree();
+        let moves = tree.get_sorted_moves();
+        let best_move = moves[0];
+        tree.select_branch(best_move.0);
+        print_board(tree.root().borrow().engine().board());
+    }
+}
+
+fn play_against_computer() {
     let mut engine = Engine::new();
 
     let _ = engine.play(create_move_from_str("d2d4")).unwrap();
@@ -75,13 +90,43 @@ fn main() {
     let _ = engine.play(create_move_from_str("d6f7")).unwrap();
     let _ = engine.play(create_move_from_str("d7c8")).unwrap();
     let _ = engine.play(create_move_from_str("f7h8")).unwrap();
-    let _ = engine.play(create_move_from_str("b6b2")).unwrap();
 
     print_board(engine.board());
 
-    let tree = Tree::new(engine, Box::new(Ev {}));
-    tree.generate_tree(4);
-    let (bm, score) = tree.get_best_move();
-    println!("{:?}", string_from_move(&bm));
-    println!("score : {:?}", score);
+    let tree = Tree::new(engine, Box::new(Ev {}), 4);
+    tree.generate_tree();
+
+    let moves = tree.get_sorted_moves();
+    for (player_move, score) in moves {
+        println!("Move : {}, score, {}", string_from_move(&player_move), score);
+    }
+}
+
+fn test_promotion() {
+    let mut engine = Engine::new();
+    let _ = engine.play(create_move_from_str("a2a4"));
+    let _ = engine.play(create_move_from_str("b7b5"));
+    let _ = engine.play(create_move_from_str("a4b5"));
+    let _ = engine.play(create_move_from_str("h7h6"));
+    let _ = engine.play(create_move_from_str("b5b6"));
+    let _ = engine.play(create_move_from_str("h6h5"));
+    let _ = engine.play(create_move_from_str("b6b7"));
+    let _ = engine.play(create_move_from_str("h5h4"));
+    let _ = engine.play(create_move_from_str("b7a8")).unwrap();
+    let mv: PlayerMove = create_move_from_str("b7a8");
+
+    match mv {
+        PlayerMove::Normal(nmv) => {
+            let (c, t) = nmv.squares();
+            let propomotion_move = PlayerMove::Promotion(PromotionMove::new(c, t, Piece::Queen));
+            let result = engine.play(propomotion_move).unwrap();
+            println!("{:?}", result);
+            print_board(engine.board());
+        }
+        _ => { }
+    }
+}
+fn main() {
+    // test_promotion();
+    play_robot_to_robot();
 }

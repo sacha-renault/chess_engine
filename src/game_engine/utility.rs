@@ -348,6 +348,11 @@ pub fn get_en_passant_ranks(color: Color) -> u64 {
     }
 }
 
+pub fn is_promotion_available(board: &Board, target_square: u64, color: Color) -> bool {
+    let (player_board, _) = get_half_turn_boards(board, color);
+    player_board.pawn & get_promotion_rank_by_color(color) & target_square != 0
+}
+
 pub fn create_normal_move(current_square: u64, target_square: u64) -> PlayerMove {
     PlayerMove::Normal(NormalMove::new(current_square, target_square))
 }

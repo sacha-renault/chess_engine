@@ -1,9 +1,11 @@
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::player_move::{CastlingMove, PlayerMove};
+use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
 use super::utility::{
-    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, iter_into_u64, move_piece
+    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, iter_into_u64, move_piece, is_promotion_available
 };
 use crate::boards::Board;
+use crate::game_engine::debug::{print_bitboard, print_board};
+use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
 use crate::pieces::Piece;
 use crate::prelude::NormalMove;
@@ -55,6 +57,10 @@ impl Engine {
         }
     }
 
+    pub fn white_to_play(&self) -> bool {
+        self.white_turn
+    }
+
     /// Executes a chess move, handling both normal moves and castling.
     ///
     /// # Arguments
@@ -74,9 +80,16 @@ impl Engine {
         // else we can play normal
         self.board = match chess_move {
             PlayerMove::Normal(normal_move) => {
-                // get squares
+                // get squares and color
                 let (current_square, target_square) = normal_move.squares();
-                self.perform_move(current_square, target_square)?
+                let new_board = self.perform_move(current_square, target_square)?;
+
+                // here we ensure the piece moved wasn't a pawn on promotion rank
+                // if it was, we return an error
+                if is_promotion_available(&new_board, target_square, get_color(self.white_turn)) {
+                    return Err(IncorrectMoveResults::PromotionExpected);
+                }
+                new_board
             }
             PlayerMove::Castling(castling_side) => {
                 // perform casting
@@ -85,7 +98,7 @@ impl Engine {
             PlayerMove::Promotion(promotion_move)    => {
                 // get squares
                 let (current_square, target_square) = promotion_move.squares();
-                self.perform_move(current_square, target_square)?;
+                self.board = self.perform_move(current_square, target_square)?;
                 self.promote_pawn(promotion_move.promotion_piece(), target_square)?
             }
         };
@@ -482,6 +495,13 @@ impl Engine {
         self.halfmove_clock
     }
 
+    /// Returns is king checked for the ones who has to move
+    pub fn is_king_checked(&self) -> bool {
+        let color = get_color(self.white_turn);
+        let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
+        is_king_checked(player_board.king, &opponent_board, &player_board, color)
+    }
+
     /// Promotes a pawn that has reached the opposite end of the board.
     ///
     /// # Arguments
@@ -495,26 +515,26 @@ impl Engine {
         let color = get_color(self.white_turn);
 
         // we change the piece at the location
-        let promotion_rank = get_promotion_rank_by_color(color);
         let mut simulated_board = self.board.clone();
 
         // Get the board
         let (player_board, _) = get_half_turn_boards_mut(&mut simulated_board, color);
 
         // we check if there should be a promotion
-        if player_board.pawn & promotion_rank & target_square != 0 {
+        if is_promotion_available(&self.board, target_square, color) {
+            // we get the pawns on the player board and we remove it
+            // then we add the new piece
+            player_board.pawn &= !target_square; // remove the pawns from the square
+            player_board.set_bitboard_by_type(
+                piece,
+                player_board.get_bitboard_by_type(piece) | target_square,
+            );
+
+            Ok(simulated_board)
+
+        } else {
             return Err(IncorrectMoveResults::IllegalPromotion);
         }
-
-        // we get the pawns on the player board and we remove it
-        // then we add the new piece
-        player_board.pawn &= !target_square; // remove the pawns from the square
-        player_board.set_bitboard_by_type(
-            piece,
-            player_board.get_bitboard_by_type(piece) | target_square,
-        );
-
-        Ok(simulated_board)
     }
 
     /// Returns all possible moves for all pieces of the current player.
@@ -571,6 +591,9 @@ impl Engine {
                 color,
             );
 
+            // get promotion rnak
+            let promotion_rank = get_promotion_rank_by_color(color);
+
             // iterate over the legal moves
             for target_index in iter_into_u64(pseudo_legal_moves) {
                 // Get the least significant set bit
@@ -581,19 +604,38 @@ impl Engine {
                     Ok(board) => {
                         // in the case the move is valid, we just as if we would for a normal move
                         let mut engine = self.clone_with_new_board(board);
-                        let move_result = engine.finalize_turn();
 
                         // check if the move is a promotion
+                        if piece == Piece::Pawn && target_square & promotion_rank != 0 {
+                            for promotion_piece in PROMOTE_PIECE {
+                                // clone the engine to perform each the promotion
+                                let promotion_engine = engine.clone();
+                                let new_board = promotion_engine.promote_pawn(promotion_piece, target_square).unwrap();
+                                let mut final_engine = engine.clone_with_new_board(new_board);
+                                let move_result = final_engine.finalize_turn();
 
+                                // add the moverow to the vec
+                                result.push(GetMoveRow {
+                                    engine: final_engine,
+                                    player_move: PlayerMove::Promotion(PromotionMove::new(current_square, target_square, promotion_piece)),
+                                    piece,
+                                    color,
+                                    result: move_result,
+                                })
+                            }
+                        } else {
+                            // get the move result
+                            let move_result = engine.finalize_turn();
 
-                        // add the moverow to the vec
-                        result.push(GetMoveRow {
-                            engine,
-                            player_move: PlayerMove::Normal(NormalMove::new(current_square, target_square)),
-                            piece,
-                            color,
-                            result: move_result,
-                        })
+                            // add the moverow to the vec
+                            result.push(GetMoveRow {
+                                engine,
+                                player_move: PlayerMove::Normal(NormalMove::new(current_square, target_square)),
+                                piece,
+                                color,
+                                result: move_result
+                            })
+                        }
                     }
                     _ => { /* Nothing to do ... just sad this move won't work right ? */}
                 }

@@ -15,6 +15,14 @@ pub struct PromotionMove {
 }
 
 impl PromotionMove {
+    pub fn new(current_square: u64, target_square: u64, promotion_piece: Piece) -> Self {
+        PromotionMove {
+            current_square,
+            target_square,
+            promotion_piece,
+        }
+    }
+
     pub fn squares(&self) -> (u64, u64) {
         (self.current_square, self.target_square)
     }
