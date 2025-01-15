@@ -114,8 +114,11 @@ impl Tree {
 
         // avoid recomputation
         if node.borrow_mut().computed {
-            // Go deeper in the tree
-            self.recursive_generate_tree(node, depth + 1);
+            for child in node.borrow().children.iter() {
+                // Go deeper in the tree for every child
+                self.recursive_generate_tree(child.clone(), depth + 1);
+            }
+
         } else {
             // Get moves from this nodes
             let possible_moves = node
@@ -165,11 +168,11 @@ impl Tree {
         self.recursive_generate_tree(child_node, depth);
     }
 
-    pub fn get_tree_size(&self) -> u64 {
+    pub fn size(&self) -> u64 {
         get_tree_size(self.root.clone())
     }
 
-    pub fn select_branch(&mut self, chess_move: PlayerMove) -> bool {
+    pub fn select_branch(&mut self, chess_move: PlayerMove) -> Result<(), ()> {
         let kept_node = {
             // Find the node we want to keep
             if let Some(node) = self
@@ -189,9 +192,9 @@ impl Tree {
         // Reassign root outside the borrowing scope
         if let Some(node) = kept_node {
             self.root = node;
-            true
+            Ok(())
         } else {
-            panic!("Unknown chess move ????");
+            Err(())
         }
     }
 
