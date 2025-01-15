@@ -26,6 +26,38 @@ use smart_engine::evaluate::Evaluator;
 use smart_engine::tree::Tree;
 use smart_engine::values::get_value_by_piece;
 
+
+use std::io::Write;
+
+macro_rules! input {
+    ($t:ty) => {{
+        let mut a = String::new();
+        std::io::stdin().read_line(&mut a).unwrap();
+        let a: $t = a.trim().parse().unwrap();
+        a
+    }};
+    (String) => {{
+        let mut a = String::new();
+        std::io::stdin().read_line(&mut a).unwrap();
+        a.trim().to_string()
+    }};
+    ($t:ty, $txt:expr) => {{
+        print!("{}", $txt);
+        std::io::stdout().flush().unwrap();
+        let mut a = String::new();
+        std::io::stdin().read_line(&mut a).unwrap();
+        let a: $t = a.trim().parse().unwrap();
+        a
+    }};
+    (String, $txt:expr) => {{
+        print!("{}", $txt);
+        std::io::stdout().flush().unwrap();
+        let mut a = String::new();
+        std::io::stdin().read_line(&mut a).unwrap();
+        a.trim().to_string()
+    }};
+}
+
 struct Ev;
 impl Evaluator for Ev {
     fn evaluate(&self, board: &Board) -> f32 {
@@ -52,53 +84,32 @@ fn play_robot_to_robot() {
     }
 }
 
-fn play_against_computer() {
+fn play_against_computer(is_white: bool) {
     let mut engine = Engine::new();
 
-    let _ = engine.play(create_move_from_str("d2d4")).unwrap();
-    let _ = engine.play(create_move_from_str("g8f6")).unwrap();
-    let _ = engine.play(create_move_from_str("c1g5")).unwrap();
-    let _ = engine.play(create_move_from_str("g7g6")).unwrap();
-    let _ = engine.play(create_move_from_str("g5f6")).unwrap();
-    let _ = engine.play(create_move_from_str("e7f6")).unwrap();
-    let _ = engine.play(create_move_from_str("c2c3")).unwrap();
-    let _ = engine.play(create_move_from_str("b7b5")).unwrap();
-    let _ = engine.play(create_move_from_str("d1d3")).unwrap();
-    let _ = engine.play(create_move_from_str("a7a5")).unwrap();
-    let _ = engine.play(create_move_from_str("d3b5")).unwrap();
-    let _ = engine.play(create_move_from_str("c8a6")).unwrap();
-    let _ = engine.play(create_move_from_str("b5b8")).unwrap();
-    let _ = engine.play(create_move_from_str("d8b8")).unwrap();
-    let _ = engine.play(create_move_from_str("e1d1")).unwrap();
-    let _ = engine.play(create_move_from_str("h7h6")).unwrap();
-    let _ = engine.play(create_move_from_str("d1c2")).unwrap();
-    let _ = engine.play(create_move_from_str("f8e7")).unwrap();
-    let _ = engine.play(create_move_from_str("b1d2")).unwrap();
-    let _ = engine.play(create_move_from_str("e7c5")).unwrap();
-    let _ = engine.play(create_move_from_str("d4c5")).unwrap();
-    let _ = engine.play(create_move_from_str("d7d6")).unwrap();
-    let _ = engine.play(create_move_from_str("c5d6")).unwrap();
-    let _ = engine.play(create_move_from_str("c7d6")).unwrap();
-    let _ = engine.play(create_move_from_str("a1d1")).unwrap();
-    let _ = engine.play(create_move_from_str("b8b5")).unwrap();
-    let _ = engine.play(create_move_from_str("a2a4")).unwrap();
-    let _ = engine.play(create_move_from_str("b5b6")).unwrap();
-    let _ = engine.play(create_move_from_str("d2e4")).unwrap();
-    let _ = engine.play(create_move_from_str("e8d7")).unwrap();
-    let _ = engine.play(create_move_from_str("e4d6")).unwrap();
-    let _ = engine.play(create_move_from_str("a8b8")).unwrap();
-    let _ = engine.play(create_move_from_str("d6f7")).unwrap();
-    let _ = engine.play(create_move_from_str("d7c8")).unwrap();
-    let _ = engine.play(create_move_from_str("f7h8")).unwrap();
+    if is_white {
+        // we exepct an input for first move
+        let pm = input!(String, "Input a move: ");
+        engine.play(create_move_from_str(&pm)).unwrap();
+    }
 
-    print_board(engine.board());
+    // Create the tree from the engine
+    let mut tree = Tree::new(engine, Box::new(Ev {}), 4);
 
-    let tree = Tree::new(engine, Box::new(Ev {}), 4);
-    tree.generate_tree();
+    loop {
+        // Then the computer plays
+        tree.generate_tree();
+        let moves = tree.get_sorted_moves();
+        if moves.len() == 0 {
+            break;
+        }
+        let best_move = moves[0];
+        println!("Computer played: {}", string_from_move(&best_move.0));
+        tree.select_branch(best_move.0);
 
-    let moves = tree.get_sorted_moves();
-    for (player_move, score) in moves {
-        println!("Move : {}, score, {}", string_from_move(&player_move), score);
+        // we exepct an input for first move
+        let pm = input!(String, "Input a move: ");
+        tree.select_branch(create_move_from_str(&pm));
     }
 }
 
@@ -128,5 +139,6 @@ fn test_promotion() {
 }
 fn main() {
     // test_promotion();
-    play_robot_to_robot();
+    // play_robot_to_robot();
+    play_against_computer(true);
 }
