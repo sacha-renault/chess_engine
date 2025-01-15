@@ -3,55 +3,46 @@ use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 
 pub const CHECK_MATE_VALUE: f32 = 1e5 as f32;
-
-const fn init_bishop_table() -> [f32; 64] {
-    let mut values: [f32; 64] = [0.; 64];
-    let mut i = 0;
-    while i < 64 {
-        let file = i % 8;
-        let rank = i / 8;
-
-        // Center control bonus
-        let center_bonus = if (file == 3 || file == 4) && (rank == 3 || rank == 4) {
-            0.2
-        } else {
-            0.0
-        };
-
-        // Main diagonal bonus
-        let diag_bonus = if (file == rank) || (file + rank == 7) {
-            0.15
-        } else {
-            0.0
-        };
-
-        // Edge penalty
-        let edge_penalty = if file == 0 || file == 7 || rank == 0 || rank == 7 {
-            -0.2
-        } else {
-            0.0
-        };
-
-        values[i] = center_bonus + diag_bonus + edge_penalty;
-        i += 1;
-    }
-    values
-}
-
-const fn init_pawns(start: f32, end: f32) -> [f32; 64] {
-    let mut i = 0;
-    let mut values: [f32; 64] = [0.; 64];
-    while i < 8 {
-        let mut j = 0;
-        let mul = (i + 1) as f32;
-        while j < 8 {
-            values[i * 8 + j] = start * mul / 8. + end * (8. - mul) / 8.;
-            j += 1;
-        }
-        i += 1;
-    }
-    values
-}
+pub const WHITE_PAWNS_VALUE: [f32; 64] = [
+    0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+    0.82, 0.85, 0.92, 1.25, 1.25, 0.92, 0.85, 0.82,
+    0.94, 0.97, 1.04, 1.42, 1.42, 1.04, 0.97, 0.94,
+    1.06, 1.1,  1.18, 1.61, 1.61, 1.18, 1.1,  1.06,
+    1.17, 1.22, 1.31, 1.79, 1.79, 1.31, 1.22, 1.17,
+    1.29, 1.33, 1.44, 1.96, 1.96, 1.44, 1.33, 1.29,
+    1.4,  1.45, 1.57, 2.14, 2.14, 1.57, 1.45, 1.4,
+    1.53, 1.58, 1.7,  2.33, 2.33, 1.7,  1.58, 1.53
+];
+pub const BLACK_PAWNS_VALUE: [f32; 64] = [
+    1.53, 1.58, 1.7,  2.33, 2.33, 1.7,  1.58, 1.53,
+    1.4,  1.45, 1.57, 2.14, 2.14, 1.57, 1.45, 1.4,
+    1.29, 1.33, 1.44, 1.96, 1.96, 1.44, 1.33, 1.29,
+    1.17, 1.22, 1.31, 1.79, 1.79, 1.31, 1.22, 1.17,
+    1.06, 1.1,  1.18, 1.61, 1.61, 1.18, 1.1,  1.06,
+    0.94, 0.97, 1.04, 1.42, 1.42, 1.04, 0.97, 0.94,
+    0.82, 0.85, 0.92, 1.25, 1.25, 0.92, 0.85, 0.82,
+    0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+];
+pub const BISHOPS_VALUE: [f32; 64] = [
+    1.0,  1.0,  0.75, 0.75, 0.75, 0.75, 1.0,  1.0,
+    1.0,  1.5,  1.25, 1.0,  1.0,  1.25, 1.5,  1.0,
+    0.75, 1.25, 1.5,  1.25, 1.25, 1.5,  1.25, 0.75,
+    0.75, 1.0,  1.25, 1.75, 1.75, 1.25, 1.0,  0.75,
+    0.75, 1.0,  1.25, 1.75, 1.75, 1.25, 1.0,  0.75,
+    0.75, 1.25, 1.5,  1.25, 1.25, 1.5,  1.25, 0.75,
+    1.0,  1.5,  1.25, 1.0,  1.0,  1.25, 1.5,  1.0,
+    1.0,  1.0,  0.75, 0.75, 0.75, 0.75, 1.0,  1.0,
+];
+pub const KNIGHTS_VALUE: [f32; 64] = [
+    0.7,  0.73, 0.76, 0.78, 0.78, 0.76, 0.73, 0.7,
+    0.73, 0.78, 0.84, 0.89, 0.89, 0.84, 0.78, 0.73,
+    0.76, 0.84, 0.97, 1.13, 1.13, 0.97, 0.84, 0.76,
+    0.78, 0.89, 1.13, 1.91, 1.91, 1.13, 0.89, 0.78,
+    0.78, 0.89, 1.13, 1.91, 1.91, 1.13, 0.89, 0.78,
+    0.76, 0.84, 0.97, 1.13, 1.13, 0.97, 0.84, 0.76,
+    0.73, 0.78, 0.84, 0.89, 0.89, 0.84, 0.78, 0.73,
+    0.7,  0.73, 0.76, 0.78, 0.78, 0.76, 0.73, 0.7,
+];
 
 pub fn get_value_by_piece(piece: Piece) -> f32 {
     match piece {
@@ -64,27 +55,25 @@ pub fn get_value_by_piece(piece: Piece) -> f32 {
     }
 }
 
-const WHITE_PAWN_TABLE: [f32; 64] = init_pawns(0., 1.);
-const BLACK_PAWN_TABLE: [f32; 64] = init_pawns(1., 0.);
-const BISHOP_TABLE: [f32; 64] = init_bishop_table();
-
-pub struct ValueRuleSet {
-    white_pawn_table: [f32; 64],
-    black_pawn_table: [f32; 64],
-    knight_table: [f32; 64],
-    bishop_table: [f32; 64],
-    rook_table: [f32; 64],
-    queen_table: [f32; 64],
-    king_table: [f32; 64],
-}
+pub struct ValueRuleSet { }
 
 impl ValueRuleSet {
     pub fn new() -> Self {
-        todo!();
+        ValueRuleSet { }
     }
 
     pub fn get_table(piece: Piece, color: Color) -> [f32; 64] {
-        todo!();
+        match piece {
+            Piece::Pawn => {
+                match color {
+                    Color::White => WHITE_PAWNS_VALUE,
+                    Color::Black => BLACK_PAWNS_VALUE,
+                }
+            },
+            Piece::Bishop => BISHOPS_VALUE,
+            Piece::Knight => KNIGHTS_VALUE,
+            _ => [1.25; 64],
+        }
     }
 }
 
@@ -96,7 +85,7 @@ impl Evaluator for ValueRuleSet {
             let piece = it.1;
             let color = it.2;
             let piece_score =
-                get_value_by_piece(piece) * (1. + Self::get_table(piece, color)[position as usize]);
+                get_value_by_piece(piece) * (1. + Self::get_table(piece, color)[position.trailing_ones() as usize]);
             score += piece_score * ((color as isize) as f32);
         }
         score
