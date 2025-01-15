@@ -72,8 +72,8 @@ impl Evaluator for Ev {
     }
 }
 
-fn play_robot_to_robot() {
-    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), 5);
+fn play_robot_to_robot(depth: usize) {
+    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth);
 
     while tree.root().borrow().engine().get_all_moves_by_piece().unwrap().len() != 0 {
         tree.generate_tree();
@@ -83,6 +83,7 @@ fn play_robot_to_robot() {
 
         // display the board
         println!("{} - Computer played: {} with score : {}", tree.root().borrow().engine().halfmove_clock() / 2 , string_from_move(&best_move.0), best_move.1);
+        println!("See mate ? {}", tree.root().borrow().check_mate_depth());
         for (pm, score ) in moves.iter().skip(1).take(3) {
             println!("     - also possible: {} with score: {}", string_from_move(&pm), score);
         }
@@ -175,6 +176,14 @@ fn test_promotion() {
 }
 fn main() {
     // test_promotion();
-    play_robot_to_robot();
+    play_robot_to_robot(5);
     // play_against_robot(false, 4);
+    // let ev = ValueRuleSet {};
+    // let e = Engine::new();
+    // let r = ev.evaluate(&e.board());
+    // println!("{}", r);
+    // println!("Base score : {}", tree.root().borrow().recursive_score());
+    // for (pm, score ) in tree.get_sorted_moves() {
+    //     println!("{} with score : {}", string_from_move(&pm), score);
+    // }
 }

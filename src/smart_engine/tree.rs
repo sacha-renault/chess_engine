@@ -3,7 +3,6 @@ use crate::game_engine::get_move_row::GetMoveRow;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
-use crate::pieces::Color;
 use super::values;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -75,6 +74,26 @@ impl TreeNode {
 
         // weight by number of children
         self.raw_score + rec_score / num_children as f32
+    }
+
+    fn recursive_check_mate_depth(&self, depth: isize) -> isize {
+        if !self.computed {
+            return -1;
+        } else if self.children.len() == 0 {
+            return depth;
+        } else {
+            for child in &self.children {
+                let check_mate_depth = child.borrow().recursive_check_mate_depth(depth + 1);
+                if check_mate_depth != -1 {
+                    return check_mate_depth;
+                }
+            }
+        }
+        -1
+    }
+
+    pub fn check_mate_depth(&self) -> isize {
+        return self.recursive_check_mate_depth(0)
     }
 
     // Drop the refcount and therefore the entire branch is cleared
