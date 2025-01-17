@@ -57,20 +57,6 @@ macro_rules! input {
     }};
 }
 
-struct Ev;
-impl Evaluator for Ev {
-    fn evaluate(&self, board: &Board) -> f32 {
-        let mut score: f32 = 0.;
-        for it in board.individual_pieces() {
-            let piece = it.1;
-            let color = it.2;
-            let piece_score = get_value_by_piece(piece);
-            score += piece_score * ((color as isize) as f32);
-        }
-        score
-    }
-}
-
 fn play_robot_to_robot(depth: usize) {
     let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth);
 
@@ -118,7 +104,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
     }
 
     // Create the tree from the engine
-    let mut tree = Tree::new(engine, Box::new(Ev {}), depth);
+    let mut tree = Tree::new(engine, Box::new(ValueRuleSet::new()), depth);
 
     loop {
         // Then the computer plays
@@ -209,7 +195,7 @@ fn test_promotion() {
 }
 fn main() {
     // test_promotion();
-    play_robot_to_robot(4);
+    play_robot_to_robot(6);
     // play_against_robot(false, 4);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();

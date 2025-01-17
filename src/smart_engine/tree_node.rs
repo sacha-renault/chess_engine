@@ -72,26 +72,6 @@ impl TreeNode {
         self.children.push(child);
     }
 
-    // FUNCTION
-    pub fn recursive_score(&self) -> f32 {
-        // check if it has child, otherwise, it's just score value
-        let num_children = self.children.len();
-        if num_children == 0 {
-            return self.raw_score;
-        }
-
-        // init a score
-        let mut rec_score = 0.;
-
-        // Add all scores from childrens
-        for child in self.children.iter() {
-            rec_score += child.borrow().recursive_score();
-        }
-
-        // weight by number of children
-        self.raw_score + rec_score / num_children as f32
-    }
-
     fn recursive_check_mate_depth(&self, depth: isize) -> isize {
         if !self.computed {
             return -1;
