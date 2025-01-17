@@ -1,109 +1,13 @@
 use super::evaluate::Evaluator;
+use super::tree_node::{TreeNode, TreeNodeRef};
+use super::values;
 use crate::game_engine::get_move_row::GetMoveRow;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
-use super::values;
-use std::cell::RefCell;
-use std::rc::Rc;
-
-type NodeType = Rc<RefCell<TreeNode>>;
-
-#[derive(Clone)]
-pub struct TreeNode {
-    engine: Engine,
-    children: Vec<NodeType>,
-    raw_score: f32,
-    chess_move: Option<PlayerMove>,
-    computed: bool,
-}
-
-impl TreeNode {
-    pub fn create_root_node(engine: Engine) -> NodeType {
-        Rc::new(RefCell::new(TreeNode::new(engine, 0., None)))
-    }
-
-    pub fn new_cell(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> NodeType {
-        Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move)))
-    }
-
-    pub fn engine(&self) -> &Engine {
-        &self.engine
-    }
-
-    fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> Self {
-        // create the node
-        let node = TreeNode {
-            engine,
-            children: Vec::new(),
-            raw_score: score,
-            chess_move,
-            computed: false,
-        };
-
-        // use `set_recursive_score` to make the score flow to root
-        node
-    }
-
-    pub fn score(&self) -> f32 {
-        self.raw_score
-    }
-
-    pub fn children(&self) -> &Vec<NodeType> {
-        &self.children
-    }
-
-    pub fn chess_move(&self) -> &Option<PlayerMove> {
-        &self.chess_move
-    }
-
-    pub fn recursive_score(&self) -> f32 {
-        // check if it has child, otherwise, it's just score value
-        let num_children = self.children.len();
-        if num_children == 0 {
-            return self.raw_score;
-        }
-
-        // init a score
-        let mut rec_score = 0.;
-
-        // Add all scores from childrens
-        for child in self.children.iter() {
-            rec_score += child.borrow().recursive_score();
-        }
-
-        // weight by number of children
-        self.raw_score + rec_score / num_children as f32
-    }
-
-    fn recursive_check_mate_depth(&self, depth: isize) -> isize {
-        if !self.computed {
-            return -1;
-        } else if self.children.len() == 0 {
-            return depth;
-        } else {
-            for child in &self.children {
-                let check_mate_depth = child.borrow().recursive_check_mate_depth(depth + 1);
-                if check_mate_depth != -1 {
-                    return check_mate_depth;
-                }
-            }
-        }
-        -1
-    }
-
-    pub fn check_mate_depth(&self) -> isize {
-        return self.recursive_check_mate_depth(0)
-    }
-
-    // Drop the refcount and therefore the entire branch is cleared
-    pub fn drop_branch(&mut self) {
-        self.children.clear();
-    }
-}
 
 pub struct Tree {
-    root: NodeType,
+    root: TreeNodeRef,
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
 }
@@ -113,11 +17,11 @@ impl Tree {
         Tree {
             root: TreeNode::create_root_node(engine),
             evaluator,
-            max_depth
+            max_depth,
         }
     }
 
-    pub fn root(&self) -> NodeType {
+    pub fn root(&self) -> TreeNodeRef {
         self.root.clone()
     }
 
@@ -125,40 +29,40 @@ impl Tree {
         self.recursive_generate_tree(self.root.clone(), 0);
     }
 
-    fn recursive_generate_tree(&self, node: NodeType, depth: usize) {
+    fn recursive_generate_tree(&self, node: TreeNodeRef, depth: usize) {
         // End tree building if reaching max depth
         if depth == self.max_depth {
             return;
         }
 
         // avoid recomputation
-        if node.borrow_mut().computed {
-            for child in node.borrow().children.iter() {
+        if node.borrow_mut().is_computed() {
+            for child in node.borrow().children().iter() {
                 // Go deeper in the tree for every child
                 self.recursive_generate_tree(child.clone(), depth + 1);
             }
-
         } else {
             // Get moves from this nodes
             let possible_moves = node
                 .borrow()
-                .engine
+                .engine()
                 .generate_moves_with_engine_state()
                 .unwrap();
 
             // at this moment, we can se node to be computed
-            node.borrow_mut().computed = true;
+            node.borrow_mut().set_computed(true);
 
             // We check if the number of possible moves is 0
             if possible_moves.len() == 0 {
                 // update the score (it might mean stale mate of checkmate)
-                if node.borrow().engine.is_king_checked() {
-                    let color_checkmate = get_color(!node.borrow().engine.white_to_play());
+                if node.borrow().engine().is_king_checked() {
+                    let color_checkmate = get_color(!node.borrow().engine().white_to_play());
                     let multiplier: f32 = (color_checkmate as isize) as f32;
-                    node.borrow_mut().raw_score = values::CHECK_MATE_VALUE * multiplier;
+                    node.borrow_mut()
+                        .set_score(values::CHECK_MATE_VALUE * multiplier);
                 } else {
                     // That's a draw
-                    node.borrow_mut().raw_score = 0.;
+                    node.borrow_mut().set_score(0.);
                 }
             } else {
                 // iterate through all possible piece moving
@@ -169,19 +73,15 @@ impl Tree {
         }
     }
 
-    fn create_new_node(&self, node: NodeType, move_row: GetMoveRow, depth: usize) {
+    fn create_new_node(&self, node: TreeNodeRef, move_row: GetMoveRow, depth: usize) {
         // Evaluate the board
         let score = self.evaluator.evaluate(&move_row.engine.board());
 
         // create a new node for the child
-        let child_node = Rc::new(RefCell::new(TreeNode::new(
-            move_row.engine,
-            score,
-            Some(move_row.player_move),
-        )));
+        let child_node = TreeNode::new_cell(move_row.engine, score, Some(move_row.player_move));
 
         // we add children into the node
-        node.borrow_mut().children.push(child_node.clone());
+        node.borrow_mut().add_child(child_node.clone());
 
         // We keep generating until depth reach 0
         self.recursive_generate_tree(child_node, depth);
@@ -197,9 +97,9 @@ impl Tree {
             if let Some(node) = self
                 .root
                 .borrow()
-                .children
+                .children()
                 .iter()
-                .find(|child| child.borrow().chess_move == Some(chess_move))
+                .find(|child| child.borrow().chess_move() == &Some(chess_move))
             {
                 // Clone the node we want to keep
                 Some(node.clone())
@@ -219,10 +119,11 @@ impl Tree {
 
     pub fn get_sorted_moves(&self) -> Vec<(PlayerMove, f32)> {
         // know who is it to play for this turn
-        let white_to_play: bool = self.root.borrow().engine.white_to_play();
+        let white_to_play: bool = self.root.borrow().engine().white_to_play();
 
         // Collect all moves and their scores
-        let mut moves: Vec<(PlayerMove, f32)> = self.root()
+        let mut moves: Vec<(PlayerMove, f32)> = self
+            .root()
             .borrow()
             .children()
             .iter()
@@ -244,12 +145,12 @@ impl Tree {
     }
 }
 
-fn get_tree_size(root_node: NodeType) -> u64 {
+fn get_tree_size(root_node: TreeNodeRef) -> u64 {
     let node = root_node.borrow();
     let mut size = 1; // Count current node
 
     // Recursively count children
-    for child in node.children.iter() {
+    for child in node.children().iter() {
         size += get_tree_size(child.clone());
     }
 
