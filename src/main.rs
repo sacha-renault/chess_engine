@@ -59,6 +59,7 @@ macro_rules! input {
 
 fn play_robot_to_robot(depth: usize) {
     let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth);
+    let mut i = 0;
 
     while tree
         .root()
@@ -81,6 +82,7 @@ fn play_robot_to_robot(depth: usize) {
             string_from_move(&best_move.0),
             best_move.1
         );
+        println!("Number of moves available {}", moves.len());
         println!("See mate ? {}", tree.root().borrow().check_mate_depth());
         for (pm, score) in moves.iter().skip(1).take(3) {
             println!(
@@ -89,8 +91,12 @@ fn play_robot_to_robot(depth: usize) {
                 score
             );
         }
-
+        i += 1;
         print_board(tree.root().borrow().get_engine().board());
+        input!(String, "next ?");
+        // if i > 4 {
+        //     break;
+        // }
     }
 }
 
@@ -115,7 +121,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
         }
 
         let best_move = moves[0];
-        for (pm, score) in moves {
+        for (pm, score) in &moves {
             println!(
                 "Best moves: {} with score : {}",
                 string_from_move(&pm),
@@ -131,6 +137,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
             best_move.1,
             tree.size()
         );
+        println!("Number of moves available : {}", moves.len());
         tree.generate_tree();
 
         // user input
@@ -195,8 +202,8 @@ fn test_promotion() {
 }
 fn main() {
     // test_promotion();
-    play_robot_to_robot(6);
-    // play_against_robot(false, 4);
+    // play_robot_to_robot(6);
+    play_against_robot(false, 7);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());

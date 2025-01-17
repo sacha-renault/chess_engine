@@ -35,7 +35,7 @@ impl Zobrist {
         }
     }
 
-    pub fn compute_hash(&self, board: &Board, side_to_move: Color) -> u64 {
+    pub fn compute_hash(&self, board: &Board, white_to_play: bool) -> u64 {
         let mut hash: u64 = 0;
 
         // Hash all white pieces
@@ -58,7 +58,7 @@ impl Zobrist {
         }
 
         // Add side to move
-        if side_to_move == Color::Black {
+        if !white_to_play {
             hash ^= self.side_to_move;
         }
 
@@ -67,6 +67,13 @@ impl Zobrist {
 
     fn hash_color_board(&self, color_board: &ColorBoard, color: Color) -> u64 {
         let mut hash: u64 = 0;
+        let color_index = {
+            if color == Color::White {
+                0
+            } else {
+                1
+            }
+        };
 
         // Hash each piece type
         for (piece_type, bitboard) in [
@@ -80,7 +87,7 @@ impl Zobrist {
             let mut bb = bitboard;
             while bb != 0 {
                 let square = bb.trailing_zeros() as usize;
-                hash ^= self.table[piece_type as usize][color as usize][square];
+                hash ^= self.table[piece_type as usize][color_index][square];
                 bb &= bb - 1; // Clear the least significant bit
             }
         }
