@@ -1,4 +1,4 @@
-use super::get_move_row::GetMoveRow;
+use super::move_evaluation_context::MoveEvaluationContext;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
 use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
@@ -575,7 +575,7 @@ impl Engine {
         Ok(pieces_with_moves)
     }
 
-    pub fn generate_moves_with_engine_state(&self) -> Result<Vec<GetMoveRow>, String> {
+    pub fn generate_moves_with_engine_state(&self) -> Result<Vec<MoveEvaluationContext>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);
         let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
@@ -624,7 +624,7 @@ impl Engine {
                                 let move_result = final_engine.finalize_turn();
 
                                 // add the moverow to the vec
-                                result.push(GetMoveRow {
+                                result.push(MoveEvaluationContext {
                                     engine: final_engine,
                                     player_move: PlayerMove::Promotion(PromotionMove::new(
                                         current_square,
@@ -641,7 +641,7 @@ impl Engine {
                             let move_result = engine.finalize_turn();
 
                             // add the moverow to the vec
-                            result.push(GetMoveRow {
+                            result.push(MoveEvaluationContext {
                                 engine,
                                 player_move: PlayerMove::Normal(NormalMove::new(
                                     current_square,

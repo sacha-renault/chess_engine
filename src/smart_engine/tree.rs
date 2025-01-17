@@ -1,11 +1,10 @@
 use super::evaluate::Evaluator;
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
-use crate::game_engine::get_move_row::GetMoveRow;
+use crate::game_engine::move_evaluation_context::MoveEvaluationContext;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
-use std::cmp;
 
 pub struct Tree {
     root: TreeNodeRef,
@@ -85,7 +84,7 @@ impl Tree {
             .get_engine()
             .generate_moves_with_engine_state()
             .unwrap();
-        let mut scored_moves: Vec<(GetMoveRow, f32)> = possible_moves
+        let mut scored_moves: Vec<(MoveEvaluationContext, f32)> = possible_moves
             .into_iter()
             .map(|move_row| {
                 let score = self.evaluator.evaluate(&move_row.engine.board());
@@ -148,7 +147,7 @@ impl Tree {
     fn create_new_node(
         &self,
         node: TreeNodeRef,
-        move_row: GetMoveRow,
+        move_row: MoveEvaluationContext,
         depth: usize,
         alpha: f32,
         beta: f32,
