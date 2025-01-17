@@ -39,19 +39,19 @@ impl TreeNode {
     }
 
     // GETTER
-    pub fn engine(&self) -> &Engine {
+    pub fn get_engine(&self) -> &Engine {
         &self.engine
     }
 
-    pub fn score(&self) -> f32 {
+    pub fn get_score(&self) -> f32 {
         self.raw_score
     }
 
-    pub fn children(&self) -> &Vec<TreeNodeRef> {
+    pub fn get_children(&self) -> &Vec<TreeNodeRef> {
         &self.children
     }
 
-    pub fn chess_move(&self) -> &Option<PlayerMove> {
+    pub fn get_move(&self) -> &Option<PlayerMove> {
         &self.chess_move
     }
 

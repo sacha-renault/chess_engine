@@ -77,7 +77,7 @@ fn play_robot_to_robot(depth: usize) {
     while tree
         .root()
         .borrow()
-        .engine()
+        .get_engine()
         .get_all_moves_by_piece()
         .unwrap()
         .len()
@@ -91,7 +91,7 @@ fn play_robot_to_robot(depth: usize) {
         // display the board
         println!(
             "{} - Computer played: {} with score : {}",
-            tree.root().borrow().engine().halfmove_clock() / 2,
+            (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
             string_from_move(&best_move.0),
             best_move.1
         );
@@ -104,7 +104,7 @@ fn play_robot_to_robot(depth: usize) {
             );
         }
 
-        print_board(tree.root().borrow().engine().board());
+        print_board(tree.root().borrow().get_engine().board());
     }
 }
 
@@ -138,7 +138,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
         }
 
         let _ = tree.select_branch(best_move.0);
-        print_board(tree.root().borrow().engine().board());
+        print_board(tree.root().borrow().get_engine().board());
         println!(
             "Computer played: {} with score {}. Tree size is : {}",
             string_from_move(&best_move.0),

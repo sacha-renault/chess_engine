@@ -37,7 +37,7 @@ impl Tree {
 
         // avoid recomputation
         if node.borrow_mut().is_computed() {
-            for child in node.borrow().children().iter() {
+            for child in node.borrow().get_children().iter() {
                 // Go deeper in the tree for every child
                 self.recursive_generate_tree(child.clone(), depth + 1);
             }
@@ -45,7 +45,7 @@ impl Tree {
             // Get moves from this nodes
             let possible_moves = node
                 .borrow()
-                .engine()
+                .get_engine()
                 .generate_moves_with_engine_state()
                 .unwrap();
 
@@ -55,8 +55,8 @@ impl Tree {
             // We check if the number of possible moves is 0
             if possible_moves.len() == 0 {
                 // update the score (it might mean stale mate of checkmate)
-                if node.borrow().engine().is_king_checked() {
-                    let color_checkmate = get_color(!node.borrow().engine().white_to_play());
+                if node.borrow().get_engine().is_king_checked() {
+                    let color_checkmate = get_color(!node.borrow().get_engine().white_to_play());
                     let multiplier: f32 = (color_checkmate as isize) as f32;
                     node.borrow_mut()
                         .set_score(values::CHECK_MATE_VALUE * multiplier);
@@ -97,9 +97,9 @@ impl Tree {
             if let Some(node) = self
                 .root
                 .borrow()
-                .children()
+                .get_children()
                 .iter()
-                .find(|child| child.borrow().chess_move() == &Some(chess_move))
+                .find(|child| child.borrow().get_move() == &Some(chess_move))
             {
                 // Clone the node we want to keep
                 Some(node.clone())
@@ -119,17 +119,17 @@ impl Tree {
 
     pub fn get_sorted_moves(&self) -> Vec<(PlayerMove, f32)> {
         // know who is it to play for this turn
-        let white_to_play: bool = self.root.borrow().engine().white_to_play();
+        let white_to_play: bool = self.root.borrow().get_engine().white_to_play();
 
         // Collect all moves and their scores
         let mut moves: Vec<(PlayerMove, f32)> = self
             .root()
             .borrow()
-            .children()
+            .get_children()
             .iter()
             .filter_map(|child| {
                 let score = child.borrow().recursive_score();
-                let m = child.borrow().chess_move().clone();
+                let m = child.borrow().get_move().clone();
                 m.map(|mv| (mv, score))
             })
             .collect();
@@ -150,7 +150,7 @@ fn get_tree_size(root_node: TreeNodeRef) -> u64 {
     let mut size = 1; // Count current node
 
     // Recursively count children
-    for child in node.children().iter() {
+    for child in node.get_children().iter() {
         size += get_tree_size(child.clone());
     }
 
