@@ -1,4 +1,4 @@
-use super::color_board::{CastlingRights, ColorBoard};
+use super::{CastlingRights, ColorBoard};
 use crate::pieces::{static_positions as init, Color, Piece};
 
 /// Represents a chess board with separate bitboards for white and black pieces.

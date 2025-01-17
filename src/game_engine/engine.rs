@@ -1,15 +1,17 @@
+use super::get_move_row::GetMoveRow;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
-use super::utility::{
-    get_color, get_en_passant_ranks, get_final_castling_positions, get_half_turn_boards, get_half_turn_boards_mut, get_initial_castling_positions, get_piece_type, get_possible_move, get_promotion_rank_by_color, get_required_empty_squares, is_king_checked, iter_into_u64, move_piece, is_promotion_available
-};
+use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
+use super::utility::{get_en_passant_ranks, get_half_turn_boards_mut};
+use super::utility::{get_initial_castling_positions, get_piece_type, get_possible_move};
+use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
+use super::utility::{is_promotion_available, iter_into_u64, move_piece};
+
 use crate::boards::Board;
-use crate::game_engine::debug::{print_bitboard, print_board};
 use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
 use crate::pieces::Piece;
 use crate::prelude::NormalMove;
-use super::get_move_row::GetMoveRow;
 
 /// Represents a chess engine that manages game state and move validation.
 ///
@@ -95,7 +97,7 @@ impl Engine {
                 // perform casting
                 self.perform_castling(castling_side)?
             }
-            PlayerMove::Promotion(promotion_move)    => {
+            PlayerMove::Promotion(promotion_move) => {
                 // get squares
                 let (current_square, target_square) = promotion_move.squares();
                 self.board = self.perform_move(current_square, target_square)?;
@@ -510,7 +512,11 @@ impl Engine {
     /// # Returns
     /// * `Ok(CorrectMoveResults)` - Promotion successful
     /// * `Err(IncorrectMoveResults)` - Promotion not possible
-    fn promote_pawn(&self, piece: Piece, target_square: u64) -> Result<Board, IncorrectMoveResults> {
+    fn promote_pawn(
+        &self,
+        piece: Piece,
+        target_square: u64,
+    ) -> Result<Board, IncorrectMoveResults> {
         // get color
         let color = get_color(self.white_turn);
 
@@ -531,7 +537,6 @@ impl Engine {
             );
 
             Ok(simulated_board)
-
         } else {
             return Err(IncorrectMoveResults::IllegalPromotion);
         }
@@ -561,7 +566,10 @@ impl Engine {
 
         let pieces_with_moves = pieces
             .into_iter()
-            .map(|it| self.get_moves(it.0).map(|moves| (it.1, PlayerMove::Normal(NormalMove::new(it.0, moves)))))
+            .map(|it| {
+                self.get_moves(it.0)
+                    .map(|moves| (it.1, PlayerMove::Normal(NormalMove::new(it.0, moves))))
+            })
             .collect::<Result<Vec<_>, String>>()?;
 
         Ok(pieces_with_moves)
@@ -570,8 +578,7 @@ impl Engine {
     pub fn generate_moves_with_engine_state(&self) -> Result<Vec<GetMoveRow>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);
-        let (player_board, opponent_board) =
-            get_half_turn_boards(&self.board, color);
+        let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
 
         // then get all the pieces
         let pieces = player_board.individual_pieces();
@@ -610,14 +617,20 @@ impl Engine {
                             for promotion_piece in PROMOTE_PIECE {
                                 // clone the engine to perform each the promotion
                                 let promotion_engine = engine.clone();
-                                let new_board = promotion_engine.promote_pawn(promotion_piece, target_square).unwrap();
+                                let new_board = promotion_engine
+                                    .promote_pawn(promotion_piece, target_square)
+                                    .unwrap();
                                 let mut final_engine = engine.clone_with_new_board(new_board);
                                 let move_result = final_engine.finalize_turn();
 
                                 // add the moverow to the vec
                                 result.push(GetMoveRow {
                                     engine: final_engine,
-                                    player_move: PlayerMove::Promotion(PromotionMove::new(current_square, target_square, promotion_piece)),
+                                    player_move: PlayerMove::Promotion(PromotionMove::new(
+                                        current_square,
+                                        target_square,
+                                        promotion_piece,
+                                    )),
                                     piece,
                                     color,
                                     result: move_result,
@@ -630,14 +643,17 @@ impl Engine {
                             // add the moverow to the vec
                             result.push(GetMoveRow {
                                 engine,
-                                player_move: PlayerMove::Normal(NormalMove::new(current_square, target_square)),
+                                player_move: PlayerMove::Normal(NormalMove::new(
+                                    current_square,
+                                    target_square,
+                                )),
                                 piece,
                                 color,
-                                result: move_result
+                                result: move_result,
                             })
                         }
                     }
-                    _ => { /* Nothing to do ... just sad this move won't work right ? */}
+                    _ => { /* Nothing to do ... just sad this move won't work right ? */ }
                 }
             }
         }

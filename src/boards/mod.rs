@@ -1,4 +1,5 @@
 pub mod board;
+pub mod castling_rights;
 pub mod color_board;
-
-pub use {board::Board, color_board::ColorBoard};
+pub mod zobrist_hash;
+pub use {board::Board, castling_rights::CastlingRights, color_board::ColorBoard};
