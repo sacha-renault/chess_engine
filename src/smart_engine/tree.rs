@@ -32,10 +32,13 @@ impl Tree {
     }
 
     pub fn generate_tree(&mut self) {
-        // Start with worst possible values for alpha-beta
-        let alpha = f32::NEG_INFINITY;
-        let beta = f32::INFINITY;
-        self.recursive_generate_tree(self.root.clone(), 0, alpha, beta);
+        for depth in 1..self.max_depth + 1 {
+            // Start with worst possible values for alpha-beta
+            let alpha = f32::NEG_INFINITY;
+            let beta = f32::INFINITY;
+            println!("Going up to : {}", depth);
+            self.recursive_generate_tree(self.root.clone(), depth, alpha, beta);
+        }
     }
 
     fn recursive_generate_tree(
@@ -46,46 +49,40 @@ impl Tree {
         mut beta: f32,
     ) -> f32 {
         // End tree building if reaching max depth
-        if depth == self.max_depth {
+        if depth == 0 {
             return node.borrow().get_score();
         }
 
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
-        if computed {
-            let is_maximizing = node.borrow().get_engine().white_to_play();
-            let mut best_score = init_best_score(is_maximizing);
-
-            for child in node.borrow().get_children().iter() {
-                let score = self.recursive_generate_tree(child.clone(), depth + 1, alpha, beta);
-
-                // Update the best score, alpha, and beta for pruning
-                if is_maximizing {
-                    best_score = best_score.max(score);
-                    alpha = alpha.max(best_score);
-                } else {
-                    best_score = best_score.min(score);
-                    beta = beta.min(best_score);
-                }
-
-                // Prune if the current branch can no longer affect the final result
-                if beta <= alpha {
-                    break;
-                }
-            }
-            return best_score;
-        } else {
-            return self.compute_node(node.clone(), depth, alpha, beta);
+        if !computed {
+            self.compute_node_children(node.clone());
         }
+
+        let is_maximizing = node.borrow().get_engine().white_to_play();
+        let mut best_score = init_best_score(is_maximizing);
+        for child in node.borrow().get_children() {
+            let score = self.recursive_generate_tree(child.clone(), depth - 1, alpha, beta);
+
+            // Update the best score, alpha, and beta for pruning
+            if is_maximizing {
+                best_score = best_score.max(score);
+                alpha = alpha.max(best_score);
+            } else {
+                best_score = best_score.min(score);
+                beta = beta.min(best_score);
+            }
+
+            // Prune if the current branch can no longer affect the final result
+            if beta <= alpha {
+                break;
+            }
+        }
+        node.borrow_mut().set_score(best_score);
+        best_score
     }
 
-    fn compute_node(
-        &mut self,
-        node: TreeNodeRef,
-        depth: usize,
-        mut alpha: f32,
-        mut beta: f32,
-    ) -> f32 {
+    fn compute_node_children(&mut self, node: TreeNodeRef) {
         // get the hash to see if this node exist somewhere in the tt
         let hash = self.hasher.compute_hash(
             node.borrow().get_engine().board(),
@@ -96,103 +93,71 @@ impl Tree {
         if let Some(entry) = self.transpose_table.get_tt_entry(hash) {
             // Copy the contents from the entry to the current node
             node.replace_with(|_| entry.borrow().clone());
-            return node.borrow().get_score();
+            return;
+        } else {
+            // everytime we create a children, we put it in our hashtable
+            // to avoid recompute if we see it again
+            self.transpose_table.insert_tt_entry(hash, node.clone());
         }
 
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
-
-        // get whos to maximize (black or white)
-        let is_maximizing = node.borrow().get_engine().white_to_play();
-
-        // Get moves from this nodes
         let possible_moves = node
             .borrow()
             .get_engine()
             .generate_moves_with_engine_state()
-            .unwrap();
-        let mut scored_moves: Vec<(MoveEvaluationContext, f32)> = possible_moves
-            .into_iter()
-            .map(|move_row| {
-                let score = self.evaluator.evaluate(&move_row.engine.board());
-                (move_row, score)
-            })
-            .collect();
+            .unwrap_or_default();
 
-        // Sort moves based on the scores
-        if is_maximizing {
-            scored_moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        } else {
-            scored_moves.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        if possible_moves.len() == 0 {
+            self.evaluate_terminal_node(node.clone());
+            return;
         }
 
-        // We check if the number of possible moves is 0
-        if scored_moves.len() == 0 {
-            // update the score (it might mean stale mate of checkmate)
-            if node.borrow().get_engine().is_king_checked() {
-                let color_checkmate = get_color(!node.borrow().get_engine().white_to_play());
-                let multiplier: f32 = (color_checkmate as isize) as f32;
-                let score = values::CHECK_MATE_VALUE * multiplier;
-                node.borrow_mut().set_score(score);
-                return score;
+        // Know who's turn it is
+        let is_white_turn = node.borrow().get_engine().white_to_play();
+
+        // Sort possible move to make pruning easier
+        let mut possible_move_with_scores: Vec<(MoveEvaluationContext, f32)> = possible_moves
+            .into_iter()
+            .map(|move_context| {
+                // Evaluate the board
+                let score = self.evaluator.evaluate(&move_context.engine.board());
+                (move_context, score)
+            })
+            .collect(); //.sort_by_cached_key(|(move_context, score)|)
+        possible_move_with_scores.sort_by(|a, b| {
+            if is_white_turn {
+                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) // Descending for White
             } else {
-                // That's a draw
-                node.borrow_mut().set_score(0.);
-                return 0.;
+                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal) // Ascending for Black
             }
-        } else {
-            // init a best score for
-            let mut best_score = init_best_score(is_maximizing);
+        });
 
-            // iterate through all possible piece moving
-            for (move_row, _) in scored_moves {
-                // create the new node and get the score for it
-                let score =
-                    self.create_new_node(node.clone(), move_row, depth + 1, alpha, beta, hash);
+        // add all the moves into node that will be
+        // children of current node
+        for (possible_move, score) in possible_move_with_scores.into_iter() {
+            // create a new node for the child
+            let child_node =
+                TreeNode::new_cell(possible_move.engine, score, Some(possible_move.player_move));
 
-                // update the best score, alpha and beta for pruning
-                if is_maximizing {
-                    best_score = best_score.max(score);
-                    alpha = alpha.max(best_score);
-                } else {
-                    best_score = best_score.min(score);
-                    beta = beta.min(best_score);
-                }
-
-                if beta <= alpha {
-                    break; // Stop exploring this branch
-                }
-            }
-
-            node.borrow_mut().set_score(best_score);
-            best_score
+            // we add children into the node
+            node.borrow_mut().add_child(child_node.clone());
         }
     }
 
-    fn create_new_node(
-        &mut self,
-        node: TreeNodeRef,
-        move_row: MoveEvaluationContext,
-        depth: usize,
-        alpha: f32,
-        beta: f32,
-        hash: u64,
-    ) -> f32 {
-        // Evaluate the board
-        let score = self.evaluator.evaluate(&move_row.engine.board());
+    fn evaluate_terminal_node(&self, node: TreeNodeRef) -> f32 {
+        let white_to_play = node.borrow().get_engine().white_to_play();
 
-        // create a new node for the child
-        let child_node = TreeNode::new_cell(move_row.engine, score, Some(move_row.player_move));
-
-        // we add children into the node
-        node.borrow_mut().add_child(child_node.clone());
-
-        // everytime we create a children, we put it in our hashtable
-        // to avoid recompute if we see it again
-        self.transpose_table.insert_tt_entry(hash, node.clone());
-
-        // We keep generating until depth reach 0
-        return self.recursive_generate_tree(child_node, depth, alpha, beta);
+        if node.borrow().get_engine().is_king_checked() {
+            let color_checkmate = get_color(white_to_play);
+            let multiplier: f32 = (color_checkmate as isize) as f32;
+            let score = values::CHECK_MATE_VALUE * multiplier;
+            node.borrow_mut().set_score(score);
+            score
+        } else {
+            node.borrow_mut().set_score(0.);
+            0.
+        }
     }
 
     pub fn size(&self) -> u64 {

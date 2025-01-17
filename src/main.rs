@@ -71,13 +71,24 @@ fn play_robot_to_robot(depth: usize) {
         != 0
     {
         tree.generate_tree();
+        println!("tree size {}", tree.size());
         let moves = tree.get_sorted_moves();
         let best_move = moves[0];
+
+        let played_str = {
+            if tree.root().borrow().get_engine().white_to_play() {
+                "White"
+            } else {
+                "Black"
+            }
+        };
+
         let _ = tree.select_branch(best_move.0);
 
         // display the board
         println!(
-            "{} - Computer played: {} with score : {}",
+            "{} - {} played: {} with score : {}",
+            played_str,
             (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
             string_from_move(&best_move.0),
             best_move.1
@@ -93,8 +104,8 @@ fn play_robot_to_robot(depth: usize) {
         }
         i += 1;
         print_board(tree.root().borrow().get_engine().board());
-        input!(String, "next ?");
-        // if i > 4 {
+        // input!(String, "next ?");
+        // if i > 20 {
         //     break;
         // }
     }
@@ -120,6 +131,14 @@ fn play_against_robot(is_white: bool, depth: usize) {
             break;
         }
 
+        let played_str = {
+            if tree.root().borrow().get_engine().white_to_play() {
+                "White"
+            } else {
+                "Black"
+            }
+        };
+
         let best_move = moves[0];
         for (pm, score) in &moves {
             println!(
@@ -132,7 +151,8 @@ fn play_against_robot(is_white: bool, depth: usize) {
         let _ = tree.select_branch(best_move.0);
         print_board(tree.root().borrow().get_engine().board());
         println!(
-            "Computer played: {} with score {}. Tree size is : {}",
+            "{} played: {} with score {}. Tree size is : {}",
+            played_str,
             string_from_move(&best_move.0),
             best_move.1,
             tree.size()
@@ -176,34 +196,10 @@ fn play_against_robot(is_white: bool, depth: usize) {
     }
 }
 
-fn test_promotion() {
-    let mut engine = Engine::new();
-    let _ = engine.play(create_move_from_str("a2a4"));
-    let _ = engine.play(create_move_from_str("b7b5"));
-    let _ = engine.play(create_move_from_str("a4b5"));
-    let _ = engine.play(create_move_from_str("h7h6"));
-    let _ = engine.play(create_move_from_str("b5b6"));
-    let _ = engine.play(create_move_from_str("h6h5"));
-    let _ = engine.play(create_move_from_str("b6b7"));
-    let _ = engine.play(create_move_from_str("h5h4"));
-    let _ = engine.play(create_move_from_str("b7a8")).unwrap();
-    let mv: PlayerMove = create_move_from_str("b7a8");
-
-    match mv {
-        PlayerMove::Normal(nmv) => {
-            let (c, t) = nmv.squares();
-            let propomotion_move = PlayerMove::Promotion(PromotionMove::new(c, t, Piece::Queen));
-            let result = engine.play(propomotion_move).unwrap();
-            println!("{:?}", result);
-            print_board(engine.board());
-        }
-        _ => {}
-    }
-}
 fn main() {
     // test_promotion();
-    // play_robot_to_robot(6);
-    play_against_robot(false, 7);
+    play_robot_to_robot(5);
+    // play_against_robot(false, 5);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());
