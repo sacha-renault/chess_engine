@@ -32,12 +32,18 @@ impl Tree {
     }
 
     pub fn generate_tree(&mut self) {
-        for depth in 1..self.max_depth + 1 {
+        let mut depth = 1;
+        loop {
             // Start with worst possible values for alpha-beta
             let alpha = f32::NEG_INFINITY;
             let beta = f32::INFINITY;
             println!("Going up to : {}", depth);
             self.recursive_generate_tree(self.root.clone(), depth, alpha, beta);
+
+            if self.size() > 1e6 as u64 {
+                break;
+            }
+            depth += 1;
         }
     }
 
@@ -56,12 +62,17 @@ impl Tree {
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
         if !computed {
-            self.compute_node_children(node.clone());
+            self.compute_new_children(node.clone());
         }
 
+        // Get whos player is maximizing
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
-        for child in node.borrow().get_children() {
+
+        // TODO
+        // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
+        println!("recusion : {}", depth);
+        for child in self.get_sorted_children(node.clone()) {
             let score = self.recursive_generate_tree(child.clone(), depth - 1, alpha, beta);
 
             // Update the best score, alpha, and beta for pruning
@@ -82,7 +93,7 @@ impl Tree {
         best_score
     }
 
-    fn compute_node_children(&mut self, node: TreeNodeRef) {
+    fn compute_new_children(&mut self, node: TreeNodeRef) {
         // get the hash to see if this node exist somewhere in the tt
         let hash = self.hasher.compute_hash(
             node.borrow().get_engine().board(),
@@ -113,29 +124,12 @@ impl Tree {
             return;
         }
 
-        // Know who's turn it is
-        let is_white_turn = node.borrow().get_engine().white_to_play();
-
-        // Sort possible move to make pruning easier
-        let mut possible_move_with_scores: Vec<(MoveEvaluationContext, f32)> = possible_moves
-            .into_iter()
-            .map(|move_context| {
-                // Evaluate the board
-                let score = self.evaluator.evaluate(&move_context.engine.board());
-                (move_context, score)
-            })
-            .collect(); //.sort_by_cached_key(|(move_context, score)|)
-        possible_move_with_scores.sort_by(|a, b| {
-            if is_white_turn {
-                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) // Descending for White
-            } else {
-                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal) // Ascending for Black
-            }
-        });
-
         // add all the moves into node that will be
         // children of current node
-        for (possible_move, score) in possible_move_with_scores.into_iter() {
+        for possible_move in possible_moves.into_iter() {
+            // calc the raw score of this board
+            let score = self.evaluator.evaluate(&possible_move.engine.board());
+
             // create a new node for the child
             let child_node =
                 TreeNode::new_cell(possible_move.engine, score, Some(possible_move.player_move));
@@ -145,9 +139,32 @@ impl Tree {
         }
     }
 
+    fn get_sorted_children(&self, node: TreeNodeRef) -> Vec<TreeNodeRef> {
+        let mut children = node.borrow().get_children().clone();
+
+        // Know who's turn it is
+        let is_white_turn = node.borrow().get_engine().white_to_play();
+
+        if is_white_turn {
+            children.sort_by(|a, b| {
+                b.borrow()
+                    .get_score()
+                    .partial_cmp(&a.borrow().get_score())
+                    .unwrap()
+            });
+        } else {
+            children.sort_by(|a, b| {
+                a.borrow()
+                    .get_score()
+                    .partial_cmp(&b.borrow().get_score())
+                    .unwrap()
+            });
+        }
+        children
+    }
+
     fn evaluate_terminal_node(&self, node: TreeNodeRef) -> f32 {
         let white_to_play = node.borrow().get_engine().white_to_play();
-
         if node.borrow().get_engine().is_king_checked() {
             let color_checkmate = get_color(white_to_play);
             let multiplier: f32 = (color_checkmate as isize) as f32;

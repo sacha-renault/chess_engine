@@ -198,7 +198,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
 
 fn main() {
     // test_promotion();
-    play_robot_to_robot(5);
+    play_robot_to_robot(10);
     // play_against_robot(false, 5);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
