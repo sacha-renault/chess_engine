@@ -16,6 +16,7 @@ pub struct Tree {
     root: TreeNodeRef,
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
+    current_depth: usize,
     hasher: Zobrist,
     transpose_table: TranspositionTable,
 }
@@ -26,6 +27,7 @@ impl Tree {
             root: TreeNode::create_root_node(engine),
             evaluator,
             max_depth,
+            current_depth: 1,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
         }
@@ -36,20 +38,20 @@ impl Tree {
     }
 
     pub fn generate_tree(&mut self) -> usize {
-        let mut depth = 1;
+        self.current_depth -= 1;
         loop {
             let alpha = f32::NEG_INFINITY;
             let beta = f32::INFINITY;
-            self.recursive_generate_tree(self.root.clone(), depth, alpha, beta);
+            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
             let size = self.size();
             println!("tree size {}", size);
-            if self.max_depth <= depth || size > 1e6 as u64 {
+            if self.max_depth <= self.current_depth || size > 1e6 as u64 {
                 break;
             }
-            depth += 1;
+            self.current_depth += 1;
         }
 
-        return depth;
+        return self.current_depth;
     }
 
     fn recursive_generate_tree(
