@@ -52,7 +52,7 @@ impl Tree {
         loop {
             let alpha = f32::NEG_INFINITY;
             let beta = f32::INFINITY;
-            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
+            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta, true);
             let size = self.size();
             if self.max_depth <= self.current_depth || size > self.max_size {
                 break;
@@ -69,6 +69,7 @@ impl Tree {
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
+        allow_computation: bool,
     ) -> f32 {
         // End tree building if reaching max depth
         if depth == 0 {
@@ -77,19 +78,29 @@ impl Tree {
 
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
-        if !computed {
+        if !computed && allow_computation {
             self.compute_new_children(node.clone());
         }
 
         // Get whos player is maximizing
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
+        let scored_children = self
+            .get_sorted_children_with_best_score(node.clone(), depth - 1, allow_computation)
+            .into_iter()
+            .map(|scored_child| scored_child.0);
 
         // TODO
         // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
-        for child in self.get_sorted_children(node.clone()) {
+        for child in scored_children {
             // for child in node.borrow().get_children().iter() {
-            let score = self.recursive_generate_tree(child.clone(), depth - 1, alpha, beta);
+            let score = self.recursive_generate_tree(
+                child.clone(),
+                depth - 1,
+                alpha,
+                beta,
+                allow_computation,
+            );
 
             // Update the best score, alpha, and beta for pruning
             if is_maximizing {
@@ -158,28 +169,42 @@ impl Tree {
         }
     }
 
-    fn get_sorted_children(&self, node: TreeNodeRef) -> Vec<TreeNodeRef> {
-        let mut children = node.borrow().get_children().clone();
-
-        // Know who's turn it is
+    fn get_sorted_children_with_best_score(
+        &mut self,
+        node: TreeNodeRef,
+        depth: usize,
+        allow_computation: bool,
+    ) -> Vec<(TreeNodeRef, f32)> {
+        // Clone the vec of children
+        // It clone a Vec of ptr so
+        // Cost is pretty small
+        let children = node.borrow().get_children().clone();
         let is_white_turn = node.borrow().get_engine().white_to_play();
 
+        // Map best score to each children
+        let mut scored_children = children
+            .into_iter()
+            .map(|child| {
+                (
+                    child.clone(),
+                    self.recursive_generate_tree(
+                        child.clone(),
+                        depth,
+                        f32::NEG_INFINITY,
+                        f32::INFINITY,
+                        allow_computation,
+                    ),
+                )
+            })
+            .collect::<Vec<(TreeNodeRef, f32)>>();
+
         if is_white_turn {
-            children.sort_by(|a, b| {
-                b.borrow()
-                    .get_raw_score()
-                    .partial_cmp(&a.borrow().get_raw_score())
-                    .unwrap()
-            });
+            scored_children.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         } else {
-            children.sort_by(|a, b| {
-                a.borrow()
-                    .get_raw_score()
-                    .partial_cmp(&b.borrow().get_raw_score())
-                    .unwrap()
-            });
+            scored_children.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         }
-        children
+
+        scored_children
     }
 
     fn evaluate_terminal_node(&self, node: TreeNodeRef) -> f32 {
@@ -232,31 +257,11 @@ impl Tree {
         }
     }
 
-    pub fn get_sorted_moves(&self) -> Vec<(PlayerMove, f32)> {
-        // know who is it to play for this turn
-        let white_to_play: bool = self.root.borrow().get_engine().white_to_play();
-
-        // Collect all moves and their scores
-        let mut moves: Vec<(PlayerMove, f32)> = self
-            .root()
-            .borrow()
-            .get_children()
-            .iter()
-            .filter_map(|child| {
-                let score = child.borrow().get_raw_score();
-                let m = child.borrow().get_move().clone();
-                m.map(|mv| (mv, score))
-            })
-            .collect();
-
-        // Sort moves based on the player
-        if white_to_play {
-            moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        } else {
-            moves.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        }
-
-        moves
+    pub fn get_sorted_moves(&mut self) -> Vec<(PlayerMove, f32)> {
+        self.get_sorted_children_with_best_score(self.root.clone(), self.current_depth - 1, false)
+            .into_iter()
+            .map(|row| (row.0.borrow().get_move().unwrap(), row.1))
+            .collect()
     }
 }
 
