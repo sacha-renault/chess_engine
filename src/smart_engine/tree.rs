@@ -13,20 +13,30 @@ use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
 
 pub struct Tree {
+    // In new function
     root: TreeNodeRef,
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
+    max_size: usize,
+
+    // auto initialized
     current_depth: usize,
     hasher: Zobrist,
     transpose_table: TranspositionTable,
 }
 
 impl Tree {
-    pub fn new(engine: Engine, evaluator: Box<dyn Evaluator>, max_depth: usize) -> Self {
+    pub fn new(
+        engine: Engine,
+        evaluator: Box<dyn Evaluator>,
+        max_depth: usize,
+        max_size: usize,
+    ) -> Self {
         Tree {
             root: TreeNode::create_root_node(engine),
             evaluator,
             max_depth,
+            max_size,
             current_depth: 1,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
@@ -44,8 +54,7 @@ impl Tree {
             let beta = f32::INFINITY;
             self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
             let size = self.size();
-            println!("tree size {}", size);
-            if self.max_depth <= self.current_depth || size > 1e6 as u64 {
+            if self.max_depth <= self.current_depth || size > self.max_size {
                 break;
             }
             self.current_depth += 1;
@@ -193,7 +202,7 @@ impl Tree {
         }
     }
 
-    pub fn size(&self) -> u64 {
+    pub fn size(&self) -> usize {
         get_tree_size(self.root.clone())
     }
 
@@ -251,7 +260,7 @@ impl Tree {
     }
 }
 
-fn get_tree_size(root_node: TreeNodeRef) -> u64 {
+fn get_tree_size(root_node: TreeNodeRef) -> usize {
     let mut visited = HashSet::new();
     get_tree_size_recursive(root_node, &mut visited)
 }
@@ -259,7 +268,7 @@ fn get_tree_size(root_node: TreeNodeRef) -> u64 {
 fn get_tree_size_recursive(
     root_node: TreeNodeRef,
     visited: &mut HashSet<*const std::cell::RefCell<TreeNode>>,
-) -> u64 {
+) -> usize {
     let raw_ptr = Rc::as_ptr(&root_node);
 
     // If this node has already been visited, return 0 to prevent double counting
