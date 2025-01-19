@@ -16,6 +16,7 @@ pub mod prelude {
 
 use boards::Board;
 use chess_engine::game_engine::engine;
+use chess_engine::smart_engine::node_with_score;
 use game_engine::debug::print_board;
 use game_engine::player_move::PromotionMove;
 use pieces::Piece;
@@ -23,8 +24,10 @@ use prelude::{
     create_move_from_str, iter_into_u64, string_from_move, Engine, NormalMove, PlayerMove,
 };
 use smart_engine::evaluate::Evaluator;
+use smart_engine::node_with_score::NodeWithScore;
 use smart_engine::tree::Tree;
 use smart_engine::values::{get_value_by_piece, ValueRuleSet};
+use std::panic;
 
 use std::io::Write;
 
@@ -57,8 +60,8 @@ macro_rules! input {
     }};
 }
 
-fn play_robot_to_robot(depth: usize) {
-    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth);
+fn play_robot_to_robot(depth: usize, size: usize) {
+    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
     let mut i = 0;
 
     while tree
@@ -70,10 +73,8 @@ fn play_robot_to_robot(depth: usize) {
         .len()
         != 0
     {
-        tree.generate_tree();
-        println!("tree size {}", tree.size());
-        let moves = tree.get_sorted_moves();
-        let best_move = moves[0];
+        let scored_nodes = tree.get_sorted_nodes();
+        let best_node = &scored_nodes[0];
 
         let played_str = {
             if tree.root().borrow().get_engine().white_to_play() {
@@ -83,35 +84,37 @@ fn play_robot_to_robot(depth: usize) {
             }
         };
 
-        let _ = tree.select_branch(best_move.0);
+        let best_move = best_node.node().borrow().get_move().unwrap();
+        let _ = tree.select_branch(best_move.clone());
+        println!("Tree size : {}", tree.size());
 
         // display the board
         println!(
             "{} - {} played: {} with score : {}",
             played_str,
             (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
-            string_from_move(&best_move.0),
-            best_move.1
+            string_from_move(&best_move),
+            best_node.score()
         );
-        println!("Number of moves available {}", moves.len());
-        println!("See mate ? {}", tree.root().borrow().check_mate_depth());
-        for (pm, score) in moves.iter().skip(1).take(3) {
+        println!("Number of moves available {}", scored_nodes.len());
+        // println!("See mate ? {}", tree.root().borrow().check_mate_depth());
+        for scored_node in scored_nodes.iter().skip(1).take(3) {
             println!(
                 "     - also possible: {} with score: {}",
-                string_from_move(&pm),
-                score
+                string_from_move(&scored_node.node().borrow().get_move().unwrap()),
+                scored_node.score()
             );
         }
         i += 1;
         print_board(tree.root().borrow().get_engine().board());
         // input!(String, "next ?");
-        // if i > 20 {
+        // if i > 0 {
         //     break;
         // }
     }
 }
 
-fn play_against_robot(is_white: bool, depth: usize) {
+fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     let mut engine = Engine::new();
 
     if is_white {
@@ -121,13 +124,12 @@ fn play_against_robot(is_white: bool, depth: usize) {
     }
 
     // Create the tree from the engine
-    let mut tree = Tree::new(engine, Box::new(ValueRuleSet::new()), depth);
+    let mut tree = Tree::new(engine, Box::new(ValueRuleSet::new()), depth, size);
 
     loop {
         // Then the computer plays
-        tree.generate_tree();
-        let moves = tree.get_sorted_moves();
-        if moves.len() == 0 {
+        let nodes = tree.get_sorted_nodes();
+        if nodes.len() == 0 {
             break;
         }
 
@@ -139,41 +141,34 @@ fn play_against_robot(is_white: bool, depth: usize) {
             }
         };
 
-        let best_move = moves[0];
-        for (pm, score) in &moves {
-            println!(
-                "Best moves: {} with score : {}",
-                string_from_move(&pm),
-                score
-            );
-        }
+        let best_node = &nodes[0];
+        // for (pm, score) in &moves {
+        //     println!(
+        //         "Best moves: {} with score : {}",
+        //         string_from_move(&pm),
+        //         score
+        //     );
+        // }
 
-        let _ = tree.select_branch(best_move.0);
+        let _ = tree.select_branch(best_node.get_move());
         print_board(tree.root().borrow().get_engine().board());
         println!(
             "{} played: {} with score {}. Tree size is : {}",
             played_str,
-            string_from_move(&best_move.0),
-            best_move.1,
+            string_from_move(&best_node.get_move()),
+            best_node.score(),
             tree.size()
         );
-        println!("Number of moves available : {}", moves.len());
-        tree.generate_tree();
+        println!("Number of moves available : {}", nodes.len());
+        tree.get_sorted_nodes();
 
         // user input
         let mut incorrect_move = true;
         while incorrect_move {
             let pm = input!(String, "Input a move: ");
             if pm == "moves".to_string() {
-                let moves = tree.get_sorted_moves();
+                let moves = tree.get_sorted_nodes();
                 println!("Incorrect move, please retry : {}", moves.len());
-                for (pm, score) in moves {
-                    println!(
-                        "Best moves: {} with score : {}",
-                        string_from_move(&pm),
-                        score
-                    );
-                }
                 continue;
             }
             match tree.select_branch(create_move_from_str(&pm)) {
@@ -181,15 +176,8 @@ fn play_against_robot(is_white: bool, depth: usize) {
                     incorrect_move = false;
                 }
                 Err(()) => {
-                    let moves = tree.get_sorted_moves();
+                    let moves = tree.get_sorted_nodes();
                     println!("Incorrect move, please retry : {}", moves.len());
-                    for (pm, score) in moves {
-                        println!(
-                            "Best moves: {} with score : {}",
-                            string_from_move(&pm),
-                            score
-                        );
-                    }
                 }
             }
         }
@@ -198,7 +186,7 @@ fn play_against_robot(is_white: bool, depth: usize) {
 
 fn main() {
     // test_promotion();
-    play_robot_to_robot(10);
+    play_against_robot(false, 20, 1e5 as usize);
     // play_against_robot(false, 5);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();

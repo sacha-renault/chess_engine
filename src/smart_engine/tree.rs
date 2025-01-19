@@ -8,6 +8,7 @@ use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
+use super::node_with_score::NodeWithScore;
 use super::transposition_table::TranspositionTable;
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
@@ -47,20 +48,39 @@ impl Tree {
         self.root.clone()
     }
 
-    pub fn generate_tree(&mut self) -> usize {
+    pub fn get_sorted_nodes(&mut self) -> Vec<NodeWithScore> {
+        // We start from depth - 1 (because last was select branch)
         self.current_depth -= 1;
+
+        // loop until one of break condition is matched
         loop {
-            let alpha = f32::NEG_INFINITY;
-            let beta = f32::INFINITY;
-            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta, true);
-            let size = self.size();
-            if self.max_depth <= self.current_depth || size > self.max_size {
+            // brek condition (either too deep or size of the tree to big)
+            if self.max_depth <= self.current_depth || self.size() > self.max_size {
                 break;
             }
-            self.current_depth += 1;
-        }
 
-        return self.current_depth;
+            // Start with worst possible values for alpha and beta
+            let alpha = f32::NEG_INFINITY;
+            let beta = f32::INFINITY;
+
+            // Generate the tree recursively
+            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
+
+            self.current_depth += 1;
+            println!("Current depth : {}", self.current_depth);
+        }
+        println!("Done at : {}", self.current_depth);
+
+        // After generating the tree, get the best move from the root
+        let root = self.root.clone();
+
+        // Get sorted children with their scores using the maximum depth we've calculated
+        // We use current_depth - 1 since we incremented it one extra time in the loop above
+        let scored_children =
+            self.get_sorted_children_with_best_score(root, self.current_depth - 1);
+
+        // Return the move from the best child (first in sorted list)
+        scored_children
     }
 
     fn recursive_generate_tree(
@@ -69,7 +89,6 @@ impl Tree {
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
-        allow_computation: bool,
     ) -> f32 {
         // End tree building if reaching max depth
         if depth == 0 {
@@ -78,29 +97,20 @@ impl Tree {
 
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
-        if !computed && allow_computation {
+        if !computed {
             self.compute_new_children(node.clone());
         }
 
         // Get whos player is maximizing
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
-        let scored_children = self
-            .get_sorted_children_with_best_score(node.clone(), depth - 1, allow_computation)
-            .into_iter()
-            .map(|scored_child| scored_child.0);
+        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
 
         // TODO
         // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
         for child in scored_children {
             // for child in node.borrow().get_children().iter() {
-            let score = self.recursive_generate_tree(
-                child.clone(),
-                depth - 1,
-                alpha,
-                beta,
-                allow_computation,
-            );
+            let score = self.recursive_generate_tree(child.node(), depth - 1, alpha, beta);
 
             // Update the best score, alpha, and beta for pruning
             if is_maximizing {
@@ -173,8 +183,7 @@ impl Tree {
         &mut self,
         node: TreeNodeRef,
         depth: usize,
-        allow_computation: bool,
-    ) -> Vec<(TreeNodeRef, f32)> {
+    ) -> Vec<NodeWithScore> {
         // Clone the vec of children
         // It clone a Vec of ptr so
         // Cost is pretty small
@@ -185,23 +194,22 @@ impl Tree {
         let mut scored_children = children
             .into_iter()
             .map(|child| {
-                (
+                NodeWithScore::new(
                     child.clone(),
                     self.recursive_generate_tree(
                         child.clone(),
                         depth,
                         f32::NEG_INFINITY,
                         f32::INFINITY,
-                        allow_computation,
                     ),
                 )
             })
-            .collect::<Vec<(TreeNodeRef, f32)>>();
+            .collect::<Vec<NodeWithScore>>();
 
         if is_white_turn {
-            scored_children.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            scored_children.sort_by(|a, b| b.score().partial_cmp(&a.score()).unwrap());
         } else {
-            scored_children.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+            scored_children.sort_by(|a, b| a.score().partial_cmp(&b.score()).unwrap());
         }
 
         scored_children
@@ -255,13 +263,6 @@ impl Tree {
         } else {
             Err(())
         }
-    }
-
-    pub fn get_sorted_moves(&mut self) -> Vec<(PlayerMove, f32)> {
-        self.get_sorted_children_with_best_score(self.root.clone(), self.current_depth - 1, false)
-            .into_iter()
-            .map(|row| (row.0.borrow().get_move().unwrap(), row.1))
-            .collect()
     }
 }
 

@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 pub type TreeNodeRef = Rc<RefCell<TreeNode>>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TreeNode {
     engine: Engine,
     children: Vec<TreeNodeRef>,
