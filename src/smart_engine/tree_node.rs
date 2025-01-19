@@ -43,7 +43,7 @@ impl TreeNode {
         &self.engine
     }
 
-    pub fn get_score(&self) -> f32 {
+    pub fn get_raw_score(&self) -> f32 {
         self.raw_score
     }
 
@@ -64,7 +64,7 @@ impl TreeNode {
         self.computed = is_computed;
     }
 
-    pub fn set_score(&mut self, score: f32) {
+    pub fn set_raw_score(&mut self, score: f32) {
         self.raw_score = score;
     }
 

@@ -1,12 +1,16 @@
-use super::evaluate::Evaluator;
-use super::transposition_table::TranspositionTable;
-use super::tree_node::{TreeNode, TreeNodeRef};
-use super::values;
+use std::collections::HashSet;
+use std::rc::Rc;
+
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::move_evaluation_context::MoveEvaluationContext;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
+
+use super::evaluate::Evaluator;
+use super::transposition_table::TranspositionTable;
+use super::tree_node::{TreeNode, TreeNodeRef};
+use super::values;
 
 pub struct Tree {
     root: TreeNodeRef,
@@ -31,20 +35,21 @@ impl Tree {
         self.root.clone()
     }
 
-    pub fn generate_tree(&mut self) {
+    pub fn generate_tree(&mut self) -> usize {
         let mut depth = 1;
         loop {
-            // Start with worst possible values for alpha-beta
             let alpha = f32::NEG_INFINITY;
             let beta = f32::INFINITY;
-            println!("Going up to : {}", depth);
             self.recursive_generate_tree(self.root.clone(), depth, alpha, beta);
-
-            if self.size() > 1e6 as u64 {
+            let size = self.size();
+            println!("tree size {}", size);
+            if self.max_depth <= depth || size > 1e6 as u64 {
                 break;
             }
             depth += 1;
         }
+
+        return depth;
     }
 
     fn recursive_generate_tree(
@@ -56,7 +61,7 @@ impl Tree {
     ) -> f32 {
         // End tree building if reaching max depth
         if depth == 0 {
-            return node.borrow().get_score();
+            return node.borrow().get_raw_score();
         }
 
         // Avoid recomputation: Check if node is already computed
@@ -71,8 +76,8 @@ impl Tree {
 
         // TODO
         // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
-        println!("recusion : {}", depth);
         for child in self.get_sorted_children(node.clone()) {
+            // for child in node.borrow().get_children().iter() {
             let score = self.recursive_generate_tree(child.clone(), depth - 1, alpha, beta);
 
             // Update the best score, alpha, and beta for pruning
@@ -89,7 +94,7 @@ impl Tree {
                 break;
             }
         }
-        node.borrow_mut().set_score(best_score);
+
         best_score
     }
 
@@ -100,25 +105,28 @@ impl Tree {
             node.borrow().get_engine().white_to_play(),
         );
 
-        // Check if the position is known in the transposition table
+        // // Check if the position is known in the transposition table
         if let Some(entry) = self.transpose_table.get_tt_entry(hash) {
-            // Copy the contents from the entry to the current node
+            // Only copy from completed nodes to avoid cycles
             node.replace_with(|_| entry.borrow().clone());
             return;
-        } else {
-            // everytime we create a children, we put it in our hashtable
-            // to avoid recompute if we see it again
-            self.transpose_table.insert_tt_entry(hash, node.clone());
         }
+
+        // everytime we create a children, we put it in our hashtable
+        // to avoid recompute if we see it again
+        self.transpose_table.insert_tt_entry(hash, node.clone());
 
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
+
+        // Get possible moves of the children
         let possible_moves = node
             .borrow()
             .get_engine()
             .generate_moves_with_engine_state()
             .unwrap_or_default();
 
+        // If not possible move this is an end leaf
         if possible_moves.len() == 0 {
             self.evaluate_terminal_node(node.clone());
             return;
@@ -148,15 +156,15 @@ impl Tree {
         if is_white_turn {
             children.sort_by(|a, b| {
                 b.borrow()
-                    .get_score()
-                    .partial_cmp(&a.borrow().get_score())
+                    .get_raw_score()
+                    .partial_cmp(&a.borrow().get_raw_score())
                     .unwrap()
             });
         } else {
             children.sort_by(|a, b| {
                 a.borrow()
-                    .get_score()
-                    .partial_cmp(&b.borrow().get_score())
+                    .get_raw_score()
+                    .partial_cmp(&b.borrow().get_raw_score())
                     .unwrap()
             });
         }
@@ -165,14 +173,20 @@ impl Tree {
 
     fn evaluate_terminal_node(&self, node: TreeNodeRef) -> f32 {
         let white_to_play = node.borrow().get_engine().white_to_play();
+
+        // if it's terminal node (number of moves == 0)
+        // it means it's either check mate or stale mate
         if node.borrow().get_engine().is_king_checked() {
+            // get who's check mated
             let color_checkmate = get_color(white_to_play);
+
+            // multiplier = 1 if white, -1 if black
             let multiplier: f32 = (color_checkmate as isize) as f32;
             let score = values::CHECK_MATE_VALUE * multiplier;
-            node.borrow_mut().set_score(score);
+            node.borrow_mut().set_raw_score(score);
             score
         } else {
-            node.borrow_mut().set_score(0.);
+            node.borrow_mut().set_raw_score(0.);
             0.
         }
     }
@@ -218,7 +232,7 @@ impl Tree {
             .get_children()
             .iter()
             .filter_map(|child| {
-                let score = child.borrow().get_score();
+                let score = child.borrow().get_raw_score();
                 let m = child.borrow().get_move().clone();
                 m.map(|mv| (mv, score))
             })
@@ -236,12 +250,27 @@ impl Tree {
 }
 
 fn get_tree_size(root_node: TreeNodeRef) -> u64 {
+    let mut visited = HashSet::new();
+    get_tree_size_recursive(root_node, &mut visited)
+}
+
+fn get_tree_size_recursive(
+    root_node: TreeNodeRef,
+    visited: &mut HashSet<*const std::cell::RefCell<TreeNode>>,
+) -> u64 {
+    let raw_ptr = Rc::as_ptr(&root_node);
+
+    // If this node has already been visited, return 0 to prevent double counting
+    if !visited.insert(raw_ptr) {
+        return 0;
+    }
+
     let node = root_node.borrow();
     let mut size = 1; // Count current node
 
     // Recursively count children
     for child in node.get_children().iter() {
-        size += get_tree_size(child.clone());
+        size += get_tree_size_recursive(child.clone(), visited);
     }
 
     size
