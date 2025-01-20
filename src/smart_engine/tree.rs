@@ -156,7 +156,7 @@ impl Tree {
         );
 
         // // Check if the position is known in the transposition table
-        if let Some(entry) = self.transpose_table.get_tt_entry(hash) {
+        if let Some(entry) = self.transpose_table.get_entry(hash) {
             // Only copy from completed nodes to avoid cycles
             node.replace_with(|_| entry.borrow().clone());
             return;
@@ -164,7 +164,7 @@ impl Tree {
 
         // everytime we create a children, we put it in our hashtable
         // to avoid recompute if we see it again
-        self.transpose_table.insert_tt_entry(hash, node.clone());
+        self.transpose_table.insert_entry(hash, node.clone());
 
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
