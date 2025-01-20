@@ -12,6 +12,7 @@ pub struct TreeNode {
     raw_score: f32,
     chess_move: Option<PlayerMove>,
     computed: bool,
+    best_score: f32,
 }
 
 impl TreeNode {
@@ -32,6 +33,7 @@ impl TreeNode {
             raw_score: score,
             chess_move,
             computed: false,
+            best_score: 0.,
         };
 
         // use `set_recursive_score` to make the score flow to root
@@ -59,6 +61,10 @@ impl TreeNode {
         self.computed
     }
 
+    pub fn get_best_score(&self) -> f32 {
+        self.best_score
+    }
+
     // SETTER
     pub fn set_computed(&mut self, is_computed: bool) {
         self.computed = is_computed;
@@ -70,6 +76,14 @@ impl TreeNode {
 
     pub fn add_child(&mut self, child: TreeNodeRef) {
         self.children.push(child);
+    }
+
+    pub fn set_best_score(&mut self, score: f32) {
+        self.best_score = score;
+    }
+
+    pub fn set_raw_as_best(&mut self) {
+        self.best_score = self.raw_score;
     }
 
     fn recursive_check_mate_depth(&self, depth: isize) -> isize {

@@ -24,6 +24,7 @@ pub struct Tree {
     current_depth: usize,
     hasher: Zobrist,
     transpose_table: TranspositionTable,
+    computation_allowed: bool,
 }
 
 impl Tree {
@@ -41,6 +42,7 @@ impl Tree {
             current_depth: 1,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
+            computation_allowed: true,
         }
     }
 
@@ -48,9 +50,34 @@ impl Tree {
         self.root.clone()
     }
 
-    pub fn get_sorted_nodes(&mut self) -> Vec<NodeWithScore> {
+    pub fn get_sorted_nodes(&self) -> Vec<TreeNodeRef> {
+        // After generating the tree, get the best move from the root
+        let mut children = self.root.clone().borrow_mut().get_children().clone();
+
+        // Ascending or descending order
+        if !self.root.borrow().get_engine().white_to_play() {
+            children.sort_by(|a, b| {
+                a.borrow()
+                    .get_best_score()
+                    .partial_cmp(&b.borrow().get_best_score())
+                    .unwrap()
+            });
+        } else {
+            children.sort_by(|a, b| {
+                b.borrow()
+                    .get_best_score()
+                    .partial_cmp(&a.borrow().get_best_score())
+                    .unwrap()
+            });
+        }
+
+        // Return the move from the best child (first in sorted list)
+        children
+    }
+
+    pub fn generate_tree(&mut self) -> usize {
         // We start from depth - 1 (because last was select branch)
-        self.current_depth -= 1;
+        self.current_depth = 1;
 
         // loop until one of break condition is matched
         loop {
@@ -67,20 +94,9 @@ impl Tree {
             self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
 
             self.current_depth += 1;
-            println!("Current depth : {}", self.current_depth);
         }
-        println!("Done at : {}", self.current_depth);
 
-        // After generating the tree, get the best move from the root
-        let root = self.root.clone();
-
-        // Get sorted children with their scores using the maximum depth we've calculated
-        // We use current_depth - 1 since we incremented it one extra time in the loop above
-        let scored_children =
-            self.get_sorted_children_with_best_score(root, self.current_depth - 1);
-
-        // Return the move from the best child (first in sorted list)
-        scored_children
+        self.current_depth
     }
 
     fn recursive_generate_tree(
@@ -92,12 +108,13 @@ impl Tree {
     ) -> f32 {
         // End tree building if reaching max depth
         if depth == 0 {
+            node.borrow_mut().set_raw_as_best();
             return node.borrow().get_raw_score();
         }
 
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
-        if !computed {
+        if !computed && self.computation_allowed {
             self.compute_new_children(node.clone());
         }
 
@@ -127,6 +144,8 @@ impl Tree {
             }
         }
 
+        // Set the best score of every node
+        node.borrow_mut().set_best_score(best_score);
         best_score
     }
 
