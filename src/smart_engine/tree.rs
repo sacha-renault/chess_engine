@@ -207,7 +207,7 @@ impl Tree {
     fn compute_new_children(&mut self, node: TreeNodeRef) {
         // get the hash to see if this node exist somewhere in the tt
         // let hash = self.hasher.compute_hash(
-        //     node.borrow().get_engine().board(),
+        //     node.borrow().get_engine().get_board(),
         //     node.borrow().get_engine().white_to_play(),
         // );
 
@@ -242,7 +242,7 @@ impl Tree {
         // children of current node
         for possible_move in possible_moves.into_iter() {
             // calc the raw score of this board
-            let score = self.evaluator.evaluate(&possible_move.engine.board());
+            let score = self.evaluator.evaluate(&possible_move.engine.get_board());
 
             // create a new node for the child
             let child_node =

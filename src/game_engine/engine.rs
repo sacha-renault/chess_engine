@@ -473,7 +473,7 @@ impl Engine {
     }
 
     // Utility methods
-    pub fn board(&self) -> &Board {
+    pub fn get_board(&self) -> &Board {
         &self.board
     }
 
@@ -485,7 +485,7 @@ impl Engine {
     ///
     /// # Returns
     /// A `u32` representing the number of full moves.
-    pub fn fullmove_number(&self) -> u32 {
+    pub fn get_fullmove_number(&self) -> u32 {
         (self.halfmove_clock + 1) / 2
     }
 
@@ -493,7 +493,7 @@ impl Engine {
     ///
     /// # Returns
     /// A `u32` representing the number of halfmoves.
-    pub fn halfmove_clock(&self) -> u32 {
+    pub fn get_halfmove_clock(&self) -> u32 {
         self.halfmove_clock
     }
 
@@ -575,6 +575,13 @@ impl Engine {
         Ok(pieces_with_moves)
     }
 
+    /// Generates all possible moves for the current player, considering the current state of the engine.
+    ///
+    /// # Returns
+    /// - `Ok(Vec<MoveEvaluationContext>)` on success with all valid moves.
+    /// - `Err(String)` on failure with an error message.
+    ///
+    /// This function evaluates all possible moves, ensuring they do not leave the king in check, and handles pawn promotions
     pub fn generate_moves_with_engine_state(&self) -> Result<Vec<MoveEvaluationContext>, String> {
         // get the correct color board
         let color = get_color(self.white_turn);

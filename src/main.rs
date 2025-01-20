@@ -104,13 +104,13 @@ fn play_robot_to_robot(depth: usize, size: usize) {
         println!(
             "{} - {} played: {} with score : {} (depth = {})",
             played_str,
-            (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
+            (tree.root().borrow().get_engine().get_halfmove_clock() + 1) / 2,
             string_from_move(&best_move),
             best_node.upgrade().unwrap().borrow().get_best_score(),
             depth_reached
         );
         i += 1;
-        print_board(tree.root().borrow().get_engine().board());
+        print_board(tree.root().borrow().get_engine().get_board());
         // input!(String, "next ?");
         // if i > 0 {
         //     break;
@@ -159,7 +159,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
         let tree_size = tree.size();
         let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
-        print_board(tree.root().borrow().get_engine().board());
+        print_board(tree.root().borrow().get_engine().get_board());
 
         println!(
             "{} played: {} with score {}. Tree size is : {}",
