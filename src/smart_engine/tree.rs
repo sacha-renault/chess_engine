@@ -1,5 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::move_evaluation_context::MoveEvaluationContext;
@@ -50,7 +51,7 @@ impl Tree {
         self.root.clone()
     }
 
-    pub fn get_sorted_nodes(&self) -> Vec<TreeNodeRef> {
+    pub fn get_sorted_nodes(&self) -> Vec<Weak<RefCell<TreeNode>>> {
         let mut children = self.root.borrow().get_children().clone();
 
         // Use stored best_score instead of recomputing
@@ -70,7 +71,7 @@ impl Tree {
             });
         }
 
-        children
+        children.iter().map(|child| Rc::downgrade(&child)).collect()
     }
 
     pub fn generate_tree(&mut self) -> usize {
@@ -150,21 +151,21 @@ impl Tree {
 
     fn compute_new_children(&mut self, node: TreeNodeRef) {
         // get the hash to see if this node exist somewhere in the tt
-        let hash = self.hasher.compute_hash(
-            node.borrow().get_engine().board(),
-            node.borrow().get_engine().white_to_play(),
-        );
+        // let hash = self.hasher.compute_hash(
+        //     node.borrow().get_engine().board(),
+        //     node.borrow().get_engine().white_to_play(),
+        // );
 
         // // Check if the position is known in the transposition table
-        if let Some(entry) = self.transpose_table.get_entry(hash) {
-            // Only copy from completed nodes to avoid cycles
-            node.replace_with(|_| entry.borrow().clone());
-            return;
-        }
+        // if let Some(entry) = self.transpose_table.get_entry(hash) {
+        //     // Only copy from completed nodes to avoid cycles
+        //     node.replace_with(|_| entry.borrow().clone());
+        //     return;
+        // }
 
-        // everytime we create a children, we put it in our hashtable
-        // to avoid recompute if we see it again
-        self.transpose_table.insert_entry(hash, node.clone());
+        // // everytime we create a children, we put it in our hashtable
+        // // to avoid recompute if we see it again
+        // self.transpose_table.insert_entry(hash, node.clone());
 
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
@@ -246,9 +247,11 @@ impl Tree {
             let multiplier: f32 = (color_checkmate as isize) as f32;
             let score = values::CHECK_MATE_VALUE * multiplier;
             node.borrow_mut().set_raw_score(score);
+            node.borrow_mut().set_raw_as_best();
             score
         } else {
             node.borrow_mut().set_raw_score(0.);
+            node.borrow_mut().set_raw_as_best();
             0.
         }
     }
@@ -258,21 +261,14 @@ impl Tree {
     }
 
     pub fn select_branch(&mut self, chess_move: PlayerMove) -> Result<(), ()> {
-        let kept_node = {
-            // Find the node we want to keep
-            if let Some(node) = self
-                .root
-                .borrow()
-                .get_children()
-                .iter()
-                .find(|child| child.borrow().get_move() == &Some(chess_move))
-            {
-                // Clone the node we want to keep
-                Some(node.clone())
-            } else {
-                None
+        let mut kept_node: Option<Rc<std::cell::RefCell<TreeNode>>> = None;
+
+        for child in self.root.borrow().get_children() {
+            if child.borrow().get_move() == &Some(chess_move) {
+                kept_node = Some(child.clone());
+                break;
             }
-        };
+        }
 
         // Reassign root outside the borrowing scope
         if let Some(node) = kept_node {

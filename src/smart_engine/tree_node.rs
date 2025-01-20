@@ -105,9 +105,4 @@ impl TreeNode {
     pub fn check_mate_depth(&self) -> isize {
         return self.recursive_check_mate_depth(0);
     }
-
-    // Drop the refcount and therefore the entire branch is cleared
-    pub fn drop_branch(&mut self) {
-        self.children.clear();
-    }
 }

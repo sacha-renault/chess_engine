@@ -17,6 +17,7 @@ pub mod prelude {
 use boards::Board;
 use chess_engine::game_engine::engine;
 use chess_engine::smart_engine::node_with_score;
+use chess_engine::smart_engine::tree_node::TreeNodeRef;
 use game_engine::debug::print_board;
 use game_engine::player_move::PromotionMove;
 use pieces::Piece;
@@ -26,10 +27,13 @@ use prelude::{
 use smart_engine::evaluate::Evaluator;
 use smart_engine::node_with_score::NodeWithScore;
 use smart_engine::tree::Tree;
+use smart_engine::tree_node::TreeNode;
 use smart_engine::values::{get_value_by_piece, ValueRuleSet};
+use std::cell::RefCell;
 use std::panic;
 
 use std::io::Write;
+use std::rc::{Rc, Weak};
 
 macro_rules! input {
     ($t:ty) => {{
@@ -60,60 +64,60 @@ macro_rules! input {
     }};
 }
 
-fn play_robot_to_robot(depth: usize, size: usize) {
-    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
-    let mut i = 0;
+// fn play_robot_to_robot(depth: usize, size: usize) {
+//     let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
+//     let mut i = 0;
 
-    while tree
-        .root()
-        .borrow()
-        .get_engine()
-        .get_all_moves_by_piece()
-        .unwrap()
-        .len()
-        != 0
-    {
-        let depth_reached = tree.generate_tree();
-        let scored_nodes = tree.get_sorted_nodes();
-        let best_node = &scored_nodes[0];
+//     while tree
+//         .root()
+//         .borrow()
+//         .get_engine()
+//         .get_all_moves_by_piece()
+//         .unwrap()
+//         .len()
+//         != 0
+//     {
+//         let depth_reached = tree.generate_tree();
+//         let scored_nodes = tree.get_sorted_nodes();
+//         let best_node = &scored_nodes[0];
 
-        let played_str = {
-            if tree.root().borrow().get_engine().white_to_play() {
-                "White"
-            } else {
-                "Black"
-            }
-        };
+//         let played_str = {
+//             if tree.root().borrow().get_engine().white_to_play() {
+//                 "White"
+//             } else {
+//                 "Black"
+//             }
+//         };
 
-        let best_move = best_node.borrow().get_move().unwrap();
-        let _ = tree.select_branch(best_move.clone());
-        println!("Tree size : {}", tree.size());
+//         let best_move = best_node.borrow().get_move().unwrap();
+//         let _ = tree.select_branch(best_move.clone());
+//         println!("Tree size : {}", tree.size());
 
-        // display the board
-        println!(
-            "{} - {} played: {} with score : {}",
-            played_str,
-            (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
-            string_from_move(&best_move),
-            best_node.borrow().get_best_score()
-        );
-        println!("Number of moves available {}", scored_nodes.len());
-        // println!("See mate ? {}", tree.root().borrow().check_mate_depth());
-        for scored_node in scored_nodes.iter().skip(1).take(3) {
-            println!(
-                "     - also possible: {} with score: {}",
-                string_from_move(&scored_node.borrow().get_move().unwrap()),
-                scored_node.borrow().get_best_score()
-            );
-        }
-        i += 1;
-        print_board(tree.root().borrow().get_engine().board());
-        // input!(String, "next ?");
-        // if i > 0 {
-        //     break;
-        // }
-    }
-}
+//         // display the board
+//         println!(
+//             "{} - {} played: {} with score : {}",
+//             played_str,
+//             (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
+//             string_from_move(&best_move),
+//             best_node.borrow().get_best_score()
+//         );
+//         println!("Number of moves available {}", scored_nodes.len());
+//         // println!("See mate ? {}", tree.root().borrow().check_mate_depth());
+//         for scored_node in scored_nodes.iter().skip(1).take(3) {
+//             println!(
+//                 "     - also possible: {} with score: {}",
+//                 string_from_move(&scored_node.borrow().get_move().unwrap()),
+//                 scored_node.borrow().get_best_score()
+//             );
+//         }
+//         i += 1;
+//         print_board(tree.root().borrow().get_engine().board());
+//         // input!(String, "next ?");
+//         // if i > 0 {
+//         //     break;
+//         // }
+//     }
+// }
 
 fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     let mut engine = Engine::new();
@@ -126,6 +130,8 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
     // Create the tree from the engine
     let mut tree = Tree::new(engine, Box::new(ValueRuleSet::new()), depth, size);
+    let root_ref = Rc::downgrade(&tree.root());
+    println!("Root is ref ? : {}", root_ref.upgrade().is_some());
 
     loop {
         // Then the computer plays
@@ -153,26 +159,17 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
         // }
 
         let tree_size = tree.size();
-        let _ = tree.select_branch(best_node.borrow().get_move().unwrap());
+        let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
         print_board(tree.root().borrow().get_engine().board());
+
         println!(
             "{} played: {} with score {}. Tree size is : {}",
             played_str,
-            string_from_move(&best_node.borrow().get_move().unwrap()),
-            best_node.borrow().get_best_score(),
+            string_from_move(&best_node.upgrade().unwrap().borrow().get_move().unwrap()),
+            best_node.upgrade().unwrap().borrow().get_best_score(),
             tree_size
         );
         println!("Number of moves available : {}", nodes.len());
-
-        for (index, node) in nodes.iter().enumerate().skip(1) {
-            println!(
-                "{} - Move : {:?} with score : {}",
-                index,
-                string_from_move(&node.borrow().get_move().unwrap()),
-                node.borrow().get_best_score()
-            )
-        }
-        tree.get_sorted_nodes();
 
         // user input
         let mut incorrect_move = true;
@@ -197,8 +194,8 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 }
 
 fn main() {
-    // test_promotion();
-    play_against_robot(false, 20, 5e6 as usize);
+    // drop_branch_test();
+    play_against_robot(false, 20, 1e6 as usize);
     // play_against_robot(false, 5);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
