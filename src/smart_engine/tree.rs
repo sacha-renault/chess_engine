@@ -1,9 +1,22 @@
+//! Tree implementation for chess game tree search
+//!
+//! This module provides a tree-based implementation for chess move analysis using
+//! alpha-beta pruning and iterative deepening. Key components include:
+//!
+//! - `Tree`: Main structure managing the game tree exploration
+//! - Move evaluation with alpha-beta pruning
+//! - Transposition table support
+//! - Size-limited tree growth
+//! - Move sorting for better pruning efficiency
+//!
+//! The tree maintains a current position and can generate future positions up to
+//! a specified depth or size limit.
+
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::{Rc, Weak};
 
 use crate::boards::zobrist_hash::Zobrist;
-use crate::game_engine::move_evaluation_context::MoveEvaluationContext;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
@@ -14,6 +27,10 @@ use super::transposition_table::TranspositionTable;
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
 
+/// A tree structure for chess move analysis
+///
+/// Manages a game tree starting from a root position, growing it within specified
+/// depth and size limits using alpha-beta pruning for move evaluation.
 pub struct Tree {
     // In new function
     root: TreeNodeRef,
@@ -29,6 +46,16 @@ pub struct Tree {
 }
 
 impl Tree {
+    /// Creates a new game tree with specified parameters
+    ///
+    /// # Parameters
+    /// * `engine` - Initial game state
+    /// * `evaluator` - Strategy for evaluating board positions
+    /// * `max_depth` - Maximum depth to explore in the tree
+    /// * `max_size` - Maximum number of nodes allowed in the tree
+    ///
+    /// # Returns
+    /// A new Tree instance initialized with the given parameters
     pub fn new(
         engine: Engine,
         evaluator: Box<dyn Evaluator>,
@@ -47,10 +74,18 @@ impl Tree {
         }
     }
 
+    /// Returns a reference to the root node of the tree
+    ///
+    /// # Returns
+    /// Cloned reference to the root node
     pub fn root(&self) -> TreeNodeRef {
         self.root.clone()
     }
 
+    /// Returns children nodes sorted by their evaluation scores
+    ///
+    /// # Returns
+    /// Vector of weak references to child nodes, sorted by score (descending for white, ascending for black)
     pub fn get_sorted_nodes(&self) -> Vec<Weak<RefCell<TreeNode>>> {
         let mut children = self.root.borrow().get_children().clone();
 
@@ -74,6 +109,10 @@ impl Tree {
         children.iter().map(|child| Rc::downgrade(&child)).collect()
     }
 
+    /// Generates the game tree using iterative deepening and alpha-beta pruning
+    ///
+    /// # Returns
+    /// The maximum depth reached during tree generation
     pub fn generate_tree(&mut self) -> usize {
         // We start from depth - 1 (because last was select branch)
         self.current_depth = 1;
@@ -98,6 +137,16 @@ impl Tree {
         self.current_depth
     }
 
+    /// Recursively generates the game tree using alpha-beta pruning
+    ///
+    /// # Parameters
+    /// * `node` - Current node being processed
+    /// * `depth` - Remaining depth to explore
+    /// * `alpha` - Best score for maximizing player
+    /// * `beta` - Best score for minimizing player
+    ///
+    /// # Returns
+    /// Best score found for the current node
     fn recursive_generate_tree(
         &mut self,
         node: TreeNodeRef,
@@ -123,7 +172,6 @@ impl Tree {
         // let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
         let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
 
-        // TODO
         // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
         for child in scored_children {
             // for child in node.borrow().get_children().iter() {
@@ -149,6 +197,13 @@ impl Tree {
         best_score
     }
 
+    /// Computes and adds all possible child nodes for a given position
+    ///
+    /// # Parameters
+    /// * `node` - Node for which to generate children
+    ///
+    /// # Note
+    /// Also handles terminal positions (checkmate/stalemate)
     fn compute_new_children(&mut self, node: TreeNodeRef) {
         // get the hash to see if this node exist somewhere in the tt
         // let hash = self.hasher.compute_hash(
@@ -198,6 +253,14 @@ impl Tree {
         }
     }
 
+    /// Returns sorted children nodes with their evaluation scores
+    ///
+    /// # Parameters
+    /// * `node` - Parent node whose children to sort
+    /// * `shallow_depth` - Depth for preliminary evaluation
+    ///
+    /// # Returns
+    /// Vector of nodes paired with their scores, sorted by score
     fn get_sorted_children_with_best_score(
         &mut self,
         node: TreeNodeRef,
@@ -234,6 +297,13 @@ impl Tree {
         scored_children
     }
 
+    /// Evaluates a terminal node (checkmate or stalemate)
+    ///
+    /// # Parameters
+    /// * `node` - Terminal node to evaluate
+    ///
+    /// # Returns
+    /// Score for the terminal position (0 for stalemate, CHECK_MATE_VALUE for checkmate)
     fn evaluate_terminal_node(&self, node: TreeNodeRef) -> f32 {
         let white_to_play = node.borrow().get_engine().white_to_play();
 
@@ -256,10 +326,21 @@ impl Tree {
         }
     }
 
+    /// Calculates the total number of nodes in the tree
+    ///
+    /// # Returns
+    /// Total count of nodes in the tree, avoiding double counting in cycles
     pub fn size(&self) -> usize {
         get_tree_size(self.root.clone())
     }
 
+    /// Selects a branch of the tree by following the given move
+    ///
+    /// # Parameters
+    /// * `chess_move` - Move to follow in the tree
+    ///
+    /// # Returns
+    /// Ok(()) if move was found and selected, Err(()) if move wasn't found
     pub fn select_branch(&mut self, chess_move: PlayerMove) -> Result<(), ()> {
         let mut kept_node: Option<Rc<std::cell::RefCell<TreeNode>>> = None;
 
@@ -280,11 +361,26 @@ impl Tree {
     }
 }
 
+/// Calculates the total size of a tree starting from given root
+///
+/// # Parameters
+/// * `root_node` - Starting node for size calculation
+///
+/// # Returns
+/// Total number of unique nodes in the tree
 fn get_tree_size(root_node: TreeNodeRef) -> usize {
     let mut visited = HashSet::new();
     get_tree_size_recursive(root_node, &mut visited)
 }
 
+/// Helper function for tree size calculation that handles cycles
+///
+/// # Parameters
+/// * `root_node` - Current node being processed
+/// * `visited` - Set of already visited nodes
+///
+/// # Returns
+/// Number of unique nodes in this subtree
 fn get_tree_size_recursive(
     root_node: TreeNodeRef,
     visited: &mut HashSet<*const std::cell::RefCell<TreeNode>>,
@@ -307,6 +403,13 @@ fn get_tree_size_recursive(
     size
 }
 
+/// Returns initial score based on whether the player is maximizing
+///
+/// # Parameters
+/// * `is_maximizing` - Whether the current player is maximizing
+///
+/// # Returns
+/// Negative infinity for maximizing player, positive infinity for minimizing player
 fn init_best_score(is_maximizing: bool) -> f32 {
     if is_maximizing {
         f32::NEG_INFINITY
