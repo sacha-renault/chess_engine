@@ -134,6 +134,8 @@ impl Tree {
             self.current_depth += 1;
         }
 
+        // Entries are depth dependent so we have to clear it
+        self.transpose_table.clear();
         self.current_depth
     }
 
@@ -163,7 +165,7 @@ impl Tree {
         // Avoid recomputation: Check if node is already computed
         let computed = node.borrow().is_computed();
         if !computed && self.computation_allowed {
-            self.compute_new_children(node.clone());
+            self.compute_new_children(node.clone(), depth);
         }
 
         // Get whos player is maximizing
@@ -204,23 +206,23 @@ impl Tree {
     ///
     /// # Note
     /// Also handles terminal positions (checkmate/stalemate)
-    fn compute_new_children(&mut self, node: TreeNodeRef) {
-        // get the hash to see if this node exist somewhere in the tt
-        // let hash = self.hasher.compute_hash(
-        //     node.borrow().get_engine().get_board(),
-        //     node.borrow().get_engine().white_to_play(),
-        // );
+    fn compute_new_children(&mut self, node: TreeNodeRef, depth: usize) {
+        //get the hash to see if this node exist somewhere in the tt
+        let hash = self.hasher.compute_hash(
+            node.borrow().get_engine().get_board(),
+            node.borrow().get_engine().white_to_play(),
+        );
 
-        // // Check if the position is known in the transposition table
-        // if let Some(entry) = self.transpose_table.get_entry(hash) {
-        //     // Only copy from completed nodes to avoid cycles
-        //     node.replace_with(|_| entry.borrow().clone());
-        //     return;
-        // }
+        // Check if the position is known in the transposition table
+        if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
+            // Only copy from completed nodes to avoid cycles
+            node.replace_with(|_| entry.borrow().clone());
+            return;
+        }
 
-        // // everytime we create a children, we put it in our hashtable
-        // // to avoid recompute if we see it again
-        // self.transpose_table.insert_entry(hash, node.clone());
+        // everytime we create a children, we put it in our hashtable
+        // to avoid recompute if we see it again
+        self.transpose_table.insert_entry(hash, node.clone(), depth);
 
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
