@@ -73,6 +73,7 @@ fn play_robot_to_robot(depth: usize, size: usize) {
         .len()
         != 0
     {
+        let depth_reached = tree.generate_tree();
         let scored_nodes = tree.get_sorted_nodes();
         let best_node = &scored_nodes[0];
 
@@ -84,7 +85,7 @@ fn play_robot_to_robot(depth: usize, size: usize) {
             }
         };
 
-        let best_move = best_node.node().borrow().get_move().unwrap();
+        let best_move = best_node.borrow().get_move().unwrap();
         let _ = tree.select_branch(best_move.clone());
         println!("Tree size : {}", tree.size());
 
@@ -94,15 +95,15 @@ fn play_robot_to_robot(depth: usize, size: usize) {
             played_str,
             (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
             string_from_move(&best_move),
-            best_node.score()
+            best_node.borrow().get_best_score()
         );
         println!("Number of moves available {}", scored_nodes.len());
         // println!("See mate ? {}", tree.root().borrow().check_mate_depth());
         for scored_node in scored_nodes.iter().skip(1).take(3) {
             println!(
                 "     - also possible: {} with score: {}",
-                string_from_move(&scored_node.node().borrow().get_move().unwrap()),
-                scored_node.score()
+                string_from_move(&scored_node.borrow().get_move().unwrap()),
+                scored_node.borrow().get_best_score()
             );
         }
         i += 1;
@@ -128,6 +129,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
     loop {
         // Then the computer plays
+        let depth_reached = tree.generate_tree();
         let nodes = tree.get_sorted_nodes();
         if nodes.len() == 0 {
             break;
@@ -150,16 +152,26 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
         //     );
         // }
 
-        let _ = tree.select_branch(best_node.get_move());
+        let tree_size = tree.size();
+        let _ = tree.select_branch(best_node.borrow().get_move().unwrap());
         print_board(tree.root().borrow().get_engine().board());
         println!(
             "{} played: {} with score {}. Tree size is : {}",
             played_str,
-            string_from_move(&best_node.get_move()),
-            best_node.score(),
-            tree.size()
+            string_from_move(&best_node.borrow().get_move().unwrap()),
+            best_node.borrow().get_best_score(),
+            tree_size
         );
         println!("Number of moves available : {}", nodes.len());
+
+        for (index, node) in nodes.iter().enumerate().skip(1) {
+            println!(
+                "{} - Move : {:?} with score : {}",
+                index,
+                string_from_move(&node.borrow().get_move().unwrap()),
+                node.borrow().get_best_score()
+            )
+        }
         tree.get_sorted_nodes();
 
         // user input
@@ -186,7 +198,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
 fn main() {
     // test_promotion();
-    play_against_robot(false, 20, 1e5 as usize);
+    play_against_robot(false, 20, 5e6 as usize);
     // play_against_robot(false, 5);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
