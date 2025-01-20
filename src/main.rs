@@ -64,60 +64,59 @@ macro_rules! input {
     }};
 }
 
-// fn play_robot_to_robot(depth: usize, size: usize) {
-//     let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
-//     let mut i = 0;
+fn play_robot_to_robot(depth: usize, size: usize) {
+    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
+    let mut i = 0;
 
-//     while tree
-//         .root()
-//         .borrow()
-//         .get_engine()
-//         .get_all_moves_by_piece()
-//         .unwrap()
-//         .len()
-//         != 0
-//     {
-//         let depth_reached = tree.generate_tree();
-//         let scored_nodes = tree.get_sorted_nodes();
-//         let best_node = &scored_nodes[0];
+    while tree
+        .root()
+        .borrow()
+        .get_engine()
+        .get_all_moves_by_piece()
+        .unwrap()
+        .len()
+        != 0
+    {
+        let depth_reached = tree.generate_tree();
+        let scored_nodes = tree.get_sorted_nodes();
+        let best_node = &scored_nodes[0];
 
-//         let played_str = {
-//             if tree.root().borrow().get_engine().white_to_play() {
-//                 "White"
-//             } else {
-//                 "Black"
-//             }
-//         };
+        let played_str = {
+            if tree.root().borrow().get_engine().white_to_play() {
+                "White"
+            } else {
+                "Black"
+            }
+        };
 
-//         let best_move = best_node.borrow().get_move().unwrap();
-//         let _ = tree.select_branch(best_move.clone());
-//         println!("Tree size : {}", tree.size());
+        for scored_node in scored_nodes.iter().skip(1).take(3) {
+            println!(
+                "     - also possible: {} with score: {}",
+                string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
+                scored_node.upgrade().unwrap().borrow().get_best_score()
+            );
+        }
 
-//         // display the board
-//         println!(
-//             "{} - {} played: {} with score : {}",
-//             played_str,
-//             (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
-//             string_from_move(&best_move),
-//             best_node.borrow().get_best_score()
-//         );
-//         println!("Number of moves available {}", scored_nodes.len());
-//         // println!("See mate ? {}", tree.root().borrow().check_mate_depth());
-//         for scored_node in scored_nodes.iter().skip(1).take(3) {
-//             println!(
-//                 "     - also possible: {} with score: {}",
-//                 string_from_move(&scored_node.borrow().get_move().unwrap()),
-//                 scored_node.borrow().get_best_score()
-//             );
-//         }
-//         i += 1;
-//         print_board(tree.root().borrow().get_engine().board());
-//         // input!(String, "next ?");
-//         // if i > 0 {
-//         //     break;
-//         // }
-//     }
-// }
+        let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
+        let _ = tree.select_branch(best_move.clone());
+
+        // display the board
+        println!(
+            "{} - {} played: {} with score : {} (depth = {})",
+            played_str,
+            (tree.root().borrow().get_engine().halfmove_clock() + 1) / 2,
+            string_from_move(&best_move),
+            best_node.upgrade().unwrap().borrow().get_best_score(),
+            depth_reached
+        );
+        i += 1;
+        print_board(tree.root().borrow().get_engine().board());
+        // input!(String, "next ?");
+        // if i > 0 {
+        //     break;
+        // }
+    }
+}
 
 fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     let mut engine = Engine::new();
@@ -195,8 +194,8 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
 fn main() {
     // drop_branch_test();
-    play_against_robot(false, 20, 1e6 as usize);
-    // play_against_robot(false, 5);
+    // play_against_robot(false, 20, 1e6 as usize);
+    play_robot_to_robot(20, 1e6 as usize);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());
