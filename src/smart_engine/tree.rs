@@ -51,27 +51,25 @@ impl Tree {
     }
 
     pub fn get_sorted_nodes(&self) -> Vec<TreeNodeRef> {
-        // After generating the tree, get the best move from the root
-        let mut children = self.root.clone().borrow_mut().get_children().clone();
+        let mut children = self.root.borrow().get_children().clone();
 
-        // Ascending or descending order
-        if !self.root.borrow().get_engine().white_to_play() {
-            children.sort_by(|a, b| {
-                a.borrow()
-                    .get_best_score()
-                    .partial_cmp(&b.borrow().get_best_score())
-                    .unwrap()
-            });
-        } else {
+        // Use stored best_score instead of recomputing
+        if self.root.borrow().get_engine().white_to_play() {
             children.sort_by(|a, b| {
                 b.borrow()
                     .get_best_score()
                     .partial_cmp(&a.borrow().get_best_score())
                     .unwrap()
             });
+        } else {
+            children.sort_by(|a, b| {
+                a.borrow()
+                    .get_best_score()
+                    .partial_cmp(&b.borrow().get_best_score())
+                    .unwrap()
+            });
         }
 
-        // Return the move from the best child (first in sorted list)
         children
     }
 
@@ -121,7 +119,8 @@ impl Tree {
         // Get whos player is maximizing
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
-        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
+        // let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
+        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
 
         // TODO
         // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
@@ -201,7 +200,7 @@ impl Tree {
     fn get_sorted_children_with_best_score(
         &mut self,
         node: TreeNodeRef,
-        depth: usize,
+        shallow_depth: usize,
     ) -> Vec<NodeWithScore> {
         // Clone the vec of children
         // It clone a Vec of ptr so
@@ -217,7 +216,7 @@ impl Tree {
                     child.clone(),
                     self.recursive_generate_tree(
                         child.clone(),
-                        depth,
+                        shallow_depth,
                         f32::NEG_INFINITY,
                         f32::INFINITY,
                     ),
