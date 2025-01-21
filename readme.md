@@ -15,13 +15,21 @@ This project implements a chess engine capable of playing chess according to sta
 
 ## TODO
 
-### Basic
-- [x] alpha beta pruning
+### Basic Optimization
+- [x] Alpha beta pruning
+- [x] Iterative deepening
 - [x] Zobrist Hashing (for efficient board state representation)
 - [ ] Transposition Tables: memory leak identified, working on fix.
 - [x] Move Ordering
     - [x] With shallow depth foreseeing.
     - [ ] Heuristic move ordering.
+    - [ ] MVV-LVA
+- [ ] Time management
+    - [ ] Basic time allocation (total time / expected moves remaining)
+    - [ ] Anytime search capability
+- [ ] Move urgency factors
+   - [ ] Only legal move
+   - [ ] Obvious captures/threats
 
 ### Search Optimization
 - [ ] Quiescence Search
@@ -30,19 +38,19 @@ This project implements a chess engine capable of playing chess according to sta
 - [ ] Late Move Reductions
 - [ ] Razoring
 - [ ] Lazy SMP (for parallel search)
-- [ ] Endgame Tablebases
+- [ ] Opening Optimization
+    - [ ] Books based : precomputed known good opening moves
+    - [ ] Knowledge based : specific rules for opening (like how many square from the center are attacked)
+- [ ] Endgame tables
 
 ### Advanced Search Techniques (will be done at the end)
 - [ ] Aspiration Windows
 - [ ] Principal Variation Search (is an improvement of alpha beta pruning)
 - [ ] ProbCut
-
-### EndGame Optimization
 - [ ] Static Exchange Evaluation (SEE)
 - [ ] Extensions
     - [ ] Check extensions (extend depth for checks).
     - [ ] Singular extensions (extend depth for unique critical moves).
-- [ ] Endgame table base
 
 ### Parallelization
 - [ ] Lazy SMP (thread-safe transposition tables required)
