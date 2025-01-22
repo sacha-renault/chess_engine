@@ -196,12 +196,8 @@ impl Tree {
         mut alpha: f32,
         mut beta: f32,
     ) -> f32 {
-        // Check if we know this node and it's bound
-        //get the hash to see if this node exist somewhere in the tt
-        let hash = self.hasher.compute_hash(
-            node.borrow().get_engine().get_board(),
-            node.borrow().get_engine().white_to_play(),
-        );
+        // get the hash to see if this node exist somewhere in the tt
+        let hash = self.compute_node_hash(&node);
 
         // End tree building if reaching max depth
         if depth == 0 {
@@ -210,34 +206,9 @@ impl Tree {
             return node.borrow().get_raw_score();
         }
 
-        // check if there is a result already in the transposition table
-        if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
-            // Upgrad the weak ref to a strong one
-            let strong_ref = entry.node.upgrade().unwrap();
-
-            // Check if the entry is exact, lower or upper bound
-            match entry.flag {
-                TTFlag::Exact => {
-                    return strong_ref.borrow().get_best_score();
-                },
-                TTFlag::LowerBound => {
-                    alpha = alpha.max(strong_ref.borrow().get_best_score());
-                },
-                TTFlag::UperBound => {
-                    beta = beta.min(strong_ref.borrow().get_best_score());
-                }
-            }
-
-            // First, if the current node hasn't its children computed, we copy from the entry
-            let has_children_computed = node.borrow().has_children_computed();
-            if !has_children_computed {
-                node.borrow_mut().copy_entry(strong_ref.clone());
-            }
-
-            // If alpha >= beta, return the score
-            if alpha >= beta {
-                return strong_ref.borrow().get_best_score();
-            }
+        // Check the transposition table for existing results
+        if let Some(best_score) = self.handle_transposition_table(hash, node.clone(), depth, &mut alpha, &mut beta) {
+            return best_score;
         }
 
         // Check if children were already computed and if there were not, compute them
@@ -248,22 +219,8 @@ impl Tree {
         // Perform minimax evaluation
         let best_score = self.minimax_evaluate(node.clone(), depth, alpha, beta);
 
-        // Setup a flag for entry
-        let flag = if best_score <= alpha {
-            TTFlag::UperBound
-        } else if best_score >= beta {
-            TTFlag::LowerBound
-        } else {
-            TTFlag::Exact
-        };
-
-        // Insert the entry into the transposition table
-        self.transpose_table.insert_entry(
-            hash,
-            node.clone(),
-            depth,
-            flag
-        );
+        // Insert results into the transposition table
+        self.store_in_transposition_table(hash, node.clone(), depth, best_score, alpha, beta);
 
         // Set the best score of every node
         node.borrow_mut().set_best_score(best_score);
@@ -412,6 +369,93 @@ impl Tree {
             node.borrow_mut().set_raw_as_best();
             0.
         }
+    }
+
+
+
+    /// Computes the hash for a given node based on the board and whose turn it is.
+    ///
+    /// # Arguments
+    /// * `node` - A reference to the node whose hash needs to be computed.
+    ///
+    /// # Returns
+    /// A 64-bit unsigned integer representing the hash of the node.
+    fn compute_node_hash(&self, node: &TreeNodeRef) -> u64 {
+        self.hasher.compute_hash(
+            node.borrow().get_engine().get_board(),
+            node.borrow().get_engine().white_to_play(),
+        )
+    }
+
+    /// Checks the transposition table for an existing entry and updates alpha and beta values accordingly.
+    ///
+    /// # Arguments
+    /// * `hash` - A 64-bit hash value representing the current node.
+    /// * `node` - A reference to the current node in the search tree.
+    /// * `depth` - The current search depth.
+    /// * `alpha` - A mutable reference to the alpha value used in alpha-beta pruning.
+    /// * `beta` - A mutable reference to the beta value used in alpha-beta pruning.
+    ///
+    /// # Returns
+    /// An optional f32 value representing the best score if a valid entry is found, otherwise `None`.
+    fn handle_transposition_table(
+        &mut self,
+        hash: u64,
+        node: TreeNodeRef,
+        depth: usize,
+        alpha: &mut f32,
+        beta: &mut f32,
+    ) -> Option<f32> {
+        if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
+            let strong_ref = entry.node.upgrade().unwrap();
+
+            match entry.flag {
+                TTFlag::Exact => return Some(strong_ref.borrow().get_best_score()),
+                TTFlag::LowerBound => *alpha = alpha.max(strong_ref.borrow().get_best_score()),
+                TTFlag::UperBound => *beta = beta.min(strong_ref.borrow().get_best_score()),
+            }
+
+            if !node.borrow().has_children_computed() {
+                node.borrow_mut().copy_entry(strong_ref.clone());
+            }
+
+            if *alpha >= *beta {
+                return Some(strong_ref.borrow().get_best_score());
+            }
+        }
+        None
+    }
+
+    /// Stores a new entry in the transposition table with the computed best score and flags.
+    ///
+    /// # Arguments
+    /// * `hash` - A 64-bit hash value representing the current node.
+    /// * `node` - A reference to the current node in the search tree.
+    /// * `depth` - The current search depth.
+    /// * `best_score` - The best score found for the current node.
+    /// * `alpha` - The alpha value used in alpha-beta pruning.
+    /// * `beta` - The beta value used in alpha-beta pruning.
+    ///
+    /// # Returns
+    /// This function has no return value.
+    fn store_in_transposition_table(
+        &mut self,
+        hash: u64,
+        node: TreeNodeRef,
+        depth: usize,
+        best_score: f32,
+        alpha: f32,
+        beta: f32,
+    ) {
+        let flag = if best_score <= alpha {
+            TTFlag::UperBound
+        } else if best_score >= beta {
+            TTFlag::LowerBound
+        } else {
+            TTFlag::Exact
+        };
+
+        self.transpose_table.insert_entry(hash, node, depth, flag);
     }
 
     /// Calculates the total number of nodes in the tree
