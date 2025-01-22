@@ -641,6 +641,7 @@ impl Engine {
                                     piece,
                                     color,
                                     result: move_result,
+                                    captured_piece: None
                                 })
                             }
                         } else {
@@ -657,12 +658,47 @@ impl Engine {
                                 piece,
                                 color,
                                 result: move_result,
+                                captured_piece: None
                             })
                         }
                     }
                     _ => { /* Nothing to do ... just sad this move won't work right ? */ }
                 }
             }
+        }
+
+        // Add castling if available
+        if let Ok(board) = self.perform_castling(CastlingMove::Long) {
+            // in the case the move is valid, we just as if we would for a normal move
+            let mut engine = self.clone_with_new_board(board);
+            let move_result = engine.finalize_turn();
+
+            // add the moverow to the vec
+            result.push(MoveEvaluationContext {
+                engine,
+                player_move: PlayerMove::Castling(CastlingMove::Long),
+                piece: Piece::King,
+                color,
+                result: move_result,
+                captured_piece: None
+            })
+        }
+
+        // Add castling if available
+        if let Ok(board) = self.perform_castling(CastlingMove::Short) {
+            // in the case the move is valid, we just as if we would for a normal move
+            let mut engine = self.clone_with_new_board(board);
+            let move_result = engine.finalize_turn();
+
+            // add the moverow to the vec
+            result.push(MoveEvaluationContext {
+                engine,
+                player_move: PlayerMove::Castling(CastlingMove::Short),
+                piece: Piece::King,
+                color,
+                result: move_result,
+                captured_piece: None
+            })
         }
 
         Ok(result)

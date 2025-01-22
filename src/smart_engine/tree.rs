@@ -365,7 +365,7 @@ impl Tree {
 
             // multiplier = 1 if white, -1 if black
             let multiplier: f32 = (color_checkmate as isize) as f32;
-            let score = values::CHECK_MATE_VALUE * multiplier;
+            let score = values::CHECK_MATE * multiplier;
             node.borrow_mut().set_raw_score(score);
             node.borrow_mut().set_raw_as_best();
             score

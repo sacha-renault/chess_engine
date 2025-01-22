@@ -64,7 +64,7 @@ macro_rules! input {
     }};
 }
 
-fn play_robot_to_robot(depth: usize, size: usize) {
+fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
     let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
     let mut i = 0;
 
@@ -115,7 +115,10 @@ fn play_robot_to_robot(depth: usize, size: usize) {
         let _ = tree.select_branch(best_move.clone());
 
         i += 1;
-        print_board(tree.root().borrow().get_engine().get_board());
+        if display {
+            print_board(tree.root().borrow().get_engine().get_board());
+        }
+
         // input!(String, "next ?");
         // if i > 3 {
         //     break;
@@ -200,7 +203,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 fn main() {
     // drop_branch_test();
     // play_against_robot(false, 20, 1e6 as usize);
-    play_robot_to_robot(20, 1e5 as usize);
+    play_robot_to_robot(20, 5e5 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());

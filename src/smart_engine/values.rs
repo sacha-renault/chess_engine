@@ -2,7 +2,11 @@ use super::evaluate::Evaluator;
 use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 
-pub const CHECK_MATE_VALUE: f32 = 1e5 as f32;
+pub const CASTLING_BONUS: f32 = 1.;
+pub const CAPTURE_BONUS: f32 = 1.;
+pub const CAPTURE_MVV_LVA_FACTOR: f32 = 1.;
+pub const CHECK_BONUS: f32 = 0.5;
+pub const CHECK_MATE: f32 = 1e5 as f32;
 pub const WHITE_PAWNS_VALUE: [f32; 64] = [
     0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83,
     0.87, 0.87, 0.87, 0.9,  0.9,  0.87, 0.87, 0.87,

@@ -9,7 +9,8 @@ use crate::{
 pub struct MoveEvaluationContext {
     pub engine: Engine,
     pub player_move: PlayerMove,
-    pub piece: Piece,
     pub color: Color,
     pub result: CorrectMoveResults,
+    pub piece: Piece,
+    pub captured_piece: Option<Piece>,
 }
