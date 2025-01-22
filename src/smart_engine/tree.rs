@@ -42,7 +42,6 @@ pub struct Tree {
     current_depth: usize,
     hasher: Zobrist,
     transpose_table: TranspositionTable,
-    computation_allowed: bool,
 }
 
 impl Tree {
@@ -70,7 +69,6 @@ impl Tree {
             current_depth: 1,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
-            computation_allowed: true,
         }
     }
 
