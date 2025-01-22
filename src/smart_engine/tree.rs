@@ -23,11 +23,11 @@ use crate::pieces::Piece;
 use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
+use super::heuristic::heuristic_move_bonus;
 use super::node_with_score::NodeWithScore;
-use super::transposition_table::{TranspositionTable, TTFlag};
+use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
-use super::heuristic::heuristic_move_bonus;
 
 /// A tree structure for chess move analysis
 ///
@@ -157,10 +157,14 @@ impl Tree {
         is_foreseeing: bool,
     ) -> f32 {
         let is_maximizing = node.borrow().get_engine().white_to_play();
-        let mut best_score = init_best_score(is_maximizing);
         let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
+        let mut best_score = if scored_children.is_empty() {
+            node.borrow().get_best_score()
+        } else {
+            init_best_score(is_maximizing)
+        };
 
-        for child in scored_children {
+        for child in scored_children.iter() {
             let score = if is_foreseeing {
                 self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
             } else {
@@ -182,9 +186,6 @@ impl Tree {
             }
         }
 
-        if !is_foreseeing && (best_score == f32::NEG_INFINITY || best_score == f32::INFINITY) {
-            panic!("Best score is not updated");
-        }
         best_score
     }
 
@@ -199,25 +200,22 @@ impl Tree {
     ///
     /// # Returns
     /// The best score found for the current node.
-    fn minimax(
-        &mut self,
-        node: TreeNodeRef,
-        depth: usize,
-        mut alpha: f32,
-        mut beta: f32,
-    ) -> f32 {
+    fn minimax(&mut self, node: TreeNodeRef, depth: usize, mut alpha: f32, mut beta: f32) -> f32 {
         // get the hash to see if this node exist somewhere in the tt
         let hash = self.compute_node_hash(&node);
 
         // End tree building if reaching max depth
         if depth == 0 {
-            self.transpose_table.insert_entry(hash, node.clone(), depth, TTFlag::Exact);
+            self.transpose_table
+                .insert_entry(hash, node.clone(), depth, TTFlag::Exact);
             node.borrow_mut().set_raw_as_best();
             return node.borrow().get_raw_score();
         }
 
         // Check the transposition table for existing results
-        if let Some(best_score) = self.handle_transposition_table(hash, node.clone(), depth, &mut alpha, &mut beta) {
+        if let Some(best_score) =
+            self.handle_transposition_table(hash, node.clone(), depth, &mut alpha, &mut beta)
+        {
             return best_score;
         }
 
@@ -336,7 +334,8 @@ impl Tree {
                     child.clone(),
                     shallow_depth,
                     f32::NEG_INFINITY,
-                    f32::INFINITY);
+                    f32::INFINITY,
+                );
 
                 // add heuristic bonus
                 let node_ref = node.borrow();
@@ -349,7 +348,8 @@ impl Tree {
                     moved_piece,
                     captured_piece_opt,
                     shallow_depth,
-                    is_white_to_play);
+                    is_white_to_play,
+                );
 
                 // init the node with score
                 NodeWithScore::new(child.clone(), score)
@@ -394,8 +394,6 @@ impl Tree {
         }
     }
 
-
-
     /// Computes the hash for a given node based on the board and whose turn it is.
     ///
     /// # Arguments
@@ -430,17 +428,22 @@ impl Tree {
         beta: &mut f32,
     ) -> Option<f32> {
         if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
+            // Upgrade to a strong ref
             let strong_ref = entry.node.upgrade().unwrap();
 
+            // match flag to know what to do
             match entry.flag {
                 TTFlag::Exact => return Some(strong_ref.borrow().get_best_score()),
                 TTFlag::LowerBound => *alpha = alpha.max(strong_ref.borrow().get_best_score()),
                 TTFlag::UperBound => *beta = beta.min(strong_ref.borrow().get_best_score()),
             }
 
+            // Copy information that we care from the node
             if !node.borrow().has_children_computed() {
                 node.borrow_mut().copy_entry(strong_ref.clone());
             }
+            node.borrow_mut()
+                .set_raw_score(strong_ref.borrow().get_raw_score());
 
             if *alpha >= *beta {
                 return Some(strong_ref.borrow().get_best_score());
