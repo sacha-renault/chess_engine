@@ -162,9 +162,9 @@ impl Tree {
 
         for child in scored_children {
             let score = if is_foreseeing {
-                self.minimax(child.node(), depth - 1, alpha, beta)
-            } else {
                 self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
+            } else {
+                self.minimax(child.node(), depth - 1, alpha, beta)
             };
 
             // Update the best score, alpha, and beta for pruning
@@ -182,6 +182,9 @@ impl Tree {
             }
         }
 
+        if !is_foreseeing && (best_score == f32::NEG_INFINITY || best_score == f32::INFINITY) {
+            panic!("Best score is not updated");
+        }
         best_score
     }
 
