@@ -120,7 +120,7 @@ impl Tree {
             // Entries are depth dependent so we have to clear it
             self.transpose_table.clear();
 
-            // brek condition (either too deep or size of the tree to big)
+            // break condition (either too deep or size of the tree to big)
             if self.max_depth <= self.current_depth || self.size() > self.max_size {
                 break;
             }
@@ -152,13 +152,18 @@ impl Tree {
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
+        is_foreseeing: bool,
     ) -> f32 {
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
         let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
 
         for child in scored_children {
-            let score = self.minimax(child.node(), depth - 1, alpha, beta);
+            let score = if is_foreseeing {
+                self.minimax(child.node(), depth - 1, alpha, beta)
+            } else {
+                self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
+            };
 
             // Update the best score, alpha, and beta for pruning
             if is_maximizing {
@@ -217,7 +222,7 @@ impl Tree {
         }
 
         // Perform minimax evaluation
-        let best_score = self.minimax_evaluate(node.clone(), depth, alpha, beta);
+        let best_score = self.minimax_evaluate(node.clone(), depth, alpha, beta, false);
 
         // Insert results into the transposition table
         self.store_in_transposition_table(hash, node.clone(), depth, best_score, alpha, beta);
@@ -256,7 +261,7 @@ impl Tree {
         }
 
         // Perform minimax evaluation without storing results
-        self.minimax_evaluate(node.clone(), depth, alpha, beta)
+        self.minimax_evaluate(node.clone(), depth, alpha, beta, true)
     }
 
     /// Computes and adds all possible child nodes for a given position
