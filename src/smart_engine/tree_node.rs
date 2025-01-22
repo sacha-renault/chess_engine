@@ -27,17 +27,14 @@ impl TreeNode {
 
     fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> Self {
         // create the node
-        let node = TreeNode {
+        TreeNode {
             engine,
             children: Vec::new(),
             raw_score: score,
             chess_move,
             computed: false,
             best_score: 0.,
-        };
-
-        // use `set_recursive_score` to make the score flow to root
-        node
+        }
     }
 
     // GETTER
@@ -57,7 +54,7 @@ impl TreeNode {
         &self.chess_move
     }
 
-    pub fn is_computed(&self) -> bool {
+    pub fn has_children_computed(&self) -> bool {
         self.computed
     }
 
@@ -84,6 +81,12 @@ impl TreeNode {
 
     pub fn set_raw_as_best(&mut self) {
         self.best_score = self.raw_score;
+    }
+
+    pub fn copy_entry(&mut self, node: TreeNodeRef) {
+        self.children = node.borrow().children.clone();
+        self.computed = true;
+        self.best_score = node.borrow().best_score;
     }
 
     fn recursive_check_mate_depth(&self, depth: isize) -> isize {

@@ -2,9 +2,16 @@ use super::tree_node::{TreeNode, TreeNodeRef};
 use std::cell::RefCell;
 use std::{collections::HashMap, rc::Rc, rc::Weak};
 
-struct TTEntry {
-    node: Weak<RefCell<TreeNode>>,
-    depth: usize,
+pub enum TTFlag {
+    Exact,
+    LowerBound,
+    UperBound,
+}
+
+pub struct TTEntry {
+    pub node: Weak<RefCell<TreeNode>>,
+    pub depth: usize,
+    pub flag: TTFlag,
 }
 
 pub struct TranspositionTable(HashMap<u64, TTEntry>);
@@ -19,7 +26,7 @@ impl TranspositionTable {
     /// # Arguments
     /// * `hash` - The Zobrist hash of the position
     /// * `node` - A strong reference to the TreeNode
-    pub fn insert_entry(&mut self, hash: u64, node: TreeNodeRef, depth: usize) {
+    pub fn insert_entry(&mut self, hash: u64, node: TreeNodeRef, depth: usize, flag: TTFlag) {
         // Create a Weak reference to the TreeNode
         let weak_node = Rc::downgrade(&node);
 
@@ -29,24 +36,25 @@ impl TranspositionTable {
             TTEntry {
                 node: weak_node,
                 depth,
+                flag
             },
         );
     }
 
     /// Get an entry from its hash, ensure the week pointer is pointing on
     /// some actual data. Otherwise, return none and remove the entry
-    pub fn get_entry(&mut self, hash: u64, depth: usize) -> Option<Rc<RefCell<TreeNode>>> {
+    pub fn get_entry(&mut self, hash: u64, depth: usize) -> Option<&TTEntry> {
         // Get the entry if it exists
-        if let Some(entry) = self.0.get(&hash) {
+        let entry_opt = self.0.get(&hash);
+        if let Some(entry) = entry_opt {
             // Check if depth is same
             if entry.depth != depth {
                 return None;
             }
 
             // Check if the weak reference is still valid
-            let upgraded = entry.node.upgrade();
-            if let Some(data) = upgraded {
-                return Some(data.clone());
+            if entry.node.upgrade().is_some() {
+                return self.0.get(&hash);
             } else {
                 self.0.remove(&hash);
             }

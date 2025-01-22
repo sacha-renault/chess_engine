@@ -23,7 +23,7 @@ use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
 use super::node_with_score::NodeWithScore;
-use super::transposition_table::TranspositionTable;
+use super::transposition_table::{TranspositionTable, TTFlag};
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
 
@@ -119,6 +119,9 @@ impl Tree {
 
         // loop until one of break condition is matched
         loop {
+            // Entries are depth dependent so we have to clear it
+            self.transpose_table.clear();
+
             // brek condition (either too deep or size of the tree to big)
             if self.max_depth <= self.current_depth || self.size() > self.max_size {
                 break;
@@ -129,55 +132,35 @@ impl Tree {
             let beta = f32::INFINITY;
 
             // Generate the tree recursively
-            self.recursive_generate_tree(self.root.clone(), self.current_depth, alpha, beta);
+            self.minimax(self.root.clone(), self.current_depth, alpha, beta);
 
             self.current_depth += 1;
         }
 
-        // Entries are depth dependent so we have to clear it
-        self.transpose_table.clear();
         self.current_depth
     }
 
-    /// Recursively generates the game tree using alpha-beta pruning
+    /// Evaluates the current game state using the minimax algorithm.
     ///
     /// # Parameters
-    /// * `node` - Current node being processed
-    /// * `depth` - Remaining depth to explore
-    /// * `alpha` - Best score for maximizing player
-    /// * `beta` - Best score for minimizing player
+    /// * `node` - The node representing the current game state.
+    /// * `depth` - The depth to which the evaluation should proceed.
     ///
     /// # Returns
-    /// Best score found for the current node
-    fn recursive_generate_tree(
+    /// The static evaluation score of the game state for the given depth.
+    fn minimax_evaluate(
         &mut self,
         node: TreeNodeRef,
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
     ) -> f32 {
-        // End tree building if reaching max depth
-        if depth == 0 {
-            node.borrow_mut().set_raw_as_best();
-            return node.borrow().get_raw_score();
-        }
-
-        // Avoid recomputation: Check if node is already computed
-        let computed = node.borrow().is_computed();
-        if !computed && self.computation_allowed {
-            self.compute_new_children(node.clone(), depth);
-        }
-
-        // Get whos player is maximizing
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = init_best_score(is_maximizing);
-        // let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
         let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
 
-        // Here we have to sort the child move (we can use the `recursive_generate_tree` function)
         for child in scored_children {
-            // for child in node.borrow().get_children().iter() {
-            let score = self.recursive_generate_tree(child.node(), depth - 1, alpha, beta);
+            let score = self.minimax(child.node(), depth - 1, alpha, beta);
 
             // Update the best score, alpha, and beta for pruning
             if is_maximizing {
@@ -188,15 +171,137 @@ impl Tree {
                 beta = beta.min(best_score);
             }
 
-            // Prune if the current branch can no longer affect the final result
+            // Prune if the current branch can no longer affect the result
             if beta <= alpha {
                 break;
             }
         }
 
+        best_score
+    }
+
+    /// Recursively generates the game tree using alpha-beta pruning.
+    /// This function is the core of the minimax algorithm.
+    ///
+    /// # Parameters
+    /// * `node` - The current node being processed.
+    /// * `depth` - The remaining depth to explore.
+    /// * `alpha` - The best score for the maximizing player so far.
+    /// * `beta` - The best score for the minimizing player so far.
+    ///
+    /// # Returns
+    /// The best score found for the current node.
+    fn minimax(
+        &mut self,
+        node: TreeNodeRef,
+        depth: usize,
+        mut alpha: f32,
+        mut beta: f32,
+    ) -> f32 {
+        // Check if we know this node and it's bound
+        //get the hash to see if this node exist somewhere in the tt
+        let hash = self.hasher.compute_hash(
+            node.borrow().get_engine().get_board(),
+            node.borrow().get_engine().white_to_play(),
+        );
+
+        // End tree building if reaching max depth
+        if depth == 0 {
+            self.transpose_table.insert_entry(hash, node.clone(), depth, TTFlag::Exact);
+            node.borrow_mut().set_raw_as_best();
+            return node.borrow().get_raw_score();
+        }
+
+        // check if there is a result already in the transposition table
+        if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
+            // Upgrad the weak ref to a strong one
+            let strong_ref = entry.node.upgrade().unwrap();
+
+            // Check if the entry is exact, lower or upper bound
+            match entry.flag {
+                TTFlag::Exact => {
+                    return strong_ref.borrow().get_best_score();
+                },
+                TTFlag::LowerBound => {
+                    alpha = alpha.max(strong_ref.borrow().get_best_score());
+                },
+                TTFlag::UperBound => {
+                    beta = beta.min(strong_ref.borrow().get_best_score());
+                }
+            }
+
+            // First, if the current node hasn't its children computed, we copy from the entry
+            let has_children_computed = node.borrow().has_children_computed();
+            if !has_children_computed {
+                node.borrow_mut().copy_entry(strong_ref.clone());
+            }
+
+            // If alpha >= beta, return the score
+            if alpha >= beta {
+                return strong_ref.borrow().get_best_score();
+            }
+        }
+
+        // Check if children were already computed and if there were not, compute them
+        if !node.borrow().has_children_computed() {
+            self.compute_new_children(node.clone());
+        }
+
+        // Perform minimax evaluation
+        let best_score = self.minimax_evaluate(node.clone(), depth, alpha, beta);
+
+        // Setup a flag for entry
+        let flag = if best_score <= alpha {
+            TTFlag::UperBound
+        } else if best_score >= beta {
+            TTFlag::LowerBound
+        } else {
+            TTFlag::Exact
+        };
+
+        // Insert the entry into the transposition table
+        self.transpose_table.insert_entry(
+            hash,
+            node.clone(),
+            depth,
+            flag
+        );
+
         // Set the best score of every node
         node.borrow_mut().set_best_score(best_score);
         best_score
+    }
+
+    /// Generates a foreseeing game tree using a shallow minimax search.
+    /// This function is used to precompute potential game states without
+    /// affecting the transposition table.
+    ///
+    /// # Parameters
+    /// * `node` - The node representing the current game state.
+    /// * `depth` - The depth to which the foreseeing search should proceed.
+    ///
+    /// # Returns
+    /// The best score found during the foreseeing process.
+    fn minimax_foreseeing(
+        &mut self,
+        node: TreeNodeRef,
+        depth: usize,
+        alpha: f32,
+        beta: f32,
+    ) -> f32 {
+        // End tree building if reaching max depth
+        if depth == 0 {
+            node.borrow_mut().set_raw_as_best();
+            return node.borrow().get_raw_score();
+        }
+
+        // Compute children if not already computed
+        if !node.borrow().has_children_computed() {
+            self.compute_new_children(node.clone());
+        }
+
+        // Perform minimax evaluation without storing results
+        self.minimax_evaluate(node.clone(), depth, alpha, beta)
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -206,24 +311,7 @@ impl Tree {
     ///
     /// # Note
     /// Also handles terminal positions (checkmate/stalemate)
-    fn compute_new_children(&mut self, node: TreeNodeRef, depth: usize) {
-        //get the hash to see if this node exist somewhere in the tt
-        let hash = self.hasher.compute_hash(
-            node.borrow().get_engine().get_board(),
-            node.borrow().get_engine().white_to_play(),
-        );
-
-        // Check if the position is known in the transposition table
-        if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
-            // Only copy from completed nodes to avoid cycles
-            node.replace_with(|_| entry.borrow().clone());
-            return;
-        }
-
-        // everytime we create a children, we put it in our hashtable
-        // to avoid recompute if we see it again
-        self.transpose_table.insert_entry(hash, node.clone(), depth);
-
+    fn compute_new_children(&mut self, node: TreeNodeRef) {
         // at this moment, we can se node to be computed
         node.borrow_mut().set_computed(true);
 
@@ -244,7 +332,7 @@ impl Tree {
         // children of current node
         for possible_move in possible_moves.into_iter() {
             // calc the raw score of this board
-            let score = self.evaluator.evaluate(&possible_move.engine.get_board());
+            let score = self.evaluator.evaluate(possible_move.engine.get_board());
 
             // create a new node for the child
             let child_node =
@@ -278,15 +366,15 @@ impl Tree {
         let mut scored_children = children
             .into_iter()
             .map(|child| {
-                NodeWithScore::new(
+                // Calc score as a mix of foreseing best move
+                let score = self.minimax_foreseeing(
                     child.clone(),
-                    self.recursive_generate_tree(
-                        child.clone(),
-                        shallow_depth,
-                        f32::NEG_INFINITY,
-                        f32::INFINITY,
-                    ),
-                )
+                    shallow_depth,
+                    f32::NEG_INFINITY,
+                    f32::INFINITY);
+
+                // init the node with score
+                NodeWithScore::new(child.clone(), score)
             })
             .collect::<Vec<NodeWithScore>>();
 

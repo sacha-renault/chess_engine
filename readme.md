@@ -19,7 +19,7 @@ This project implements a chess engine capable of playing chess according to sta
 - [x] Alpha beta pruning
 - [x] Iterative deepening
 - [x] Zobrist Hashing (for efficient board state representation)
-- [ ] Transposition Tables: memory leak identified, working on fix.
+- [x] Transposition Tables
 - [x] Move Ordering
     - [x] With shallow depth foreseeing.
     - [ ] Heuristic move ordering.

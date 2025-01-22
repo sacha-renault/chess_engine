@@ -89,18 +89,8 @@ fn play_robot_to_robot(depth: usize, size: usize) {
             }
         };
 
-        // for scored_node in scored_nodes.iter().skip(1).take(3) {
-        //     println!(
-        //         "     - also possible: {} with score: {}",
-        //         string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-        //         scored_node.upgrade().unwrap().borrow().get_best_score()
-        //     );
-        // }
-
         let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
         let tree_size_before_select = tree.size();
-        let _ = tree.select_branch(best_move.clone());
-
         // display the board
         match best_node.upgrade() {
             Some(mv) => println!(
@@ -114,6 +104,15 @@ fn play_robot_to_robot(depth: usize, size: usize) {
             ),
             None => println!("What the fuck ? no moves ?"),
         }
+
+        for scored_node in scored_nodes.iter().skip(1).take(3) {
+            println!(
+                "     - also possible: {} with score: {}",
+                string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
+                scored_node.upgrade().unwrap().borrow().get_best_score()
+            );
+        }
+        let _ = tree.select_branch(best_move.clone());
 
         i += 1;
         print_board(tree.root().borrow().get_engine().get_board());
@@ -200,8 +199,8 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
 fn main() {
     // drop_branch_test();
-    // play_against_robot(false, 20, 5e6 as usize);
-    play_robot_to_robot(20, 5e6 as usize);
+    // play_against_robot(false, 20, 1e6 as usize);
+    play_robot_to_robot(20, 1e5 as usize);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());
