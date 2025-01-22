@@ -90,6 +90,10 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
         };
 
         let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
+        if let PlayerMove::Castling(_) = best_move {
+            panic!("Castling move");
+        }
+
         let tree_size_before_select = tree.size();
         // display the board
         match best_node.upgrade() {
@@ -203,7 +207,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 fn main() {
     // drop_branch_test();
     // play_against_robot(false, 20, 1e6 as usize);
-    play_robot_to_robot(20, 5e5 as usize, true);
+    play_robot_to_robot(20, 1e4 as usize, false);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());

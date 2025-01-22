@@ -19,6 +19,7 @@ use std::rc::{Rc, Weak};
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
+use crate::pieces::Piece;
 use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
@@ -26,6 +27,7 @@ use super::node_with_score::NodeWithScore;
 use super::transposition_table::{TranspositionTable, TTFlag};
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::values;
+use super::heuristic::heuristic_move_bonus;
 
 /// A tree structure for chess move analysis
 ///
@@ -327,11 +329,24 @@ impl Tree {
             .into_iter()
             .map(|child| {
                 // Calc score as a mix of foreseing best move
-                let score = self.minimax_foreseeing(
+                let mut score = self.minimax_foreseeing(
                     child.clone(),
                     shallow_depth,
                     f32::NEG_INFINITY,
                     f32::INFINITY);
+
+                // add heuristic bonus
+                let node_ref = node.borrow();
+                let is_white_to_play = node_ref.get_engine().white_to_play();
+                let player_move = child.borrow().get_move().unwrap();
+                let moved_piece = Piece::Pawn; // node_ref.get_moved_piece();
+                let captured_piece_opt = None; // node_ref.get_captured_piece();
+                score += heuristic_move_bonus(
+                    player_move,
+                    moved_piece,
+                    captured_piece_opt,
+                    shallow_depth,
+                    is_white_to_play);
 
                 // init the node with score
                 NodeWithScore::new(child.clone(), score)
