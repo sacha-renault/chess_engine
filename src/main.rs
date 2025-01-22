@@ -65,7 +65,16 @@ macro_rules! input {
 }
 
 fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
-    let mut tree = Tree::new(Engine::new(), Box::new(ValueRuleSet {}), depth, size);
+    let mut engine = Engine::new();
+    engine.play(create_move_from_str("e2e4")).unwrap();
+    engine.play(create_move_from_str("e7e5")).unwrap();
+    engine.play(create_move_from_str("f1e2")).unwrap();
+    engine.play(create_move_from_str("f8e7")).unwrap();
+    engine.play(create_move_from_str("g1f3")).unwrap();
+    engine.play(create_move_from_str("g8f6")).unwrap();
+    // print_board(engine.get_board());
+
+    let mut tree = Tree::new(engine, Box::new(ValueRuleSet {}), depth, size);
     let mut i = 0;
 
     while tree
@@ -80,6 +89,7 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
         let depth_reached = tree.generate_tree();
         let scored_nodes = tree.get_sorted_nodes();
         let best_node = &scored_nodes[0];
+        let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
 
         let played_str = {
             if tree.root().borrow().get_engine().white_to_play() {
@@ -89,12 +99,8 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
             }
         };
 
-        let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
-        if let PlayerMove::Castling(_) = best_move {
-            panic!("Castling move");
-        }
-
         let tree_size_before_select = tree.size();
+
         // display the board
         match best_node.upgrade() {
             Some(mv) => println!(
@@ -123,7 +129,6 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
             print_board(tree.root().borrow().get_engine().get_board());
         }
 
-        // input!(String, "next ?");
         // if i > 3 {
         //     break;
         // }
@@ -207,7 +212,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 fn main() {
     // drop_branch_test();
     // play_against_robot(false, 20, 1e6 as usize);
-    play_robot_to_robot(20, 1e4 as usize, false);
+    play_robot_to_robot(6, 1e9 as usize, false);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());

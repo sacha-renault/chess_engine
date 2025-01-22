@@ -2,7 +2,7 @@ use super::evaluate::Evaluator;
 use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 
-pub const CASTLING_BONUS: f32 = 1.;
+pub const CASTLING_BONUS: f32 = 5.;
 pub const CAPTURE_BONUS: f32 = 1.;
 pub const CAPTURE_MVV_LVA_FACTOR: f32 = 1.;
 pub const CHECK_BONUS: f32 = 0.5;
