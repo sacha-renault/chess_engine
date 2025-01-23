@@ -13,7 +13,7 @@ This project implements a chess engine capable of playing chess according to sta
 - Board representation
 - Stockfish like engine
 
-## TODO
+## RoadMap
 
 ### Basic Optimization
 - [x] Alpha beta pruning
@@ -54,3 +54,6 @@ This project implements a chess engine capable of playing chess according to sta
 
 ### Parallelization
 - [ ] Lazy SMP (thread-safe transposition tables required)
+
+## TODO
+- Check why the engine doesn't see mate (it used to).
