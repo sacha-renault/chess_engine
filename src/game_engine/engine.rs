@@ -1,4 +1,5 @@
 use super::move_evaluation_context::MoveEvaluationContext;
+use super::move_piece_output::PieceMoveOutput;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
 use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
@@ -165,10 +166,10 @@ impl Engine {
         }
 
         // Simulate the move and check if the king is in check
-        let simulated_board =
+        let move_output =
             self.validate_move_safety(current_square, target_square, piece, color)?;
 
-        Ok(simulated_board)
+        Ok(move_output.board)
     }
 
     /// Simulate and check if the king is in check
@@ -190,9 +191,9 @@ impl Engine {
         target_square: u64,
         piece: Piece,
         color: Color,
-    ) -> Result<Board, IncorrectMoveResults> {
+    ) -> Result<PieceMoveOutput, IncorrectMoveResults> {
         // Simulate the move
-        let mut simulated_board = move_piece(
+        let mut mv_piece_result = move_piece(
             self.board.clone(),
             current_square,
             target_square,
@@ -201,11 +202,11 @@ impl Engine {
         );
 
         // perform en passant squares check
-        self.handle_en_passant(&mut simulated_board, current_square, target_square);
+        self.handle_en_passant(&mut mv_piece_result.board, current_square, target_square);
 
         // Get the simulated player's and opponent's boards
         let (player_board, opponent_board) =
-            get_half_turn_boards(&simulated_board, get_color(!self.white_turn));
+            get_half_turn_boards(&mut mv_piece_result.board, get_color(!self.white_turn));
 
         // Check if the king is in check in the simulated state
         // For that, we check all possible moves for next round (bulk computed all opponent moves)
@@ -218,7 +219,7 @@ impl Engine {
         ) {
             return Err(IncorrectMoveResults::KingStillChecked);
         }
-        Ok(simulated_board)
+        Ok(mv_piece_result)
     }
 
     /// Finalize the turn after a move
@@ -384,7 +385,7 @@ impl Engine {
                 final_king_pos,
                 color,
                 Piece::King,
-            );
+            ).board;
 
             // simutate move of rook
             let simulated_board = move_piece(
@@ -393,7 +394,7 @@ impl Engine {
                 final_rook_pos,
                 color,
                 Piece::Rook,
-            );
+            ).board;
 
             // Get the simulated player's and opponent's boards
             let (sim_player_board, sim_opponent_board) =
@@ -615,9 +616,9 @@ impl Engine {
 
                 // If the move doesn't leave king in check, add it to possible moves
                 match self.validate_move_safety(current_square, target_square, piece, color) {
-                    Ok(board) => {
+                    Ok(piece_move_output) => {
                         // in the case the move is valid, we just as if we would for a normal move
-                        let mut engine = self.clone_with_new_board(board);
+                        let mut engine = self.clone_with_new_board(piece_move_output.board);
 
                         // check if the move is a promotion
                         if piece == Piece::Pawn && target_square & promotion_rank != 0 {
@@ -641,7 +642,7 @@ impl Engine {
                                     piece,
                                     color,
                                     result: move_result,
-                                    captured_piece: None
+                                    captured_piece: piece_move_output.captured_piece
                                 })
                             }
                         } else {
@@ -658,7 +659,7 @@ impl Engine {
                                 piece,
                                 color,
                                 result: move_result,
-                                captured_piece: None
+                                captured_piece: piece_move_output.captured_piece
                             })
                         }
                     }

@@ -1,3 +1,4 @@
+use super::move_piece_output::PieceMoveOutput;
 use super::player_move::{CastlingMove, NormalMove, PlayerMove};
 use crate::boards::Board;
 use crate::boards::ColorBoard;
@@ -178,43 +179,66 @@ pub fn move_piece(
     target_square: u64,
     color: Color,
     piece_type: Piece,
-) -> Board {
+) -> PieceMoveOutput {
     // Determine which color's board is being modified
     let (color_board, opponent_board) = match color {
         Color::White => (&mut board.white, &mut board.black),
         Color::Black => (&mut board.black, &mut board.white),
     };
 
+    // Determine captured piece
+    let captured_piece = [
+        (Piece::Pawn, opponent_board.pawn),
+        (Piece::Knight, opponent_board.knight),
+        (Piece::Bishop, opponent_board.bishop),
+        (Piece::Rook, opponent_board.rook),
+        (Piece::Queen, opponent_board.queen),
+        (Piece::King, opponent_board.king),
+    ].into_iter()
+     .find(|&(_, bitboard)| bitboard & target_square != 0)
+     .map(|(piece, _)| piece);
+
     // Clear the current square from the moving piece
     match piece_type {
-        Piece::Pawn => color_board.pawn &= !current_square,
-        Piece::Knight => color_board.knight &= !current_square,
-        Piece::Bishop => color_board.bishop &= !current_square,
-        Piece::Rook => color_board.rook &= !current_square,
-        Piece::Queen => color_board.queen &= !current_square,
-        Piece::King => color_board.king &= !current_square,
-    };
-
-    // Place the piece on the target square
-    match piece_type {
-        Piece::Pawn => color_board.pawn |= target_square,
-        Piece::Knight => color_board.knight |= target_square,
-        Piece::Bishop => color_board.bishop |= target_square,
-        Piece::Rook => color_board.rook |= target_square,
-        Piece::Queen => color_board.queen |= target_square,
-        Piece::King => color_board.king |= target_square,
-    };
+        Piece::Pawn => {
+            color_board.pawn &= !current_square;
+            color_board.pawn |= target_square;
+        },
+        Piece::Knight => {
+            color_board.knight &= !current_square;
+            color_board.knight |= target_square;
+        },
+        Piece::Bishop => {
+            color_board.bishop &= !current_square;
+            color_board.bishop |= target_square;
+        },
+        Piece::Rook => {
+            color_board.rook &= !current_square;
+            color_board.rook |= target_square;
+        },
+        Piece::Queen => {
+            color_board.queen &= !current_square;
+            color_board.queen |= target_square;
+        },
+        Piece::King => {
+            color_board.king &= !current_square;
+            color_board.king |= target_square;
+        },
+    }
 
     // Clear the target square from all opponent pieces
-    opponent_board.pawn &= !target_square;
-    opponent_board.knight &= !target_square;
-    opponent_board.bishop &= !target_square;
-    opponent_board.rook &= !target_square;
-    opponent_board.queen &= !target_square;
-    opponent_board.king &= !target_square;
+    match captured_piece {
+        Some(Piece::Pawn) => opponent_board.pawn &= !target_square,
+        Some(Piece::Knight) => opponent_board.knight &= !target_square,
+        Some(Piece::Bishop) => opponent_board.bishop &= !target_square,
+        Some(Piece::Rook) => opponent_board.rook &= !target_square,
+        Some(Piece::Queen) => opponent_board.queen &= !target_square,
+        Some(Piece::King) => opponent_board.king &= !target_square,
+        None => (),
+    }
 
     // Return the updated board
-    board
+    PieceMoveOutput { board, captured_piece }
 }
 
 /// Returns all possible moves for a given color board.

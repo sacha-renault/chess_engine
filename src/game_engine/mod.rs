@@ -5,3 +5,4 @@ pub mod move_evaluation_context;
 pub mod move_results;
 pub mod player_move;
 pub mod utility;
+mod move_piece_output;
