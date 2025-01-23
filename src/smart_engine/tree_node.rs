@@ -29,11 +29,29 @@ impl TreeNode {
         Rc::new(RefCell::new(TreeNode::new(engine, 0., None, None, None)))
     }
 
-    pub fn new_cell(engine: Engine, score: f32, chess_move: Option<PlayerMove>, moved_piece: Piece, captured_piece: Option<Piece>) -> TreeNodeRef {
-        Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move,  Some(moved_piece), captured_piece)))
+    pub fn new_cell(
+        engine: Engine,
+        score: f32,
+        chess_move: Option<PlayerMove>,
+        moved_piece: Piece,
+        captured_piece: Option<Piece>,
+    ) -> TreeNodeRef {
+        Rc::new(RefCell::new(TreeNode::new(
+            engine,
+            score,
+            chess_move,
+            Some(moved_piece),
+            captured_piece,
+        )))
     }
 
-    fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>, moved_piece: Option<Piece>, captured_piece: Option<Piece>) -> Self {
+    fn new(
+        engine: Engine,
+        score: f32,
+        chess_move: Option<PlayerMove>,
+        moved_piece: Option<Piece>,
+        captured_piece: Option<Piece>,
+    ) -> Self {
         // create the node
         TreeNode {
             engine,
@@ -43,7 +61,7 @@ impl TreeNode {
             computed: false,
             best_score: 0.,
             moved_piece,
-            captured_piece
+            captured_piece,
         }
     }
 
@@ -109,7 +127,7 @@ impl TreeNode {
         self.best_score = node.borrow().best_score;
     }
 
-    pub fn get_depth(&self) -> Option<usize> {
+    pub fn get_mate_depth(&self) -> Option<usize> {
         return self.recursive_get_mate_depth(0);
     }
 

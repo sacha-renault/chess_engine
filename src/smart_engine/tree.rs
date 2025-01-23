@@ -110,11 +110,15 @@ impl Tree {
             if a_score != b_score {
                 // score is different, we don't even have to bother with mate depth
                 return score_cmp.unwrap();
-            } else if a_score.abs() == values::CHECK_MATE { // Don't need to check for b_score, we know it's equal
+            } else if a_score.abs() == values::CHECK_MATE {
+                // Don't need to check for b_score, we know it's equal
                 // If same sign, prefer faster mate (smaller absolute depth)
-                let a_depth = a.borrow().get_depth();
-                let b_depth = b.borrow().get_depth();
-                println!("Two move are forced checkmate, here are the depth : {:?} / {:?}", a_depth, b_depth);
+                let a_depth = a.borrow().get_mate_depth().unwrap();
+                let b_depth = b.borrow().get_mate_depth().unwrap();
+                println!(
+                    "Two move are forced checkmate, here are the depth : {:?} / {:?}",
+                    a_depth, b_depth
+                );
                 return a_depth.partial_cmp(&b_depth).unwrap();
             } else {
                 // Case of equal score but not mate
