@@ -176,7 +176,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
         let tree_size = tree.size();
         let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
-        // print_board(tree.root().borrow().get_engine().get_board());
+        print_board(tree.root().borrow().get_engine().get_board());
 
         println!(
             "{} played: {} with score {}. Tree size is : {}",
@@ -209,10 +209,32 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     }
 }
 
+fn test_mate() {
+    // Play move for mat du berger
+    let mut engine = Engine::new();
+    engine.play(create_move_from_str("e2e4")).unwrap();
+    engine.play(create_move_from_str("e7e5")).unwrap();
+    engine.play(create_move_from_str("f1c4")).unwrap();
+    engine.play(create_move_from_str("a7a6")).unwrap();
+    engine.play(create_move_from_str("d1f3")).unwrap();
+    engine.play(create_move_from_str("b8c6")).unwrap();
+
+    let mut tree = Tree::new(engine, Box::new(ValueRuleSet::new()), 6, 1e6 as usize);
+    tree.generate_tree();
+    let scored_nodes = tree.get_sorted_nodes();
+    println!("Number of moves : {}", scored_nodes.len());
+    let best_move = &scored_nodes[0].upgrade().unwrap().borrow().get_move().unwrap();
+    println!("Best move : {}", string_from_move(best_move));
+    let _ = tree.select_branch(best_move.clone());
+    print_board(tree.root().borrow().get_engine().get_board());
+
+
+}
 fn main() {
+    test_mate();
     // drop_branch_test();
     // play_against_robot(false, 20, 1e6 as usize);
-    play_robot_to_robot(6, 1e9 as usize, false);
+    // play_robot_to_robot(6, 1e9 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
     // let r = ev.evaluate(&e.board());

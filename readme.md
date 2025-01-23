@@ -22,8 +22,8 @@ This project implements a chess engine capable of playing chess according to sta
 - [x] Transposition Tables
 - [x] Move Ordering
     - [x] With shallow depth foreseeing.
-    - [-] Heuristic move ordering.
-    - [-] MVV-LVA
+    - [x] Heuristic move ordering.
+    - [x] MVV-LVA
 - [ ] Time management
     - [ ] Basic time allocation (total time / expected moves remaining)
     - [ ] Anytime search capability
