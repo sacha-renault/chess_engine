@@ -298,8 +298,13 @@ impl Tree {
             let score = self.evaluator.evaluate(possible_move.engine.get_board());
 
             // create a new node for the child
-            let child_node =
-                TreeNode::new_cell(possible_move.engine, score, Some(possible_move.player_move));
+            let child_node = TreeNode::new_cell(
+                possible_move.engine,
+                score,
+                Some(possible_move.player_move),
+                possible_move.piece,
+                possible_move.captured_piece,
+            );
 
             // we add children into the node
             node.borrow_mut().add_child(child_node.clone());
@@ -323,7 +328,7 @@ impl Tree {
         // It clone a Vec of ptr so
         // Cost is pretty small
         let children = node.borrow().get_children().clone();
-        let is_white_turn = node.borrow().get_engine().white_to_play();
+        let is_white_to_play = node.borrow().get_engine().white_to_play();
 
         // Map best score to each children
         let mut scored_children = children
@@ -338,11 +343,10 @@ impl Tree {
                 );
 
                 // add heuristic bonus
-                let node_ref = node.borrow();
-                let is_white_to_play = node_ref.get_engine().white_to_play();
+                let child_ref = child.borrow();
                 let player_move = child.borrow().get_move().unwrap();
-                let moved_piece = Piece::Pawn; // node_ref.get_moved_piece();
-                let captured_piece_opt = None; // node_ref.get_captured_piece();
+                let moved_piece = child_ref.get_moved_piece();
+                let captured_piece_opt = child_ref.get_captured_piece();
                 score += heuristic_move_bonus(
                     player_move,
                     moved_piece,
@@ -356,7 +360,7 @@ impl Tree {
             })
             .collect::<Vec<NodeWithScore>>();
 
-        if is_white_turn {
+        if is_white_to_play {
             scored_children.sort_by(|a, b| b.score().partial_cmp(&a.score()).unwrap());
         } else {
             scored_children.sort_by(|a, b| a.score().partial_cmp(&b.score()).unwrap());
@@ -442,6 +446,7 @@ impl Tree {
             if !node.borrow().has_children_computed() {
                 node.borrow_mut().copy_entry(strong_ref.clone());
             }
+
             node.borrow_mut()
                 .set_raw_score(strong_ref.borrow().get_raw_score());
 

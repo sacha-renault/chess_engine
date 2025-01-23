@@ -1,4 +1,5 @@
 use crate::game_engine::player_move::PlayerMove;
+use crate::pieces::Piece;
 use crate::prelude::Engine;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -7,25 +8,30 @@ pub type TreeNodeRef = Rc<RefCell<TreeNode>>;
 
 #[derive(Debug, Clone)]
 pub struct TreeNode {
-    engine: Engine,
+    // About the tree
     children: Vec<TreeNodeRef>,
     raw_score: f32,
-    chess_move: Option<PlayerMove>,
     computed: bool,
     best_score: f32,
+
+    // About the game
+    engine: Engine,
+    chess_move: Option<PlayerMove>,
+    moved_piece: Option<Piece>,
+    captured_piece: Option<Piece>,
 }
 
 impl TreeNode {
     // CREATE
     pub fn create_root_node(engine: Engine) -> TreeNodeRef {
-        Rc::new(RefCell::new(TreeNode::new(engine, 0., None)))
+        Rc::new(RefCell::new(TreeNode::new(engine, 0., None, None, None)))
     }
 
-    pub fn new_cell(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> TreeNodeRef {
-        Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move)))
+    pub fn new_cell(engine: Engine, score: f32, chess_move: Option<PlayerMove>, moved_piece: Piece, captured_piece: Option<Piece>) -> TreeNodeRef {
+        Rc::new(RefCell::new(TreeNode::new(engine, score, chess_move,  Some(moved_piece), captured_piece)))
     }
 
-    fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>) -> Self {
+    fn new(engine: Engine, score: f32, chess_move: Option<PlayerMove>, moved_piece: Option<Piece>, captured_piece: Option<Piece>) -> Self {
         // create the node
         TreeNode {
             engine,
@@ -34,6 +40,8 @@ impl TreeNode {
             chess_move,
             computed: false,
             best_score: 0.,
+            moved_piece,
+            captured_piece
         }
     }
 
@@ -60,6 +68,16 @@ impl TreeNode {
 
     pub fn get_best_score(&self) -> f32 {
         self.best_score
+    }
+
+    pub fn get_moved_piece(&self) -> Piece {
+        // this can panic only for very first root node that is
+        // NEVER calling this fn
+        self.moved_piece.unwrap()
+    }
+
+    pub fn get_captured_piece(&self) -> Option<Piece> {
+        self.captured_piece
     }
 
     // SETTER
