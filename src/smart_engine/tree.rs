@@ -383,7 +383,7 @@ impl Tree {
         // it means it's either check mate or stale mate
         if node.borrow().get_engine().is_king_checked() {
             // get who's check mated
-            let color_checkmate = get_color(white_to_play);
+            let color_checkmate = get_color(!white_to_play);
 
             // multiplier = 1 if white, -1 if black
             let multiplier: f32 = (color_checkmate as isize) as f32;
