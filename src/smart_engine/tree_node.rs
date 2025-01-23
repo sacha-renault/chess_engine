@@ -4,6 +4,8 @@ use crate::prelude::Engine;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use super::values;
+
 pub type TreeNodeRef = Rc<RefCell<TreeNode>>;
 
 #[derive(Debug, Clone)]
@@ -107,23 +109,20 @@ impl TreeNode {
         self.best_score = node.borrow().best_score;
     }
 
-    fn recursive_check_mate_depth(&self, depth: isize) -> isize {
-        if !self.computed {
-            return -1;
-        } else if self.children.len() == 0 {
-            return depth;
-        } else {
-            for child in &self.children {
-                let check_mate_depth = child.borrow().recursive_check_mate_depth(depth + 1);
-                if check_mate_depth != -1 {
-                    return check_mate_depth;
-                }
-            }
-        }
-        -1
+    pub fn get_depth(&self) -> Option<usize> {
+        return self.recursive_get_mate_depth(0);
     }
 
-    pub fn check_mate_depth(&self) -> isize {
-        return self.recursive_check_mate_depth(0);
+    fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
+        if self.raw_score == values::CHECK_MATE {
+            Some(depth)
+        } else if self.children.is_empty() {
+            return None;
+        } else {
+            self.children
+                .iter()
+                .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
+                .min()
+        }
     }
 }

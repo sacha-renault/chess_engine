@@ -86,24 +86,44 @@ impl Tree {
     /// # Returns
     /// Vector of weak references to child nodes, sorted by score (descending for white, ascending for black)
     pub fn get_sorted_nodes(&self) -> Vec<Weak<RefCell<TreeNode>>> {
+        // Clone the ref to children
         let mut children = self.root.borrow().get_children().clone();
+        let white_to_play = self.root.borrow().get_engine().white_to_play();
 
         // Use stored best_score instead of recomputing
-        if self.root.borrow().get_engine().white_to_play() {
-            children.sort_by(|a, b| {
-                b.borrow()
-                    .get_best_score()
-                    .partial_cmp(&a.borrow().get_best_score())
-                    .unwrap()
-            });
-        } else {
-            children.sort_by(|a, b| {
-                a.borrow()
-                    .get_best_score()
-                    .partial_cmp(&b.borrow().get_best_score())
-                    .unwrap()
-            });
-        }
+        // When more than a branches lead to a forced mate
+        // The engine doesn't know which one to take
+        // All branches leading to forced mate has a best_score of value::CHECK_MATE
+        // We need a second key to sort the nodes ...
+        children.sort_by(|a, b| {
+            let a_score = a.borrow().get_best_score();
+            let b_score = b.borrow().get_best_score();
+
+            // Primary sort by score
+            let score_cmp = if white_to_play {
+                b_score.partial_cmp(&a_score)
+            } else {
+                a_score.partial_cmp(&b_score)
+            };
+
+            // Secondary sort: prefer faster mate
+            if a_score != b_score {
+                // score is different, we don't even have to bother with mate depth
+                return score_cmp.unwrap();
+            } else if a_score.abs() == values::CHECK_MATE { // Don't need to check for b_score, we know it's equal
+                // If same sign, prefer faster mate (smaller absolute depth)
+                let a_depth = a.borrow().get_depth();
+                let b_depth = b.borrow().get_depth();
+                println!("Two move are forced checkmate, here are the depth : {:?} / {:?}", a_depth, b_depth);
+                return a_depth.partial_cmp(&b_depth).unwrap();
+            } else {
+                // Case of equal score but not mate
+                // We can handle this case later
+                // Not so important now
+                // TODO
+                return score_cmp.unwrap();
+            }
+        });
 
         children.iter().map(|child| Rc::downgrade(&child)).collect()
     }
