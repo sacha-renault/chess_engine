@@ -2,7 +2,7 @@ use super::move_evaluation_context::MoveEvaluationContext;
 use super::move_piece_output::PieceMoveOutput;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
-use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
+use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards, parse_str_into_square};
 use super::utility::{get_en_passant_ranks, get_half_turn_boards_mut};
 use super::utility::{get_initial_castling_positions, get_piece_type, get_possible_move};
 use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
@@ -52,6 +52,7 @@ impl Engine {
         }
     }
 
+    /// Creates a copy of the current engine with an other board
     pub fn clone_with_new_board(&self, board: Board) -> Self {
         Engine {
             board: board,
@@ -60,6 +61,7 @@ impl Engine {
         }
     }
 
+    /// Return true if it is white to play
     pub fn white_to_play(&self) -> bool {
         self.white_turn
     }
@@ -574,6 +576,48 @@ impl Engine {
             .collect::<Result<Vec<_>, String>>()?;
 
         Ok(pieces_with_moves)
+    }
+
+    /// This function takes a string and returns a player move
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - a string formatted with a correct (or not) chess move
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Option<PlayerMove>`
+    ///     - Some(PlayerMove) if the move is correct
+    ///     - None if the move couldn't be parse into a valid move
+    pub fn get_move_by_str(&self, input: &str) -> Option<PlayerMove> {
+        if input.len() < 2 {
+            return None;
+        }
+
+        match input.to_uppercase().as_str() {
+            "O-O" => return Some(PlayerMove::Castling(CastlingMove::Short)),
+            "O-O-O" => return Some(PlayerMove::Castling(CastlingMove::Long)),
+            _ => { }
+        }
+
+        // Regular move parsing
+        let input = input.replace(&['+', '#', 'x'], "");
+        let chars: Vec<char> = input.chars().collect();
+
+        // Match piece moving by matching first letter
+        let piece = match chars[0] {
+            'K' => Piece::King,
+            'Q' => Piece::Queen,
+            'R' => Piece::Rook,
+            'B' => Piece::Bishop,
+            'N' => Piece::Knight,
+            _ => Piece::Pawn
+        };
+
+        // parse target square
+        let target_square = parse_str_into_square(chars[chars.len() - 2], chars[chars.len() - 1])?;
+
+        todo!();
     }
 
     /// Generates all possible moves for the current player, considering the current state of the engine.

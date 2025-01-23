@@ -439,3 +439,14 @@ pub fn string_from_move(player_move: &PlayerMove) -> String {
         _ => "PROMOTION".to_string(),
     }
 }
+
+pub fn parse_str_into_square(target_file: char, target_rank: char) -> Option<u64> {
+    // Validate the input
+    if !('a'..='h').contains(&target_file)
+        || !('1'..='8').contains(&target_rank) {
+        None
+    } else {
+        let target = 1u64 << ((target_rank as u64 - '1' as u64) * 8 + (target_file as u64 - 'a' as u64));
+        Some(target)
+    }
+}
