@@ -137,8 +137,9 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
 
 fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     let mut engine = Engine::new();
+    let _ = engine.play(create_move_from_str("e2e4")); // Force an initial move of e4
 
-    if is_white {
+    if !is_white {
         // we exepct an input for first move
         let pm = input!(String, "Input a move: ");
         engine.play(create_move_from_str(&pm)).unwrap();
@@ -166,25 +167,23 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
         };
 
         let best_node = &nodes[0];
-        // for (pm, score) in &moves {
-        //     println!(
-        //         "Best moves: {} with score : {}",
-        //         string_from_move(&pm),
-        //         score
-        //     );
-        // }
-
-        let tree_size = tree.size();
-        let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
-        print_board(tree.root().borrow().get_engine().get_board());
-
         println!(
             "{} played: {} with score {}. Tree size is : {}",
             played_str,
             string_from_move(&best_node.upgrade().unwrap().borrow().get_move().unwrap()),
             best_node.upgrade().unwrap().borrow().get_best_score(),
-            tree_size
+            tree.size()
         );
+        for scored_node in nodes.iter().skip(1).take(3) {
+            println!(
+                "     - also possible: {} with score: {}",
+                string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
+                scored_node.upgrade().unwrap().borrow().get_best_score()
+            );
+        }
+
+        let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
+        print_board(tree.root().borrow().get_engine().get_board());
         println!("Number of moves available : {}", nodes.len());
 
         // user input
@@ -231,9 +230,9 @@ fn test_mate() {
 
 }
 fn main() {
-    test_mate();
+    // test_mate();
     // drop_branch_test();
-    // play_against_robot(false, 20, 1e6 as usize);
+    play_against_robot(false, 20, 1e6 as usize);
     // play_robot_to_robot(6, 1e9 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
