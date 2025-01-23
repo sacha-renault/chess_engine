@@ -37,7 +37,6 @@ This project implements a chess engine capable of playing chess according to sta
 - [ ] Futility Pruning
 - [ ] Late Move Reductions
 - [ ] Razoring
-- [ ] Lazy SMP (for parallel search)
 - [ ] Opening Optimization
     - [ ] Books based : precomputed known good opening moves
     - [ ] Knowledge based : specific rules for opening (like how many square from the center are attacked)
@@ -53,7 +52,9 @@ This project implements a chess engine capable of playing chess according to sta
     - [ ] Singular extensions (extend depth for unique critical moves).
 
 ### Parallelization
-- [ ] Lazy SMP (thread-safe transposition tables required)
+- [ ] Lazy SMP
+    - [ ] make transposition table thread safe (best way is probably with a RwLock)
+    - [ ] Parallel calculation from the root node
 
 ## TODO
 _empty_
