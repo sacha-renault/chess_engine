@@ -22,8 +22,8 @@ This project implements a chess engine capable of playing chess according to sta
 - [x] Transposition Tables
 - [x] Move Ordering
     - [x] With shallow depth foreseeing.
-    - [ ] Heuristic move ordering.
-    - [ ] MVV-LVA
+    - [-] Heuristic move ordering.
+    - [-] MVV-LVA
 - [ ] Time management
     - [ ] Basic time allocation (total time / expected moves remaining)
     - [ ] Anytime search capability
@@ -56,4 +56,4 @@ This project implements a chess engine capable of playing chess according to sta
 - [ ] Lazy SMP (thread-safe transposition tables required)
 
 ## TODO
-- Check why the engine doesn't see mate (it used to).
+_empty_

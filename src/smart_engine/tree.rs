@@ -19,7 +19,6 @@ use std::rc::{Rc, Weak};
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
-use crate::pieces::Piece;
 use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
