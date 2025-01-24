@@ -57,4 +57,4 @@ This project implements a chess engine capable of playing chess according to sta
     - [ ] Parallel calculation from the root node
 
 ## TODO
-_empty_
+Engine can ROOK when king is checked ???
