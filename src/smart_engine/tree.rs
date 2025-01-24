@@ -113,8 +113,8 @@ impl Tree {
             } else if a_score.abs() == values::CHECK_MATE {
                 // Don't need to check for b_score, we know it's equal
                 // If same sign, prefer faster mate (smaller absolute depth)
-                let a_depth = a.borrow().get_mate_depth().unwrap();
-                let b_depth = b.borrow().get_mate_depth().unwrap();
+                let a_depth = a.borrow().get_mate_depth();
+                let b_depth = b.borrow().get_mate_depth();
                 println!(
                     "Two move are forced checkmate, here are the depth : {:?} / {:?}",
                     a_depth, b_depth
