@@ -31,14 +31,14 @@ pub fn parse_opt_source_file_and_rank(
 }
 
 pub fn square_to_file(pos: u64) -> char {
-    // Convert position to file (a-h)
-    let file = (pos % 8) as u8 + b'a';
+    let square_index = pos.trailing_zeros() as u8;
+    let file = (square_index % 8) as u8 + b'a';
     file as char
 }
 
 pub fn square_to_rank(pos: u64) -> char {
-    // Convert position to rank (1-8)
-    let rank = (pos / 8) as u8 + b'1';
+    let square_index = pos.trailing_zeros() as u8;
+    let rank = (square_index / 8) as u8 + b'1';
     rank as char
 }
 
