@@ -170,13 +170,13 @@ impl Tree {
     fn minimax_evaluate(
         &mut self,
         node: TreeNodeRef,
+        scored_children: Vec<NodeWithScore>,
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
         is_foreseeing: bool,
     ) -> f32 {
         let is_maximizing = node.borrow().get_engine().white_to_play();
-        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth / 2);
         let mut best_score = if scored_children.is_empty() {
             node.borrow().get_best_score()
         } else {
@@ -243,8 +243,13 @@ impl Tree {
             self.compute_new_children(node.clone());
         }
 
+        // Get scored children
+        let scored_children =
+            self.get_sorted_children_with_best_score(node.clone(), (depth - 1).min(2));
+
         // Perform minimax evaluation
-        let best_score = self.minimax_evaluate(node.clone(), depth, alpha, beta, false);
+        let best_score =
+            self.minimax_evaluate(node.clone(), scored_children, depth, alpha, beta, false);
 
         // Insert results into the transposition table
         self.store_in_transposition_table(hash, node.clone(), depth, best_score, alpha, beta);
@@ -282,8 +287,11 @@ impl Tree {
             self.compute_new_children(node.clone());
         }
 
+        // Get scored children
+        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
+
         // Perform minimax evaluation without storing results
-        self.minimax_evaluate(node.clone(), depth, alpha, beta, true)
+        self.minimax_evaluate(node.clone(), scored_children, depth, alpha, beta, true)
     }
 
     /// Computes and adds all possible child nodes for a given position
