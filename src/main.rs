@@ -169,17 +169,19 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
         let best_node = &nodes[0];
         println!(
-            "{} played: {} with score {}. Tree size is : {}",
+            "{} played: {} with score {}. Tree size is : {} (mate depth : {:?})",
             played_str,
             string_from_move(&best_node.upgrade().unwrap().borrow().get_move().unwrap()),
             best_node.upgrade().unwrap().borrow().get_best_score(),
-            tree.size()
+            tree.size(),
+            best_node.upgrade().unwrap().borrow().get_mate_depth()
         );
         for scored_node in nodes.iter().skip(1).take(3) {
             println!(
-                "     - also possible: {} with score: {}",
+                "     - also possible: {} with score: {} (mate depth : {:?})",
                 string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-                scored_node.upgrade().unwrap().borrow().get_best_score()
+                scored_node.upgrade().unwrap().borrow().get_best_score(),
+                scored_node.upgrade().unwrap().borrow().get_mate_depth()
             );
         }
 
@@ -196,7 +198,18 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
                 println!("Incorrect move, please retry : {}", moves.len());
                 continue;
             }
-            match tree.select_branch(create_move_from_str(&pm)) {
+            let player_move: PlayerMove;
+            match tree.root().borrow().get_engine().get_move_by_str(&pm) {
+                Ok(mv) => {
+                    player_move = mv;
+                }
+                Err(()) => {
+                    let moves = tree.get_sorted_nodes();
+                    println!("Incorrect move, please retry : {}", moves.len());
+                    continue;
+                }
+            }
+            match tree.select_branch(player_move) {
                 Ok(()) => {
                     incorrect_move = false;
                 }
