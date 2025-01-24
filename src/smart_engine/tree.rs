@@ -115,10 +115,6 @@ impl Tree {
                 // If same sign, prefer faster mate (smaller absolute depth)
                 let a_depth = a.borrow().get_mate_depth();
                 let b_depth = b.borrow().get_mate_depth();
-                println!(
-                    "Two move are forced checkmate, here are the depth : {:?} / {:?}",
-                    a_depth, b_depth
-                );
                 return a_depth.partial_cmp(&b_depth).unwrap();
             } else {
                 // Case of equal score but not mate
@@ -370,11 +366,13 @@ impl Tree {
                 let player_move = child.borrow().get_move().unwrap();
                 let moved_piece = child_ref.get_moved_piece();
                 let captured_piece_opt = child_ref.get_captured_piece();
+                let is_king_checked = child_ref.get_engine().is_current_king_checked();
                 score += heuristic_move_bonus(
                     player_move,
                     moved_piece,
                     captured_piece_opt,
                     shallow_depth,
+                    is_king_checked,
                     is_white_to_play,
                 );
 
@@ -404,7 +402,7 @@ impl Tree {
 
         // if it's terminal node (number of moves == 0)
         // it means it's either check mate or stale mate
-        if node.borrow().get_engine().is_king_checked() {
+        if node.borrow().get_engine().is_current_king_checked() {
             // get who's check mated
             let color_checkmate = get_color(!white_to_play);
 

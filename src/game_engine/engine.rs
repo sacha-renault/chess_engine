@@ -28,6 +28,7 @@ pub struct Engine {
     board: Board,
     white_turn: bool,
     halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
+    current_king_checked: bool,
 }
 
 impl Engine {
@@ -50,6 +51,7 @@ impl Engine {
             board: Board::new(),
             white_turn: true,
             halfmove_clock: 0,
+            current_king_checked: false,
         }
     }
 
@@ -59,6 +61,7 @@ impl Engine {
             board: board,
             white_turn: self.white_turn,
             halfmove_clock: self.halfmove_clock,
+            current_king_checked: self.current_king_checked,
         }
     }
 
@@ -261,6 +264,9 @@ impl Engine {
         self.halfmove_clock += 1;
         self.white_turn = !self.white_turn;
 
+        // The turn moves and we update if the current king is checked
+        self.compute_king_checked();
+
         CorrectMoveResults::Ok
     }
 
@@ -337,6 +343,11 @@ impl Engine {
     /// 2. Moves both the king and rook to their respective positions
     /// 3. Ensures the king is not in check after the move
     fn perform_castling(&self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
+        // Discard directly if current king is checked
+        if self.is_current_king_checked() {
+            return Err(IncorrectMoveResults::CastlingNotAllowed);
+        }
+
         // get color
         let color = get_color(self.white_turn);
 
@@ -503,10 +514,15 @@ impl Engine {
     }
 
     /// Returns is king checked for the ones who has to move
-    pub fn is_king_checked(&self) -> bool {
+    fn compute_king_checked(&mut self) {
         let color = get_color(self.white_turn);
         let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
-        is_king_checked(player_board.king, &opponent_board, &player_board, color)
+        self.current_king_checked =
+            is_king_checked(player_board.king, &opponent_board, &player_board, color);
+    }
+
+    pub fn is_current_king_checked(&self) -> bool {
+        self.current_king_checked
     }
 
     /// Promotes a pawn that has reached the opposite end of the board.

@@ -1,14 +1,15 @@
-use crate::pieces::Piece;
-use crate::game_engine::player_move::PlayerMove;
-use super::values::get_value_by_piece;
 use super::values;
+use super::values::get_value_by_piece;
+use crate::game_engine::player_move::PlayerMove;
+use crate::pieces::Piece;
 
 pub fn heuristic_move_bonus(
     player_move: PlayerMove,
     moved_piece: Piece,
     captured_piece_opt: Option<Piece>,
     depth: usize,
-    white_to_play: bool
+    is_king_checked: bool,
+    white_to_play: bool,
 ) -> f32 {
     // init a bonus
     let mut bonus = 0.;
@@ -34,12 +35,17 @@ pub fn heuristic_move_bonus(
         bonus += values::CAPTURE_BONUS as f32;
 
         // Extra bonus for capturing a higher value piece
-        let mvv_lva= get_value_by_piece(captured_piece) - get_value_by_piece(moved_piece);
+        let mvv_lva = get_value_by_piece(captured_piece) - get_value_by_piece(moved_piece);
 
         // if more than 0 we are capturing a higher value piece
         if mvv_lva > 0. {
             bonus += mvv_lva * values::CAPTURE_MVV_LVA_FACTOR;
         }
+    }
+
+    // If king is checked, we add a bonus
+    if is_king_checked {
+        bonus += values::CHECK_BONUS;
     }
 
     // TODO
