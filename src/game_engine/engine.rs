@@ -1,8 +1,9 @@
 use super::move_evaluation_context::MoveEvaluationContext;
+use super::move_parsing::*;
 use super::move_piece_output::PieceMoveOutput;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
 use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
-use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards, parse_str_into_square};
+use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
 use super::utility::{get_en_passant_ranks, get_half_turn_boards_mut};
 use super::utility::{get_initial_castling_positions, get_piece_type, get_possible_move};
 use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
@@ -168,8 +169,7 @@ impl Engine {
         }
 
         // Simulate the move and check if the king is in check
-        let move_output =
-            self.validate_move_safety(current_square, target_square, piece, color)?;
+        let move_output = self.validate_move_safety(current_square, target_square, piece, color)?;
 
         Ok(move_output.board)
     }
@@ -387,7 +387,8 @@ impl Engine {
                 final_king_pos,
                 color,
                 Piece::King,
-            ).board;
+            )
+            .board;
 
             // simutate move of rook
             let simulated_board = move_piece(
@@ -396,7 +397,8 @@ impl Engine {
                 final_rook_pos,
                 color,
                 Piece::Rook,
-            ).board;
+            )
+            .board;
 
             // Get the simulated player's and opponent's boards
             let (sim_player_board, sim_opponent_board) =
@@ -559,7 +561,7 @@ impl Engine {
     ///   - `Piece`: The type of the piece (e.g., Pawn, Knight, etc.)
     ///   - `u64`: A bitboard representing all possible moves for this piece
     /// - `Err(String)`: An error message if move generation fails
-    pub fn get_all_moves_by_piece(&self) -> Result<Vec<(Piece, PlayerMove)>, String> {
+    pub fn get_all_moves_by_piece(&self) -> Vec<(Piece, PlayerMove)> {
         // get the correct color board
         let color = get_color(self.white_turn);
         let (player_board, _) = get_half_turn_boards(&self.board, color);
@@ -570,12 +572,14 @@ impl Engine {
         let pieces_with_moves = pieces
             .into_iter()
             .map(|it| {
-                self.get_moves(it.0)
-                    .map(|moves| (it.1, PlayerMove::Normal(NormalMove::new(it.0, moves))))
+                let unw = self
+                    .get_moves(it.0)
+                    .expect("Move couldn't be unwrapped, shoudln't even happen");
+                (it.1, PlayerMove::Normal(NormalMove::new(it.0, unw)))
             })
-            .collect::<Result<Vec<_>, String>>()?;
+            .collect::<Vec<_>>();
 
-        Ok(pieces_with_moves)
+        pieces_with_moves
     }
 
     /// This function takes a string and returns a player move
@@ -589,35 +593,34 @@ impl Engine {
     /// Returns a `Option<PlayerMove>`
     ///     - Some(PlayerMove) if the move is correct
     ///     - None if the move couldn't be parse into a valid move
-    pub fn get_move_by_str(&self, input: &str) -> Option<PlayerMove> {
+    pub fn get_move_by_str(&self, input: &str) -> Result<PlayerMove, ()> {
         if input.len() < 2 {
-            return None;
+            return Err(());
         }
 
-        match input.to_uppercase().as_str() {
-            "O-O" => return Some(PlayerMove::Castling(CastlingMove::Short)),
-            "O-O-O" => return Some(PlayerMove::Castling(CastlingMove::Long)),
-            _ => { }
+        if let Some(castling_move) = parse_castling(input) {
+            return Ok(castling_move);
         }
 
-        // Regular move parsing
-        let input = input.replace(&['+', '#', 'x'], "");
-        let chars: Vec<char> = input.chars().collect();
+        let (mut chars, promotion_piece_opt) = parse_input_string(input)?;
 
-        // Match piece moving by matching first letter
-        let piece = match chars[0] {
-            'K' => Piece::King,
-            'Q' => Piece::Queen,
-            'R' => Piece::Rook,
-            'B' => Piece::Bishop,
-            'N' => Piece::Knight,
-            _ => Piece::Pawn
-        };
+        if chars.len() < 2 {
+            return Err(());
+        }
 
-        // parse target square
+        let piece = match_piece_by_char(chars[0]);
         let target_square = parse_str_into_square(chars[chars.len() - 2], chars[chars.len() - 1])?;
+        let (from_file, from_rank) = parse_opt_source_file_and_rank(piece, chars);
 
-        todo!();
+        let possible_moves = self.get_all_moves_by_piece();
+        let filtered_pieces =
+            filter_possible_moves(possible_moves, piece, target_square, from_file, from_rank);
+
+        if filtered_pieces.len() != 1 {
+            return Err(());
+        }
+
+        create_final_move(filtered_pieces[0].1, promotion_piece_opt, target_square)
     }
 
     /// Generates all possible moves for the current player, considering the current state of the engine.
@@ -686,7 +689,7 @@ impl Engine {
                                     piece,
                                     color,
                                     result: move_result,
-                                    captured_piece: piece_move_output.captured_piece
+                                    captured_piece: piece_move_output.captured_piece,
                                 })
                             }
                         } else {
@@ -703,7 +706,7 @@ impl Engine {
                                 piece,
                                 color,
                                 result: move_result,
-                                captured_piece: piece_move_output.captured_piece
+                                captured_piece: piece_move_output.captured_piece,
                             })
                         }
                     }
@@ -725,7 +728,7 @@ impl Engine {
                 piece: Piece::King,
                 color,
                 result: move_result,
-                captured_piece: None
+                captured_piece: None,
             })
         }
 
@@ -742,7 +745,7 @@ impl Engine {
                 piece: Piece::King,
                 color,
                 result: move_result,
-                captured_piece: None
+                captured_piece: None,
             })
         }
 

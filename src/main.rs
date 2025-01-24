@@ -20,6 +20,7 @@ use chess_engine::smart_engine::node_with_score;
 use chess_engine::smart_engine::tree_node::TreeNodeRef;
 use game_engine::debug::print_board;
 use game_engine::player_move::PromotionMove;
+use game_engine::utility::move_piece;
 use pieces::Piece;
 use prelude::{
     create_move_from_str, iter_into_u64, string_from_move, Engine, NormalMove, PlayerMove,
@@ -82,7 +83,6 @@ fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
         .borrow()
         .get_engine()
         .get_all_moves_by_piece()
-        .unwrap()
         .len()
         != 0
     {
@@ -142,7 +142,8 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
     if !is_white {
         // we exepct an input for first move
         let pm = input!(String, "Input a move: ");
-        engine.play(create_move_from_str(&pm)).unwrap();
+        let mv = engine.get_move_by_str(&pm).unwrap();
+        engine.play(mv).unwrap();
     }
 
     // Create the tree from the engine
@@ -222,12 +223,15 @@ fn test_mate() {
     tree.generate_tree();
     let scored_nodes = tree.get_sorted_nodes();
     println!("Number of moves : {}", scored_nodes.len());
-    let best_move = &scored_nodes[0].upgrade().unwrap().borrow().get_move().unwrap();
+    let best_move = &scored_nodes[0]
+        .upgrade()
+        .unwrap()
+        .borrow()
+        .get_move()
+        .unwrap();
     println!("Best move : {}", string_from_move(best_move));
     let _ = tree.select_branch(best_move.clone());
     print_board(tree.root().borrow().get_engine().get_board());
-
-
 }
 fn main() {
     // test_mate();

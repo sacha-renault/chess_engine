@@ -194,36 +194,37 @@ pub fn move_piece(
         (Piece::Rook, opponent_board.rook),
         (Piece::Queen, opponent_board.queen),
         (Piece::King, opponent_board.king),
-    ].into_iter()
-     .find(|&(_, bitboard)| bitboard & target_square != 0)
-     .map(|(piece, _)| piece);
+    ]
+    .into_iter()
+    .find(|&(_, bitboard)| bitboard & target_square != 0)
+    .map(|(piece, _)| piece);
 
     // Clear the current square from the moving piece
     match piece_type {
         Piece::Pawn => {
             color_board.pawn &= !current_square;
             color_board.pawn |= target_square;
-        },
+        }
         Piece::Knight => {
             color_board.knight &= !current_square;
             color_board.knight |= target_square;
-        },
+        }
         Piece::Bishop => {
             color_board.bishop &= !current_square;
             color_board.bishop |= target_square;
-        },
+        }
         Piece::Rook => {
             color_board.rook &= !current_square;
             color_board.rook |= target_square;
-        },
+        }
         Piece::Queen => {
             color_board.queen &= !current_square;
             color_board.queen |= target_square;
-        },
+        }
         Piece::King => {
             color_board.king &= !current_square;
             color_board.king |= target_square;
-        },
+        }
     }
 
     // Clear the target square from all opponent pieces
@@ -238,7 +239,10 @@ pub fn move_piece(
     }
 
     // Return the updated board
-    PieceMoveOutput { board, captured_piece }
+    PieceMoveOutput {
+        board,
+        captured_piece,
+    }
 }
 
 /// Returns all possible moves for a given color board.
@@ -437,16 +441,5 @@ pub fn string_from_move(player_move: &PlayerMove) -> String {
             )
         }
         _ => "PROMOTION".to_string(),
-    }
-}
-
-pub fn parse_str_into_square(target_file: char, target_rank: char) -> Option<u64> {
-    // Validate the input
-    if !('a'..='h').contains(&target_file)
-        || !('1'..='8').contains(&target_rank) {
-        None
-    } else {
-        let target = 1u64 << ((target_rank as u64 - '1' as u64) * 8 + (target_file as u64 - 'a' as u64));
-        Some(target)
     }
 }
