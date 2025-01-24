@@ -602,7 +602,7 @@ impl Engine {
             return Ok(castling_move);
         }
 
-        let (mut chars, promotion_piece_opt) = parse_input_string(input)?;
+        let (chars, promotion_piece_opt) = parse_input_string(input)?;
 
         if chars.len() < 2 {
             return Err(());
