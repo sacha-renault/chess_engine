@@ -128,11 +128,15 @@ impl TreeNode {
     }
 
     pub fn get_mate_depth(&self) -> Option<usize> {
-        return self.recursive_get_mate_depth(0);
+        if self.best_score.abs() == values::CHECK_MATE {
+            self.recursive_get_mate_depth(0)
+        } else {
+            None
+        }
     }
 
     fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
-        if self.raw_score == values::CHECK_MATE {
+        if self.raw_score.abs() == values::CHECK_MATE {
             Some(depth)
         } else if self.children.is_empty() {
             return None;
