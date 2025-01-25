@@ -261,7 +261,7 @@ fn test_mate() {
 fn main() {
     // test_mate();
     // drop_branch_test();
-    play_against_robot(false, 6, 1e9 as usize);
+    play_against_robot(false, 10, 1e6 as usize);
     // play_robot_to_robot(6, 1e9 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
