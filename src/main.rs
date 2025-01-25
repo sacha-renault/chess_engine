@@ -147,11 +147,10 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
-        .evaluator(Box::new(ValueRuleSet::new()))
         .max_depth(depth)
         .max_size(size)
         .foreseeing_windowing(f32::INFINITY)
-        .build_tree(engine)
+        .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
     let root_ref = Rc::downgrade(&tree.root());
