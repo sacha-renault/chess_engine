@@ -2,6 +2,7 @@ use super::evaluate::Evaluator;
 use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 
+// Evaluator const values
 pub const CASTLING_BONUS: f32 = 5.;
 pub const CAPTURE_BONUS: f32 = 1.;
 pub const CAPTURE_MVV_LVA_FACTOR: f32 = 1.;
@@ -42,6 +43,9 @@ pub fn get_value_by_piece(piece: Piece) -> f32 {
         Piece::King => 1e5 as f32,
     }
 }
+
+// Tree const values
+pub const FORESEEING_WINDOW: f32 = 10.;
 
 pub struct ValueRuleSet {}
 
