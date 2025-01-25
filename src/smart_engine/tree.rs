@@ -38,6 +38,7 @@ pub struct Tree {
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
     max_size: usize,
+    foreseeing_windowing: f32,
 
     // auto initialized
     current_depth: usize,
@@ -61,6 +62,7 @@ impl Tree {
         evaluator: Box<dyn Evaluator>,
         max_depth: usize,
         max_size: usize,
+        foreseeing_windowing: f32,
     ) -> Self {
         Tree {
             root: TreeNode::create_root_node(engine),
@@ -68,6 +70,7 @@ impl Tree {
             max_depth,
             max_size,
             current_depth: 1,
+            foreseeing_windowing,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
         }
@@ -365,8 +368,8 @@ impl Tree {
                 let mut score = self.minimax_foreseeing(
                     child.clone(),
                     shallow_depth,
-                    f32::NEG_INFINITY,
-                    f32::INFINITY,
+                    -self.foreseeing_windowing,
+                    self.foreseeing_windowing,
                 );
 
                 // add heuristic bonus
