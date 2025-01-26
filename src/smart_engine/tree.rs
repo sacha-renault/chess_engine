@@ -179,7 +179,6 @@ impl Tree {
         &mut self,
         node: TreeNodeRef,
         scored_children: Vec<NodeWithScore>,
-        depth: usize,
         mut alpha: f32,
         mut beta: f32,
         search_type: SearchType,
@@ -193,13 +192,13 @@ impl Tree {
 
         for child in scored_children.iter() {
             let score = match search_type {
-                SearchType::Foreseeing => {
-                    self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
-                }
-                SearchType::Full => self.minimax(child.node(), depth - 1, alpha, beta),
-                SearchType::Quiescence(qdepth) => {
+                SearchType::Foreseeing(depth) => 
+                    self.minimax_foreseeing(child.node(), depth - 1, alpha, beta),
+                SearchType::Full(depth) => 
+                    self.minimax(child.node(), depth - 1, alpha, beta),
+                SearchType::Quiescence(qdepth) => 
                     self.quiescence_search(child.node().clone(), -beta, -alpha, qdepth + 1)
-                }
+                
             };
 
             // Update the best score, alpha, and beta for pruning
@@ -270,10 +269,9 @@ impl Tree {
         let best_score = self.minimax_evaluate(
             node.clone(),
             scored_children,
-            depth,
             alpha,
             beta,
-            SearchType::Full,
+            SearchType::Full(depth),
         );
 
         // Insert results into the transposition table
@@ -319,10 +317,9 @@ impl Tree {
         self.minimax_evaluate(
             node.clone(),
             scored_children,
-            depth,
             alpha,
             beta,
-            SearchType::Foreseeing,
+            SearchType::Foreseeing(depth),
         )
     }
 
@@ -503,7 +500,6 @@ impl Tree {
             let best_score = self.minimax_evaluate(
                 node,
                 child_nodes,
-                0,
                 alpha,
                 beta,
                 SearchType::Quiescence(qdepth + 1),

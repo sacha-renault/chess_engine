@@ -1,5 +1,5 @@
 pub enum SearchType {
-    Full,
-    Foreseeing,
+    Full(usize),
+    Foreseeing(usize),
     Quiescence(usize),
 }
