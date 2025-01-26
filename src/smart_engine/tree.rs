@@ -239,14 +239,14 @@ impl Tree {
         if depth == 0 {
             // Instead of just evaluating, call quiescence search
             let quiescence_score = self.quiescence_search(node.clone(), alpha, beta, 0);
+
+            // Update the node's score with the quiescence result
             node.borrow_mut().set_best_score(quiescence_score);
 
             // Store the quiescence score in the transposition table
             self.transpose_table
                 .insert_entry(hash, node.clone(), depth, TTFlag::Exact);
 
-            // Update the node's score with the quiescence result
-            node.borrow_mut().set_raw_as_best();
             return quiescence_score;
         }
 
@@ -303,7 +303,7 @@ impl Tree {
     ) -> f32 {
         // End tree building if reaching max depth
         if depth == 0 {
-            node.borrow_mut().set_raw_as_best();
+            // foreseeing should NEVER set any socre ???
             return node.borrow().get_raw_score();
         }
 
@@ -498,15 +498,20 @@ impl Tree {
             .filter(|scored_move| is_unstable_position(scored_move.node().clone()))
             .collect::<Vec<_>>();
 
-        let best_score = self.minimax_evaluate(
-            node,
-            child_nodes,
-            0,
-            alpha,
-            beta,
-            SearchType::Quiescence(qdepth + 1),
-        );
-        return best_score;
+        // evaluate only if there is anything to evaluate
+        if !child_nodes.is_empty() {
+            let best_score = self.minimax_evaluate(
+                node,
+                child_nodes,
+                0,
+                alpha,
+                beta,
+                SearchType::Quiescence(qdepth + 1),
+            );
+            return best_score;
+        } else {
+            return node.borrow().get_raw_score();
+        }
     }
 
     /// Computes the hash for a given node based on the board and whose turn it is.
