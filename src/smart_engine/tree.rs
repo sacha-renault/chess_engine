@@ -378,7 +378,6 @@ impl Tree {
     ) -> f32 {
         // we want to limit qdepth to a certain level
         if qdepth >= self.max_q_depth {
-            node.borrow_mut().set_raw_as_best();
             return node.borrow().get_raw_score();
         }
 
