@@ -15,6 +15,7 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::{Rc, Weak};
+use std::usize;
 
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::player_move::PlayerMove;
@@ -120,8 +121,8 @@ impl Tree {
             } else if a_score.abs() == values::CHECK_MATE {
                 // Don't need to check for b_score, we know it's equal
                 // If same sign, prefer faster mate (smaller absolute depth)
-                let a_depth = a.borrow().get_mate_depth();
-                let b_depth = b.borrow().get_mate_depth();
+                let a_depth = a.borrow().get_mate_depth().unwrap_or(usize::MAX);
+                let b_depth = b.borrow().get_mate_depth().unwrap_or(usize::MAX);
                 return a_depth.partial_cmp(&b_depth).unwrap();
             } else {
                 // Case of equal score but not mate
