@@ -492,13 +492,10 @@ impl Tree {
         }
 
         // we continue for all the nodes that are unstable
-        let child_nodes: Vec<NodeWithScore> = node
-            .borrow()
-            .get_children()
-            .clone()
+        let child_nodes: Vec<NodeWithScore> = self
+            .get_sorted_children_with_best_score(node.clone(), 0)
             .into_iter()
-            .filter(|node| is_unstable_position(node.clone()))
-            .map(|child| NodeWithScore::new(child.clone(), child.borrow().get_raw_score()))
+            .filter(|scored_move| is_unstable_position(scored_move.node().clone()))
             .collect::<Vec<_>>();
 
         let best_score = self.minimax_evaluate(

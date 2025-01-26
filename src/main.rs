@@ -150,6 +150,7 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
         .max_depth(depth)
         .max_size(size)
         .foreseeing_windowing(f32::INFINITY)
+        .max_q_depth(15)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
@@ -174,12 +175,13 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
         let best_node = &nodes[0];
         println!(
-            "{} played: {} with score {}. Tree size is : {} (mate depth : {:?})",
+            "{} played: {} with score {}. Tree size is : {} (mate depth : {:?} // depth {})",
             played_str,
             string_from_move(&best_node.upgrade().unwrap().borrow().get_move().unwrap()),
             best_node.upgrade().unwrap().borrow().get_best_score(),
             tree.size(),
-            best_node.upgrade().unwrap().borrow().get_mate_depth()
+            best_node.upgrade().unwrap().borrow().get_mate_depth(),
+            depth_reached,
         );
         for scored_node in nodes.iter().skip(1).take(3) {
             println!(
@@ -260,9 +262,9 @@ fn test_mate() {
     print_board(tree.root().borrow().get_engine().get_board());
 }
 fn main() {
-    test_mate();
+    // test_mate();
     // drop_branch_test();
-    // play_against_robot(false, 10, 1e6 as usize);
+    play_against_robot(false, 10, 1e6 as usize);
     // play_robot_to_robot(6, 1e9 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
