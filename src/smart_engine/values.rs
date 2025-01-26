@@ -45,7 +45,7 @@ pub fn get_value_by_piece(piece: Piece) -> f32 {
 }
 
 // Tree const values
-pub const FORESEEING_WINDOW: f32 = 10.;
+pub const FORESEEING_WINDOW: f32 = f32::INFINITY;
 
 pub struct ValueRuleSet {}
 

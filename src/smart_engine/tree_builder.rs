@@ -11,6 +11,7 @@ use crate::game_engine::engine::Engine;
 pub struct TreeBuilder {
     max_depth: Option<usize>,
     max_size: Option<usize>,
+    max_q_depth: Option<usize>,
     foreseeing_windowing: Option<f32>,
 }
 
@@ -20,6 +21,7 @@ impl TreeBuilder {
         Self {
             max_depth: None,
             max_size: None,
+            max_q_depth: None,
             foreseeing_windowing: None,
         }
     }
@@ -30,6 +32,15 @@ impl TreeBuilder {
     /// * `depth` - Maximum number of plies (half-moves) to analyze
     pub fn max_depth(mut self, depth: usize) -> Self {
         self.max_depth = Some(depth);
+        self
+    }
+
+    /// Sets the maximum depth the quiescence search will explore
+    ///
+    /// # Arguments
+    /// * `depth` - Maximum number of plies (half-moves) to analyze
+    pub fn max_q_depth(mut self, depth: usize) -> Self {
+        self.max_q_depth = Some(depth);
         self
     }
 
@@ -76,6 +87,7 @@ impl TreeBuilder {
             evaluator,
             self.max_depth.unwrap_or(usize::MAX),
             self.max_size.unwrap_or(usize::MAX),
+            self.max_q_depth.unwrap_or(usize::MAX),
             self.foreseeing_windowing
                 .unwrap_or(values::FORESEEING_WINDOW),
         );

@@ -22,10 +22,11 @@ use crate::game_engine::utility::get_color;
 use crate::prelude::Engine;
 
 use super::evaluate::Evaluator;
-use super::heuristic::heuristic_move_bonus;
 use super::node_with_score::NodeWithScore;
+use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
+use super::utility::{heuristic_move_bonus, is_unstable_position};
 use super::values;
 
 /// A tree structure for chess move analysis
@@ -38,6 +39,7 @@ pub struct Tree {
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
     max_size: usize,
+    max_q_depth: usize,
     foreseeing_windowing: f32,
 
     // auto initialized
@@ -62,6 +64,7 @@ impl Tree {
         evaluator: Box<dyn Evaluator>,
         max_depth: usize,
         max_size: usize,
+        max_q_depth: usize,
         foreseeing_windowing: f32,
     ) -> Self {
         Tree {
@@ -69,6 +72,7 @@ impl Tree {
             evaluator,
             max_depth,
             max_size,
+            max_q_depth,
             current_depth: 1,
             foreseeing_windowing,
             hasher: Zobrist::new(),
@@ -177,7 +181,7 @@ impl Tree {
         depth: usize,
         mut alpha: f32,
         mut beta: f32,
-        is_foreseeing: bool,
+        search_type: SearchType,
     ) -> f32 {
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = if scored_children.is_empty() {
@@ -187,10 +191,14 @@ impl Tree {
         };
 
         for child in scored_children.iter() {
-            let score = if is_foreseeing {
-                self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
-            } else {
-                self.minimax(child.node(), depth - 1, alpha, beta)
+            let score = match search_type {
+                SearchType::Foreseeing => {
+                    self.minimax_foreseeing(child.node(), depth - 1, alpha, beta)
+                }
+                SearchType::Full => self.minimax(child.node(), depth - 1, alpha, beta),
+                SearchType::Quiescence(qdepth) => {
+                    self.quiescence_search(child.node().clone(), -beta, -alpha, qdepth + 1)
+                }
             };
 
             // Update the best score, alpha, and beta for pruning
@@ -228,10 +236,17 @@ impl Tree {
 
         // End tree building if reaching max depth
         if depth == 0 {
+            // Instead of just evaluating, call quiescence search
+            let quiescence_score = self.quiescence_search(node.clone(), alpha, beta, 0);
+            node.borrow_mut().set_best_score(quiescence_score);
+
+            // Store the quiescence score in the transposition table
             self.transpose_table
                 .insert_entry(hash, node.clone(), depth, TTFlag::Exact);
+
+            // Update the node's score with the quiescence result
             node.borrow_mut().set_raw_as_best();
-            return node.borrow().get_raw_score();
+            return quiescence_score;
         }
 
         // Check the transposition table for existing results
@@ -251,8 +266,14 @@ impl Tree {
             self.get_sorted_children_with_best_score(node.clone(), (depth - 1).min(2));
 
         // Perform minimax evaluation
-        let best_score =
-            self.minimax_evaluate(node.clone(), scored_children, depth, alpha, beta, false);
+        let best_score = self.minimax_evaluate(
+            node.clone(),
+            scored_children,
+            depth,
+            alpha,
+            beta,
+            SearchType::Full,
+        );
 
         // Insert results into the transposition table
         self.store_in_transposition_table(hash, node.clone(), depth, best_score, alpha, beta);
@@ -294,7 +315,14 @@ impl Tree {
         let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
 
         // Perform minimax evaluation without storing results
-        self.minimax_evaluate(node.clone(), scored_children, depth, alpha, beta, true)
+        self.minimax_evaluate(
+            node.clone(),
+            scored_children,
+            depth,
+            alpha,
+            beta,
+            SearchType::Foreseeing,
+        )
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -428,6 +456,59 @@ impl Tree {
             node.borrow_mut().set_raw_as_best();
             0.
         }
+    }
+
+    fn quiescence_search(
+        &mut self,
+        node: TreeNodeRef,
+        mut alpha: f32,
+        beta: f32,
+        qdepth: usize,
+    ) -> f32 {
+        // we want to limit qdepth to a certain level
+        if qdepth >= self.max_q_depth {
+            node.borrow_mut().set_raw_as_best();
+            return node.borrow().get_raw_score();
+        }
+
+        // Children computation
+        let is_computed = node.borrow().has_children_computed();
+        if !is_computed {
+            self.compute_new_children(node.clone());
+        }
+
+        // evaluate the current position
+        let raw_score = node.borrow().get_raw_score();
+
+        // beta cutoff: opponent is already too good
+        if raw_score >= beta {
+            return beta;
+        }
+
+        // update alpha
+        if raw_score > alpha {
+            alpha = raw_score;
+        }
+
+        // we continue for all the nodes that are unstable
+        let child_nodes: Vec<NodeWithScore> = node
+            .borrow()
+            .get_children()
+            .clone()
+            .into_iter()
+            .filter(|node| is_unstable_position(node.clone()))
+            .map(|child| NodeWithScore::new(child.clone(), child.borrow().get_raw_score()))
+            .collect::<Vec<_>>();
+
+        let best_score = self.minimax_evaluate(
+            node,
+            child_nodes,
+            0,
+            alpha,
+            beta,
+            SearchType::Quiescence(qdepth + 1),
+        );
+        return best_score;
     }
 
     /// Computes the hash for a given node based on the board and whose turn it is.
