@@ -39,7 +39,7 @@ impl TreeBuilder {
     ///
     /// # Arguments
     /// * `depth` - Maximum number of plies (half-moves) to analyze
-    pub fn max_q_depth(mut self, depth: usize) -> Self {
+    pub fn max_quiescence_depth(mut self, depth: usize) -> Self {
         self.max_q_depth = Some(depth);
         self
     }

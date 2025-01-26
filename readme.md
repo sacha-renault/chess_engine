@@ -32,7 +32,7 @@ This project implements a chess engine capable of playing chess according to sta
    - [ ] Obvious captures/threats
 
 ### Search Optimization
-- [ ] Quiescence Search
+- [x] Quiescence Search
 - [ ] Null Move Pruning
 - [ ] Futility Pruning
 - [ ] Late Move Reductions
@@ -58,3 +58,4 @@ This project implements a chess engine capable of playing chess according to sta
 
 ## TODO
 Investigate on some forced mate when there isn't ??
+Fix castling bug: engine allow castling after rook get captured ??

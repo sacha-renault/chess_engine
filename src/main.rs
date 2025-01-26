@@ -134,7 +134,7 @@ macro_rules! input {
 //     }
 // }
 
-fn play_against_robot(is_white: bool, depth: usize, size: usize) {
+fn play_against_robot(is_white: bool) {
     let mut engine = Engine::new();
     let _ = engine.play(create_move_from_str("e2e4")); // Force an initial move of e4
 
@@ -147,10 +147,10 @@ fn play_against_robot(is_white: bool, depth: usize, size: usize) {
 
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
-        .max_depth(depth)
-        .max_size(size)
+        .max_depth(10)
+        .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_q_depth(15)
+        .max_quiescence_depth(10)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
@@ -264,7 +264,7 @@ fn test_mate() {
 fn main() {
     // test_mate();
     // drop_branch_test();
-    play_against_robot(false, 10, 1e6 as usize);
+    play_against_robot(false);
     // play_robot_to_robot(6, 1e9 as usize, true);
     // let ev = ValueRuleSet {};
     // let e = Engine::new();
