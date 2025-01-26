@@ -171,7 +171,12 @@ impl Tree {
     ///
     /// # Parameters
     /// * `node` - The node representing the current game state.
-    /// * `depth` - The depth to which the evaluation should proceed.
+    /// * `alpha` - The minimum score that the maximizing player is assured of
+    /// * `beta` - The maximum score that the minimizing player is assured of
+    /// * `search_type` - - The type of search to perform:
+    ///   - `SearchType::Full(depth)` - Standard minimax search to specified depth
+    ///   - `SearchType::Quiescence(qdepth)` - Tactical evaluation search
+    ///   - `SearchType::Foreseeing(depth)` - Look-ahead analysis without state updates
     ///
     /// # Returns
     /// The static evaluation score of the game state for the given depth.
@@ -282,16 +287,23 @@ impl Tree {
         best_score
     }
 
-    /// Generates a foreseeing game tree using a shallow minimax search.
-    /// This function is used to precompute potential game states without
-    /// affecting the transposition table.
+    /// Generates a foreseeing game tree using a shallow minimax search with alpha-beta pruning.
+    /// This function performs a look-ahead search to evaluate potential game states without 
+    /// storing results in the transposition table, making it useful for preliminary position analysis.
     ///
     /// # Parameters
-    /// * `node` - The node representing the current game state.
-    /// * `depth` - The depth to which the foreseeing search should proceed.
+    /// * `node` - The node representing the current game state to analyze
+    /// * `depth` - The maximum depth to search in the game tree
+    /// * `alpha` - The minimum score that the maximizing player is assured of
+    /// * `beta` - The maximum score that the minimizing player is assured of
     ///
     /// # Returns
-    /// The best score found during the foreseeing process.
+    /// * `f32` - The best evaluation score found during the foreseeing process
+    /// 
+    /// # Note
+    /// Unlike regular minimax search, this variant is stateless and does not 
+    /// update the game tree's best moves, scores or transposition table, making it suitable for
+    /// temporary position analysis.
     fn minimax_foreseeing(
         &mut self,
         node: TreeNodeRef,
@@ -321,6 +333,94 @@ impl Tree {
             beta,
             SearchType::Foreseeing(depth),
         )
+    }
+
+    /// Performs a Quiescence Search to evaluate positions with tactical sequences
+    /// until a "quiet" position is reached. This helps prevent the horizon effect
+    /// by extending the search in volatile positions.
+    ///
+    /// # Arguments
+    ///
+    /// * `&mut self` - Mutable reference to the search engine
+    /// * `node` - Reference to the current tree node being evaluated
+    /// * `alpha` - The minimum score that the maximizing player is assured of
+    /// * `beta` - The maximum score that the minimizing player is assured of
+    /// * `qdepth` - Current depth in the quiescence search
+    ///
+    /// # Returns
+    ///
+    /// * `f32` - The evaluated score for the position
+    ///
+    /// # Algorithm
+    ///
+    /// 1. Depth Control:
+    ///    - Stops if maximum quiescence depth is reached
+    ///    - Returns raw evaluation score at maximum depth
+    ///
+    /// 2. Position Generation:
+    ///    - Computes child positions if not already done
+    ///    - Filters for only "unstable" positions (captures, checks, etc.)
+    ///
+    /// 3. Stand-Pat:
+    ///    - Uses the current position's score as a lower bound
+    ///    - Implements beta cutoff for early pruning
+    ///    - Updates alpha if current position is better than previous alpha
+    ///
+    /// 4. Position Evaluation:
+    ///    - If unstable positions exist, continues search with minimax
+    ///    - If no unstable positions, returns the stand-pat score
+    fn quiescence_search(
+        &mut self,
+        node: TreeNodeRef,
+        mut alpha: f32,
+        beta: f32,
+        qdepth: usize,
+    ) -> f32 {
+        // we want to limit qdepth to a certain level
+        if qdepth >= self.max_q_depth {
+            node.borrow_mut().set_raw_as_best();
+            return node.borrow().get_raw_score();
+        }
+
+        // Children computation
+        let is_computed = node.borrow().has_children_computed();
+        if !is_computed {
+            self.compute_new_children(node.clone());
+        }
+
+        // evaluate the current position
+        let raw_score = node.borrow().get_raw_score();
+
+        // beta cutoff: opponent is already too good
+        if raw_score >= beta {
+            return beta;
+        }
+
+        // update alpha
+        if raw_score > alpha {
+            alpha = raw_score;
+        }
+
+        // we continue for all the nodes that are unstable
+        let child_nodes: Vec<NodeWithScore> = self
+            .get_sorted_children_with_best_score(node.clone(), 0)
+            .into_iter()
+            .filter(|scored_move| is_unstable_position(scored_move.node()))
+            .collect::<Vec<_>>();
+
+        // use minimax evaluation if there is at least one child
+        if !child_nodes.is_empty() {
+            let best_score = self.minimax_evaluate(
+                node,
+                child_nodes,
+                alpha,
+                beta,
+                SearchType::Quiescence(qdepth + 1),
+            );
+            return best_score;
+        } else {
+            return node.borrow().get_raw_score();
+        }
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -453,60 +553,6 @@ impl Tree {
             node.borrow_mut().set_raw_score(0.);
             node.borrow_mut().set_raw_as_best();
             0.
-        }
-    }
-
-    fn quiescence_search(
-        &mut self,
-        node: TreeNodeRef,
-        mut alpha: f32,
-        beta: f32,
-        qdepth: usize,
-    ) -> f32 {
-        // we want to limit qdepth to a certain level
-        if qdepth >= self.max_q_depth {
-            node.borrow_mut().set_raw_as_best();
-            return node.borrow().get_raw_score();
-        }
-
-        // Children computation
-        let is_computed = node.borrow().has_children_computed();
-        if !is_computed {
-            self.compute_new_children(node.clone());
-        }
-
-        // evaluate the current position
-        let raw_score = node.borrow().get_raw_score();
-
-        // beta cutoff: opponent is already too good
-        if raw_score >= beta {
-            return beta;
-        }
-
-        // update alpha
-        if raw_score > alpha {
-            alpha = raw_score;
-        }
-
-        // we continue for all the nodes that are unstable
-        let child_nodes: Vec<NodeWithScore> = self
-            .get_sorted_children_with_best_score(node.clone(), 0)
-            .into_iter()
-            .filter(|scored_move| is_unstable_position(scored_move.node().clone()))
-            .collect::<Vec<_>>();
-
-        // evaluate only if there is anything to evaluate
-        if !child_nodes.is_empty() {
-            let best_score = self.minimax_evaluate(
-                node,
-                child_nodes,
-                alpha,
-                beta,
-                SearchType::Quiescence(qdepth + 1),
-            );
-            return best_score;
-        } else {
-            return node.borrow().get_raw_score();
         }
     }
 
