@@ -202,7 +202,7 @@ impl Tree {
                 SearchType::Full(depth) => 
                     self.minimax(child.node(), depth - 1, alpha, beta),
                 SearchType::Quiescence(qdepth) => 
-                    self.quiescence_search(child.node().clone(), -beta, -alpha, qdepth + 1)
+                    self.quiescence_search(child.node().clone(), alpha, beta, qdepth + 1)
                 
             };
 

@@ -150,7 +150,7 @@ fn play_against_robot(is_white: bool) {
         .max_depth(10)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(10)
+        .max_quiescence_depth(0)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
