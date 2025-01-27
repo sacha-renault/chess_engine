@@ -1,7 +1,7 @@
 pub mod boards;
 pub mod game_engine;
 pub mod pieces;
-pub mod smart_engine;
+pub mod tree_search;
 
 // Define the prelude module
 pub mod prelude {
@@ -23,12 +23,12 @@ use pieces::Piece;
 use prelude::{
     create_move_from_str, iter_into_u64, string_from_move, Engine, NormalMove, PlayerMove,
 };
-use smart_engine::evaluate::Evaluator;
-use smart_engine::node_with_score::NodeWithScore;
-use smart_engine::tree::Tree;
-use smart_engine::tree_builder::TreeBuilder;
-use smart_engine::tree_node::TreeNode;
-use smart_engine::values::{get_value_by_piece, ValueRuleSet};
+use tree_search::evaluate::Evaluator;
+use tree_search::node_with_score::NodeWithScore;
+use tree_search::tree::Tree;
+use tree_search::tree_builder::TreeBuilder;
+use tree_search::tree_node::TreeNode;
+use tree_search::values::{get_value_by_piece, ValueRuleSet};
 use std::cell::RefCell;
 use std::panic;
 use std::mem;
@@ -135,14 +135,7 @@ macro_rules! input {
 //     }
 // }
 
-fn play_against_robot(is_white: bool, mut engine: Engine) {
-    if is_white {
-        // we exepct an input for first move
-        let pm = input!(String, "Input a move: ");
-        let mv = engine.get_move_by_str(&pm).unwrap();
-        engine.play(mv).unwrap();
-    }
-
+fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
         .max_depth(10)
@@ -293,12 +286,12 @@ fn test_debug(engine: Engine) {
 
 fn main() {
     let mut engine = Engine::new();
-    let pgn = "e4 e5";
+    let pgn = "e4";
     engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
 
     // test_debug(engine);
-    play_against_robot(false, engine);
+    play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();
