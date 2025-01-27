@@ -2,6 +2,7 @@ pub mod boards;
 pub mod game_engine;
 pub mod pieces;
 pub mod tree_search;
+pub mod smart_engine;
 
 // Define the prelude module
 pub mod prelude {
@@ -287,6 +288,7 @@ fn test_debug(engine: Engine) {
 fn main() {
     let mut engine = Engine::new();
     let pgn = "e4";
+    println!("get_db_path : {:?}", smart_engine::database::get_db_path());
     engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
 
