@@ -2,7 +2,7 @@ pub mod boards;
 pub mod game_engine;
 pub mod pieces;
 pub mod tree_search;
-pub mod smart_engine;
+pub mod database;
 
 // Define the prelude module
 pub mod prelude {
@@ -287,13 +287,45 @@ fn test_debug(engine: Engine) {
 
 fn main() {
     let mut engine = Engine::new();
-    let pgn = "e4";
-    println!("get_db_path : {:?}", smart_engine::database::get_db_path());
-    engine.play_pgn_str(pgn).unwrap();
-    print_board(engine.get_board());
+    let pgn = r#"[Event "Play vs Bot"]
+[Site "Chess.com"]
+[Date "2025.01.27"]
+[Round "?"]
+[White "HASAC"]
+[Black "Komodo10"]
+[Result "1-0"]
+[TimeControl "-"]
+[WhiteElo "943"]
+[BlackElo "1400"]
+[Termination "HASAC a gagné par échec et mat"]
+[ECO "C47"]
+[EndDate "2025.01.27"]
+[Link "https://www.chess.com/game/computer/214144563"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nc3 Nc6 4. a3 h5 5. b4 b6 6. Bc4 a5 7. b5 Ng4 8. bxc6 Rh7
+9. d4 f6 10. Bd5 Ba6 11. h3 Nh6 12. Nxe5 Bb4 13. cxd7+ Ke7 14. axb4 fxe5 15.
+Bg5+ Kxd7 16. Bxd8 Rxd8 17. Qxh5 Ke7 18. Qg5+ Kd7 19. Qg6 Rf8 20. Qxh7 exd4 21.
+Qxg7+ Rf7 22. Qxh6 Re7 23. Bc6+ Kd8 24. Qf8+ Re8 25. Qxe8# 1-0"#;
+
+    // get table db
+    let tables = database::chess_table::ChessTablesDb::new().unwrap();
+    
+    // try to insert a pgn ?
+    match tables.populate_database_by_pgn(pgn) {
+        Ok(()) => println!("New pgn inserted"),
+        Err(_) => println!("Couldn't insert pgn")
+    };
+    match tables.get_moves_by_page(0, 100) {
+        Ok(moves) => println!("{:?}", moves),
+        Err(err) => println!("Fetch error : {}", err.to_string())
+    };
+
+
+    // engine.play_pgn_str(pgn).unwrap();
+    // print_board(engine.get_board());
 
     // test_debug(engine);
-    play_against_robot(engine);
+    // play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();
