@@ -328,7 +328,7 @@ impl Tree {
         // End tree building if reaching max depth
         if depth == 0 {
             // foreseeing should NEVER set any socre ???
-            return node.borrow().get_raw_score();
+            return self.quiescence_search(node.clone(), alpha, beta, 0);
         }
 
         // Compute children if not already computed
