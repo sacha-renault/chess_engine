@@ -15,7 +15,7 @@ pub fn hash_pgn(pgn: &str) -> Vec<u8> {
 /// Then it get who wins (black or white)
 /// Once this is done, it iterates over each moves
 /// And feed a vec 
-pub fn parse_pgn(pgn: &str) -> Result<Vec<(String, String, f32)>, ()> {
+pub fn parse_pgn(pgn: &str, max_moves: usize) -> Result<Vec<(String, String, f32)>, ()> {
     // Remove metadata inside []
     let re = Regex::new(r"\[.*?\]").unwrap();
     let pgn = re.replace_all(pgn, "");
@@ -40,16 +40,15 @@ pub fn parse_pgn(pgn: &str) -> Result<Vec<(String, String, f32)>, ()> {
     // Init move vec
     let mut move_vec = Vec::new();
 
-    // init an engine to test the validity of the moves
-    let mut engine = Engine::new();
-
     // init a boolean that will swap at every iteration
     let mut white_to_play = true;
 
-    for str_mv in moves {
+    for (i, str_mv) in moves.iter().enumerate() {
+        if i / 2 > max_moves {
+            break;
+        }
+
         let fen = "engine".to_string();
-        let mv = engine.get_move_by_str(str_mv)?;
-        engine.play(mv).map_err(|_| ())?;
 
         if white_to_play {
             move_vec.push((fen, str_mv.to_string(), white_res));

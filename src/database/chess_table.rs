@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 use super::init::init_db;
 use super::move_model::MoveModel;
+use super::pgn_game::PgnGameIterator;
 use super::pgn_utility::{hash_pgn, parse_pgn};
 
 pub struct ChessTablesDb {
@@ -18,10 +19,19 @@ impl ChessTablesDb {
     }
 
     pub fn populate_database_by_book(&self, pgn_book_path: &str) {
-        // Open the pgn book
+        // Open the pgn book as an iterator
+        match PgnGameIterator::new(pgn_book_path) {
+            Ok(it) => {
+                for (index, game) in it.enumerate() {
+                    let _ = self.populate_database_by_pgn(&game.game, None);
+                    println!("On more game in db : {}", index);
+                }
+            }
+            Err(_) => { }
+        }
     }
 
-    pub fn populate_database_by_pgn(&self, pgn: &str) -> Result<(), ()> {
+    pub fn populate_database_by_pgn(&self, pgn: &str, max_moves_opt: Option<usize>) -> Result<(), ()> {
         // Get pgn hash and check if it exist in the db
         let pgn_hash = hash_pgn(pgn);
         if !self.insert_pgn_hash(pgn_hash).map_err(|_| ())? {
@@ -29,7 +39,7 @@ impl ChessTablesDb {
         }
 
         // We parse the pgn
-        let result = parse_pgn(pgn)?;
+        let result = parse_pgn(pgn, max_moves_opt.unwrap_or(usize::MAX))?;
 
         // For each result, insert the FEN and move
         for (fen, move_str, res) in result {

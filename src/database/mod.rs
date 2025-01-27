@@ -3,3 +3,4 @@ mod pgn_utility;
 pub mod chess_table;
 pub mod move_model;
 pub mod results;
+pub mod pgn_game;
