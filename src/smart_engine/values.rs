@@ -8,6 +8,7 @@ pub const CAPTURE_BONUS: f32 = 1.;
 pub const CAPTURE_MVV_LVA_FACTOR: f32 = 1.;
 pub const CHECK_BONUS: f32 = 5.;
 pub const CHECK_MATE: f32 = 1e5 as f32;
+pub const VALUE_TB_WIN_IN_MAX_PLY: f32 = (CHECK_MATE as f32) / 2.;
 pub const WHITE_PAWNS_VALUE: [f32; 64] = [
     0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.87, 0.87, 0.87, 0.9, 0.9, 0.87, 0.87, 0.87,
     0.9, 0.91, 0.92, 0.98, 0.98, 0.92, 0.91, 0.9, 0.94, 0.95, 0.96, 1.05, 1.05, 0.96, 0.95, 0.94,
@@ -46,6 +47,9 @@ pub fn get_value_by_piece(piece: Piece) -> f32 {
 
 // Tree const values
 pub const FORESEEING_WINDOW: f32 = f32::INFINITY;
+pub const RAZORING_MARGIN_BASE: f32 = 50.;
+pub const RAZORING_DEPTH: usize = 4;
+pub const RAZORING_DEPTH_MULTIPLIER: f32 = 0.8;
 
 pub struct ValueRuleSet {}
 

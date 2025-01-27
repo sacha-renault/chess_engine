@@ -14,7 +14,7 @@ pub mod prelude {
     };
 }
 
-use boards::Board;
+use boards::{Board, ColorBoard};
 use core::f32;
 use game_engine::debug::print_board;
 use game_engine::player_move::PromotionMove;
@@ -31,6 +31,7 @@ use smart_engine::tree_node::TreeNode;
 use smart_engine::values::{get_value_by_piece, ValueRuleSet};
 use std::cell::RefCell;
 use std::panic;
+use std::mem;
 
 use std::io::Write;
 use std::rc::{Rc, Weak};
@@ -151,6 +152,8 @@ fn play_against_robot(is_white: bool) {
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .max_quiescence_depth(0)
+        .razoring_depth(2)
+        .razoring_margin_base(25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
@@ -239,14 +242,13 @@ fn test_mate() {
     engine.play(create_move_from_str("d1f3")).unwrap();
     engine.play(create_move_from_str("b8c6")).unwrap();
 
-    let mut tree = Tree::new(
-        engine,
-        Box::new(ValueRuleSet::new()),
-        6,
-        1e6 as usize,
-        10,
-        f32::INFINITY,
-    );
+    let mut tree = TreeBuilder::new()
+        .max_depth(10)
+        .max_size(1e6 as usize)
+        .foreseeing_windowing(f32::INFINITY)
+        .max_quiescence_depth(0)
+        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .unwrap();
 
     tree.generate_tree();
     let scored_nodes = tree.get_sorted_nodes();
@@ -274,4 +276,7 @@ fn main() {
     // for (pm, score ) in tree.get_sorted_moves() {
     //     println!("{} with score : {}", string_from_move(&pm), score);
     // }
+    // println!("Board size: {}", mem::size_of::<Board>());
+    // println!("ColorBoard size: {}", mem::size_of::<ColorBoard>());
+    // println!("TreeNode size: {}", mem::size_of::<TreeNode>());
 }

@@ -42,6 +42,8 @@ pub struct Tree {
     max_size: usize,
     max_q_depth: usize,
     foreseeing_windowing: f32,
+    razoring_margin_base: f32,
+    razoring_depth: usize,
 
     // auto initialized
     current_depth: usize,
@@ -67,6 +69,8 @@ impl Tree {
         max_size: usize,
         max_q_depth: usize,
         foreseeing_windowing: f32,
+        razoring_margin_base: f32,
+        razoring_depth: usize,
     ) -> Self {
         Tree {
             root: TreeNode::create_root_node(engine),
@@ -76,6 +80,8 @@ impl Tree {
             max_q_depth,
             current_depth: 1,
             foreseeing_windowing,
+            razoring_margin_base,
+            razoring_depth,
             hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
         }
@@ -158,13 +164,13 @@ impl Tree {
             let alpha = f32::NEG_INFINITY;
             let beta = f32::INFINITY;
 
-            // Generate the tree recursively
+            // Generate the tree recursively with minimax
             self.minimax(self.root.clone(), self.current_depth, alpha, beta);
 
             self.current_depth += 1;
         }
 
-        self.current_depth
+        self.current_depth - 1
     }
 
     /// Evaluates the current game state using the minimax algorithm.
@@ -197,13 +203,13 @@ impl Tree {
 
         for child in scored_children.iter() {
             let score = match search_type {
-                SearchType::Foreseeing(depth) => 
+                SearchType::Foreseeing(depth) =>
                     self.minimax_foreseeing(child.node(), depth - 1, alpha, beta),
-                SearchType::Full(depth) => 
+                SearchType::Full(depth) =>
                     self.minimax(child.node(), depth - 1, alpha, beta),
-                SearchType::Quiescence(qdepth) => 
+                SearchType::Quiescence(qdepth) =>
                     self.quiescence_search(child.node().clone(), alpha, beta, qdepth + 1)
-                
+
             };
 
             // Update the best score, alpha, and beta for pruning
@@ -254,6 +260,14 @@ impl Tree {
             return quiescence_score;
         }
 
+        // Check for razoring
+        // Can early prune the less promising nodes
+        if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha) {
+            // Update the node's score with the quiescence result
+            node.borrow_mut().set_best_score(qval);
+            return qval;
+        }
+
         // Check the transposition table for existing results
         if let Some(best_score) =
             self.handle_transposition_table(hash, node.clone(), depth, &mut alpha, &mut beta)
@@ -288,7 +302,7 @@ impl Tree {
     }
 
     /// Generates a foreseeing game tree using a shallow minimax search with alpha-beta pruning.
-    /// This function performs a look-ahead search to evaluate potential game states without 
+    /// This function performs a look-ahead search to evaluate potential game states without
     /// storing results in the transposition table, making it useful for preliminary position analysis.
     ///
     /// # Parameters
@@ -299,9 +313,9 @@ impl Tree {
     ///
     /// # Returns
     /// * `f32` - The best evaluation score found during the foreseeing process
-    /// 
+    ///
     /// # Note
-    /// Unlike regular minimax search, this variant is stateless and does not 
+    /// Unlike regular minimax search, this variant is stateless and does not
     /// update the game tree's best moves, scores or transposition table, making it suitable for
     /// temporary position analysis.
     fn minimax_foreseeing(
@@ -493,8 +507,8 @@ impl Tree {
                 let mut score = self.minimax_foreseeing(
                     child.clone(),
                     shallow_depth,
-                    -self.foreseeing_windowing,
                     self.foreseeing_windowing,
+                    -self.foreseeing_windowing,
                 );
 
                 // add heuristic bonus
@@ -604,9 +618,9 @@ impl Tree {
                 node.borrow_mut().copy_entry(strong_ref.clone());
             }
 
-            node.borrow_mut()
-                .set_raw_score(strong_ref.borrow().get_raw_score());
-
+            // Get raw score
+            let raw_score = strong_ref.borrow().get_raw_score();
+            node.borrow_mut().set_raw_score(raw_score);
             if *alpha >= *beta {
                 return Some(strong_ref.borrow().get_best_score());
             }
@@ -644,6 +658,34 @@ impl Tree {
         };
 
         self.transpose_table.insert_entry(hash, node, depth, flag);
+    }
+
+    /// Checks if a node is a candidate for razoring based on the current depth and alpha value.
+    fn is_razoring_candidate(&mut self, node: TreeNodeRef, depth: usize, alpha: f32) -> Option<f32> {
+        // Avoid pruning branch too early
+        let actual_depth: usize = self.current_depth - depth;
+        if actual_depth <= self.razoring_depth {
+            return None;
+        }
+
+        // razoring threshold
+        let razoring_threshold = self.razoring_margin_base *
+            f32::powi(values::RAZORING_DEPTH_MULTIPLIER, (actual_depth - self.razoring_depth) as i32);
+
+        // Get the static evaluation of the node
+        let score = node.borrow().get_raw_score();
+
+        // If eval is below the threshold, perform a quiescence search
+        if score < razoring_threshold {
+            let qval = self.quiescence_search(node.clone(), alpha - 1.0, alpha, 0);
+
+            // Check if value fails low and is within a reasonable bound
+            if qval < alpha && qval.abs() < values::VALUE_TB_WIN_IN_MAX_PLY {
+                return Some(qval); // Fail low
+            }
+        }
+
+        None
     }
 
     /// Calculates the total number of nodes in the tree

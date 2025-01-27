@@ -12,6 +12,8 @@ pub struct TreeBuilder {
     max_depth: Option<usize>,
     max_size: Option<usize>,
     max_q_depth: Option<usize>,
+    razoring_margin_base: Option<f32>,
+    razoring_depth: Option<usize>,
     foreseeing_windowing: Option<f32>,
 }
 
@@ -23,6 +25,8 @@ impl TreeBuilder {
             max_size: None,
             max_q_depth: None,
             foreseeing_windowing: None,
+            razoring_margin_base: None,
+            razoring_depth: None
         }
     }
 
@@ -32,6 +36,24 @@ impl TreeBuilder {
     /// * `depth` - Maximum number of plies (half-moves) to analyze
     pub fn max_depth(mut self, depth: usize) -> Self {
         self.max_depth = Some(depth);
+        self
+    }
+
+    /// Sets the razoring depth the tree will explore
+    ///
+    /// # Arguments
+    /// * `depth` - Min number of plies (half-move) before razoring
+    pub fn razoring_depth(mut self, depth: usize) -> Self {
+        self.razoring_depth = Some(depth);
+        self
+    }
+
+    /// Set the razoring
+    ///
+    /// # Arguments
+    /// * `depth` - Min number of plies (half-move) before razoring
+    pub fn razoring_margin_base(mut self, value: f32) -> Self {
+        self.razoring_margin_base = Some(value);
         self
     }
 
@@ -90,6 +112,8 @@ impl TreeBuilder {
             self.max_q_depth.unwrap_or(usize::MAX),
             self.foreseeing_windowing
                 .unwrap_or(values::FORESEEING_WINDOW),
+            self.razoring_margin_base.unwrap_or(values::RAZORING_MARGIN_BASE),
+            self.razoring_depth.unwrap_or(values::RAZORING_DEPTH),
         );
 
         Ok(tree)
