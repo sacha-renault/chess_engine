@@ -157,7 +157,7 @@ impl Tree {
             self.transpose_table.clear();
 
             // break condition (either too deep or size of the tree to big)
-            if self.max_depth <= self.current_depth || self.size() > self.max_size {
+            if self.max_depth < self.current_depth || self.size() > self.max_size {
                 break;
             }
 
@@ -221,7 +221,7 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha && score.abs() != values::CHECK_MATE{
+            if beta <= alpha && score.abs() != values::CHECK_MATE {
                 break;
             }
         }

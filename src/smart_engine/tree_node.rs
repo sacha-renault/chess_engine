@@ -133,14 +133,36 @@ impl TreeNode {
 
     fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
         if self.raw_score.abs() == values::CHECK_MATE {
-            Some(depth)
-        } else if self.children.is_empty() {
+            return Some(depth);
+        }
+
+        if self.children.is_empty() {
             return None;
-        } else {
+        }
+
+        let is_maximizing = self.engine.white_to_play();
+
+        if is_maximizing {
+            // For maximizing player (White), ANY move leading to mate is sufficient
             self.children
                 .iter()
                 .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
                 .min()
+        } else {
+            // For minimizing player (Black), ALL moves must lead to mate
+            // If any move escapes mate, return None
+            let mate_depths: Vec<_> = self.children
+                .iter()
+                .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
+                .collect();
+
+            if mate_depths.len() != self.children.len() {
+                // Some move escapes mate
+                None
+            } else {
+                // All moves lead to mate, take the longest (worst case)
+                mate_depths.into_iter().max()
+            }
         }
     }
 }
