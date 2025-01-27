@@ -27,7 +27,7 @@ use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
-use super::utility::{heuristic_move_bonus, is_unstable_position};
+use super::utility::{heuristic_move_bonus_from_node, is_unstable_position};
 use super::values;
 
 /// A tree structure for chess move analysis
@@ -131,11 +131,12 @@ impl Tree {
                 let b_depth = b.borrow().get_mate_depth().unwrap_or(usize::MAX);
                 return a_depth.partial_cmp(&b_depth).unwrap();
             } else {
-                // Case of equal score but not mate
-                // We can handle this case later
-                // Not so important now
-                // TODO
-                return score_cmp.unwrap();
+                // In case scores are equals
+                // We use the heuristic bonus to sort the nodes
+                // We don't care white to play or not since we will abs the value
+                let a_bonus = heuristic_move_bonus_from_node(a.clone(), true).abs();
+                let b_bonus = heuristic_move_bonus_from_node(b.clone(), true).abs();
+                return b_bonus.partial_cmp(&a_bonus).unwrap();
             }
         });
 
@@ -463,17 +464,8 @@ impl Tree {
                 );
 
                 // add heuristic bonus
-                let child_ref = child.borrow();
-                let player_move = child.borrow().get_move().unwrap();
-                let moved_piece = child_ref.get_moved_piece();
-                let captured_piece_opt = child_ref.get_captured_piece();
-                let is_king_checked = child_ref.get_engine().is_current_king_checked();
-                score += heuristic_move_bonus(
-                    player_move,
-                    moved_piece,
-                    captured_piece_opt,
-                    shallow_depth,
-                    is_king_checked,
+                score += heuristic_move_bonus_from_node(
+                    child.clone(),
                     is_white_to_play,
                 );
 
