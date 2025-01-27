@@ -358,10 +358,10 @@ impl Tree {
 
         // beta cutoff: opponent is already too good
         if raw_score >= beta {
-            return beta;
+            return raw_score;
         }
 
-        // update alpha
+        // // update alpha
         if raw_score > alpha {
             alpha = raw_score;
         }
