@@ -117,10 +117,6 @@ impl TreeNode {
         self.best_score = score;
     }
 
-    pub fn set_raw_as_best(&mut self) {
-        self.best_score = self.raw_score;
-    }
-
     pub fn copy_entry(&mut self, node: TreeNodeRef) {
         self.children = node.borrow().children.clone();
         self.computed = true;

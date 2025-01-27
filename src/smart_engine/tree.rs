@@ -264,7 +264,7 @@ impl Tree {
         if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha) {
             // Update the node's score with the quiescence result
             node.borrow_mut().set_best_score(qval);
-            println!("Razoring at depth {}", depth);
+            panic!("Razoring at depth {}, not implemented well yet", depth);
             return qval;
         }
 
@@ -503,11 +503,11 @@ impl Tree {
             let multiplier: f32 = (color_checkmate as isize) as f32;
             let score = values::CHECK_MATE * multiplier;
             node.borrow_mut().set_raw_score(score);
-            node.borrow_mut().set_raw_as_best();
+            node.borrow_mut().set_best_score(score);
             score
         } else {
             node.borrow_mut().set_raw_score(0.);
-            node.borrow_mut().set_raw_as_best();
+            node.borrow_mut().set_best_score(0.);
             0.
         }
     }
