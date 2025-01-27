@@ -221,7 +221,7 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha {
+            if beta <= alpha && score.abs() != values::CHECK_MATE{
                 break;
             }
         }
