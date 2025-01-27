@@ -146,7 +146,7 @@ fn play_against_robot(is_white: bool, mut engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
         .max_depth(10)
-        .max_size(1e6 as usize)
+        .max_size(3e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .max_quiescence_depth(0)
         .razoring_depth(usize::MAX)
@@ -229,18 +229,6 @@ fn play_against_robot(is_white: bool, mut engine: Engine) {
     }
 }
 
-fn play_from_pgn(engine: &mut Engine, pgn: &str) {
-    // Split the PGN by whitespace and filter out move numbers and empty tokens
-    let moves = pgn
-        .split_whitespace()
-        .filter(|token| !token.ends_with('.') && !token.is_empty());
-
-    for mv in moves {
-        let player_move = engine.get_move_by_str(mv).unwrap();
-        engine.play(player_move).unwrap();
-    }
-}
-
 fn test_mate() {
     // Play move for mat du berger
     let mut engine = Engine::new();
@@ -285,32 +273,32 @@ fn test_debug(engine: Engine) {
         .unwrap();
 
     let depth = tree.generate_tree();
+    // tree.select_branch(create_move_from_str("d5c3")).unwrap();
+    // tree.select_branch(create_move_from_str("b6f6")).unwrap();
+    // tree.select_branch(create_move_from_str("g4g3")).unwrap();
+    // tree.select_branch(create_move_from_str("f2f3")).unwrap();
+    // tree.select_branch(create_move_from_str("g3g2")).unwrap();
+
     let scored_nodes = tree.get_sorted_nodes();
-    println!("Reached depth : {}", depth);
+    println!("Reached depth : {} with tree size : {}", depth, tree.size());
     for scored_node in scored_nodes.iter() {
         println!(
-            "Move : {} with score : {}",
+            "Move : {} with score : {}, mate depth : {:?}",
             string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-            scored_node.upgrade().unwrap().borrow().get_best_score()
+            scored_node.upgrade().unwrap().borrow().get_best_score(),
+            scored_node.upgrade().unwrap().borrow().get_mate_depth(),
         );
     }
 }
 
 fn main() {
     let mut engine = Engine::new();
-    let pgn = "1. e4 c5 2. Bd3 d5 3. Bb5+ Nd7 4. exd5 Qc7 5. c4 Qe5+ 6. Kf1 Qf4 7. d3 Qf5 8.
-        Be3 h5 9. Bxc5 Rh6 10. Be3 Rf6 11. Bd4 Rg6 12. a3 Qg4 13. Qxg4 hxg4 14. d6 exd6
-        15. Nc3 Be7 16. Nd5 f6 17. Nc7+ Kf8 18. Nxa8 Nc5 19. Re1 Bf5 20. Re3 Bxd3+ 21.
-        Ke1 Rh6 22. Bxc5 dxc5 23. Ba4 g5 24. Bd1 Bh7 25. Be2 Bf5 26. Nc7 Kf7 27. Bd3
-        Bxd3 28. Rxd3 f5 29. Rb3 b6 30. g3 Nf6 31. Re3 Bd8 32. Ne6 Ke7 33. h4 gxh4 34.
-        gxh4 Ng8 35. Nd4+ Kf6 36. Nc6 Kf7 37. Nxd8+ Kg7 38. Ne2 Rh8 39. Re8 Nf6 40. Re7+
-        Kh6 41. Nf7+ Kh7 42. Nxh8+ Kxh8 43. Re5 Kg7 44. Re7+ Kh6 45. Rxa7 f4 46. Nxf4
-        Nh5 47. Nd5 Kg6 48. Rb7 Nf6 49. Rxb6 Kh5";
-    play_from_pgn(&mut engine, pgn);
+    let pgn = "e4 e5";
+    engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
 
-    test_debug(engine);
-    // play_against_robot(false, engine);
+    // test_debug(engine);
+    play_against_robot(false, engine);
 
     // test_mate();
     // drop_branch_test();

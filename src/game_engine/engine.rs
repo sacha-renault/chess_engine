@@ -767,4 +767,37 @@ impl Engine {
 
         Ok(result)
     }
+
+    /// Parses a PGN (Portable Game Notation) string and plays the moves on the current game state.
+    ///
+    /// # Parameters
+    /// - `pgn`: A reference to a `str` containing the PGN notation of the moves to be played.
+    ///   The PGN string should follow the standard format, where moves are separated by
+    ///   whitespace and move numbers (e.g., `1.`) are included but ignored.
+    ///
+    /// # Returns
+    /// - `Ok(())`: If all moves in the PGN string are successfully parsed and played.
+    /// - `Err(IncorrectMoveResults::IllegalMove)`: If any move in the PGN string is invalid or illegal.
+    pub fn play_pgn_str(&mut self, pgn: &str) -> Result<(), IncorrectMoveResults> {
+        // Split the PGN by whitespace and filter out move numbers and empty tokens
+        let moves = pgn
+            .split_whitespace()
+            .filter(|token| !token.ends_with('.') && !token.is_empty());
+
+        // Clone the current engine
+        let mut engine = self.clone();
+
+        // play on the cloned engine so it doesn't affect the current one
+        for mv in moves {
+            let player_move_opt = engine.get_move_by_str(mv);
+            match player_move_opt {
+                Ok(player_move) => { engine.play(player_move)?; },
+                Err(_) => return Err(IncorrectMoveResults::IllegalMove),
+            }
+        }
+
+        // If everything went ok, we can update the current engine
+        *self = engine;
+        Ok(())
+    }
 }
