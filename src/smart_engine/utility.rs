@@ -4,6 +4,22 @@ use super::values::get_value_by_piece;
 use crate::game_engine::player_move::PlayerMove;
 use crate::pieces::Piece;
 
+pub fn heuristic_move_bonus_from_node(node: TreeNodeRef, is_white_to_play: bool) -> f32 {
+    let node_ref = node.borrow();
+    let player_move = node_ref.get_move().unwrap();
+    let moved_piece = node_ref.get_moved_piece();
+    let captured_piece_opt = node_ref.get_captured_piece();
+    let is_king_checked = node_ref.get_engine().is_current_king_checked();
+    heuristic_move_bonus(
+        player_move,
+        moved_piece,
+        captured_piece_opt,
+        1,
+        is_king_checked,
+        is_white_to_play,
+    )
+}
+
 pub fn heuristic_move_bonus(
     player_move: PlayerMove,
     moved_piece: Piece,
