@@ -203,8 +203,6 @@ impl Tree {
 
         for child in scored_children.iter() {
             let score = match search_type {
-                SearchType::Foreseeing(depth) =>
-                    self.minimax_foreseeing(child.node(), depth - 1, alpha, beta),
                 SearchType::Full(depth) =>
                     self.minimax(child.node(), depth - 1, alpha, beta),
                 SearchType::Quiescence(qdepth) =>
@@ -265,6 +263,7 @@ impl Tree {
         if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha) {
             // Update the node's score with the quiescence result
             node.borrow_mut().set_best_score(qval);
+            println!("Razoring at depth {}", depth);
             return qval;
         }
 
@@ -282,7 +281,7 @@ impl Tree {
 
         // Get scored children
         let scored_children =
-            self.get_sorted_children_with_best_score(node.clone(), (depth - 1).min(2));
+            self.get_sorted_children_with_best_score(node.clone(), depth - 1);
 
         // Perform minimax evaluation
         let best_score = self.minimax_evaluate(
@@ -299,54 +298,6 @@ impl Tree {
         // Set the best score of every node
         node.borrow_mut().set_best_score(best_score);
         best_score
-    }
-
-    /// Generates a foreseeing game tree using a shallow minimax search with alpha-beta pruning.
-    /// This function performs a look-ahead search to evaluate potential game states without
-    /// storing results in the transposition table, making it useful for preliminary position analysis.
-    ///
-    /// # Parameters
-    /// * `node` - The node representing the current game state to analyze
-    /// * `depth` - The maximum depth to search in the game tree
-    /// * `alpha` - The minimum score that the maximizing player is assured of
-    /// * `beta` - The maximum score that the minimizing player is assured of
-    ///
-    /// # Returns
-    /// * `f32` - The best evaluation score found during the foreseeing process
-    ///
-    /// # Note
-    /// Unlike regular minimax search, this variant is stateless and does not
-    /// update the game tree's best moves, scores or transposition table, making it suitable for
-    /// temporary position analysis.
-    fn minimax_foreseeing(
-        &mut self,
-        node: TreeNodeRef,
-        depth: usize,
-        alpha: f32,
-        beta: f32,
-    ) -> f32 {
-        // End tree building if reaching max depth
-        if depth == 0 {
-            // foreseeing should NEVER set any socre ???
-            return self.quiescence_search(node.clone(), alpha, beta, 0);
-        }
-
-        // Compute children if not already computed
-        if !node.borrow().has_children_computed() {
-            self.compute_new_children(node.clone());
-        }
-
-        // Get scored children
-        let scored_children = self.get_sorted_children_with_best_score(node.clone(), depth - 1);
-
-        // Perform minimax evaluation without storing results
-        self.minimax_evaluate(
-            node.clone(),
-            scored_children,
-            alpha,
-            beta,
-            SearchType::Foreseeing(depth),
-        )
     }
 
     /// Performs a Quiescence Search to evaluate positions with tactical sequences
@@ -504,11 +455,11 @@ impl Tree {
             .into_iter()
             .map(|child| {
                 // Calc score as a mix of foreseing best move
-                let mut score = self.minimax_foreseeing(
+                let mut score = self.quiescence_search(
                     child.clone(),
-                    shallow_depth,
                     self.foreseeing_windowing,
                     -self.foreseeing_windowing,
+                    self.max_q_depth - shallow_depth
                 );
 
                 // add heuristic bonus
