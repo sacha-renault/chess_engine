@@ -1,8 +1,5 @@
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::path::Path;
-use std::vec::IntoIter;
-
 pub struct PgnGame {
     pub event: String,
     pub white_elo: u32,
@@ -32,7 +29,6 @@ impl Iterator for PgnGameIterator {
     type Item = PgnGame;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut pgn_game = String::new();
         let mut event = String::new();
         let mut white_elo = None;
         let mut black_elo = None;

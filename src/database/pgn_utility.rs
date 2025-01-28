@@ -1,9 +1,6 @@
 use regex::Regex;
 use sha2::{Sha256, Digest};
 
-use crate::game_engine::engine::Engine;
-
-
 pub fn hash_pgn(pgn: &str) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(pgn);
@@ -14,7 +11,7 @@ pub fn hash_pgn(pgn: &str) -> Vec<u8> {
 /// This function takes a PGN game, removes the initial infos in between []
 /// Then it get who wins (black or white)
 /// Once this is done, it iterates over each moves
-/// And feed a vec 
+/// And feed a vec
 pub fn parse_pgn(pgn: &str, max_moves: usize) -> Result<Vec<(String, String, f32)>, ()> {
     // Remove metadata inside []
     let re = Regex::new(r"\[.*?\]").unwrap();
@@ -28,7 +25,7 @@ pub fn parse_pgn(pgn: &str, max_moves: usize) -> Result<Vec<(String, String, f32
     } else if pgn.contains("1/2-1/2") {
         (0.5, 0.5)  // Draw
     } else {
-        return Err(()); // Game isn't finished ? 
+        return Err(()); // Game isn't finished ?
     };
 
     // Split the moves based on spaces, removing result strings
