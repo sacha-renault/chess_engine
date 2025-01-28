@@ -806,9 +806,6 @@ impl Engine {
         // init an empty string for the fen
         let mut fen = String::new();
 
-        // Init an empty square that we reset to 0 every rank
-        let mut empty_squares = 0;
-
         // Process each rank from 8 to 1 (top to bottom)
         for rank in (0..8).rev() {
             let mut empty_squares = 0;
