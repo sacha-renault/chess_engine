@@ -134,6 +134,15 @@ impl TreeNode {
         self.recursive_get_mate_depth(0)
     }
 
+    /// Return the depths of the current node
+    pub fn get_depth(&self) -> usize {
+        self.children
+            .iter()
+            .map(|child| child.borrow().get_depth())
+            .max()
+            .unwrap_or(0) + 1
+    }
+
     /// Recursively calculates the depth of a forced mate sequence from the current node
     ///
     /// # Arguments

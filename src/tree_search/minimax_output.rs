@@ -5,15 +5,13 @@ use super::tree_node::TreeNodeRef;
 pub struct MinimaxOutput {
     best_node: Option<TreeNodeRef>,
     score: f32,
-    depth: usize,
 }
 
 impl MinimaxOutput {
-    pub fn new(best_node: Option<TreeNodeRef>, score: f32, depth: usize) -> MinimaxOutput {
+    pub fn new(best_node: Option<TreeNodeRef>, score: f32) -> MinimaxOutput {
         MinimaxOutput {
             best_node: best_node,
             score,
-            depth,
         }
     }
 
@@ -29,7 +27,10 @@ impl MinimaxOutput {
     }
 
     pub fn get_depth(&self) -> usize {
-        self.depth
+        match &self.best_node {
+            Some(node) => node.borrow().get_depth(),
+            None => 0
+        }
     }
 
     pub fn mate_depth(&self) -> Option<usize> {

@@ -12,9 +12,8 @@
 //! The tree maintains a current position and can generate future positions up to
 //! a specified depth or size limit.
 
-use std::cell::RefCell;
 use std::collections::HashSet;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::usize;
 
 use crate::boards::zobrist_hash::Zobrist;
@@ -103,7 +102,7 @@ impl Tree {
     pub fn iterative_deepening(&mut self) -> MinimaxOutput {
         // We start from depth - 1 (because last was select branch)
         self.current_depth = 1;
-        let mut output= MinimaxOutput::new(None, 0., 0);
+        let mut output= MinimaxOutput::new(None, 0.);
 
         // loop until one of break condition is matched
         loop {
@@ -137,7 +136,6 @@ impl Tree {
     /// * `search_type` - - The type of search to perform:
     ///   - `SearchType::Full(depth)` - Standard minimax search to specified depth
     ///   - `SearchType::Quiescence(qdepth)` - Tactical evaluation search
-    ///   - `SearchType::Foreseeing(depth)` - Look-ahead analysis without state updates
     ///
     /// # Returns
     /// The static evaluation score of the game state for the given depth.
@@ -189,7 +187,7 @@ impl Tree {
             }
         }
 
-        MinimaxOutput::new(best_node, best_score, depth)
+        MinimaxOutput::new(best_node, best_score)
     }
 
     /// Recursively generates the game tree using alpha-beta pruning.
@@ -300,7 +298,7 @@ impl Tree {
     ) -> MinimaxOutput {
         // we want to limit qdepth to a certain level
         if qdepth >= self.max_q_depth {
-            return MinimaxOutput::new(None, node.borrow().get_score(), qdepth);
+            return MinimaxOutput::new(None, node.borrow().get_score());
         }
 
         // Children computation
@@ -314,7 +312,7 @@ impl Tree {
 
         // beta cutoff: opponent is already too good
         if raw_score >= beta {
-            return MinimaxOutput::new(None, raw_score, qdepth);
+            return MinimaxOutput::new(None, raw_score);
         }
 
         // // update alpha
@@ -340,7 +338,7 @@ impl Tree {
                 qdepth + 1
             )
         } else {
-            MinimaxOutput::new(None, raw_score, qdepth)
+            MinimaxOutput::new(None, raw_score)
         }
     }
 
@@ -511,9 +509,7 @@ impl Tree {
             // Build MinimaxOutput with the stored node
             let output = MinimaxOutput::new(
                 Some(strong_ref.clone()),
-                score,
-                depth
-            );
+                score);
 
             // match flag to know what to do
             match entry.flag {
