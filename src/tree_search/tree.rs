@@ -227,7 +227,7 @@ impl Tree {
     ) -> MinimaxOutput {
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = if scored_children.is_empty() {
-            node.borrow().get_best_score()
+            node.borrow().get_score()
         } else {
             init_best_score(is_maximizing)
         };
@@ -375,7 +375,7 @@ impl Tree {
     ) -> MinimaxOutput {
         // we want to limit qdepth to a certain level
         if qdepth >= self.max_q_depth {
-            return MinimaxOutput::new(None, node.borrow().get_raw_score(), qdepth);
+            return MinimaxOutput::new(None, node.borrow().get_score(), qdepth);
         }
 
         // Children computation
@@ -385,7 +385,7 @@ impl Tree {
         }
 
         // evaluate the current position
-        let raw_score = node.borrow().get_raw_score();
+        let raw_score = node.borrow().get_score();
 
         // beta cutoff: opponent is already too good
         if raw_score >= beta {
@@ -537,10 +537,10 @@ impl Tree {
             // multiplier = 1 if white, -1 if black
             let multiplier: f32 = (color_checkmate as isize) as f32;
             let score = values::CHECK_MATE * multiplier;
-            node.borrow_mut().set_raw_score(score);
+            node.borrow_mut().set_score(score);
             score
         } else {
-            node.borrow_mut().set_raw_score(0.);
+            node.borrow_mut().set_score(0.);
             0.
         }
     }
@@ -593,8 +593,8 @@ impl Tree {
             // match flag to know what to do
             match entry.flag {
                 TTFlag::Exact => return Some(output),
-                TTFlag::LowerBound => *alpha = alpha.max(strong_ref.borrow().get_best_score()),
-                TTFlag::UperBound => *beta = beta.min(strong_ref.borrow().get_best_score()),
+                TTFlag::LowerBound => *alpha = alpha.max(strong_ref.borrow().get_score()),
+                TTFlag::UperBound => *beta = beta.min(strong_ref.borrow().get_score()),
             }
 
             // Copy information that we care from the node
@@ -603,8 +603,8 @@ impl Tree {
             }
 
             // Get raw score
-            let raw_score = strong_ref.borrow().get_raw_score();
-            node.borrow_mut().set_raw_score(raw_score);
+            let raw_score = strong_ref.borrow().get_score();
+            node.borrow_mut().set_score(raw_score);
             if *alpha >= *beta {
                 return Some(output);
             }
@@ -657,7 +657,7 @@ impl Tree {
             f32::powi(values::RAZORING_DEPTH_MULTIPLIER, (actual_depth - self.razoring_depth) as i32);
 
         // Get the static evaluation of the node
-        let score = node.borrow().get_raw_score();
+        let score = node.borrow().get_score();
 
         // If eval is below the threshold, perform a quiescence search
         if score < razoring_threshold {

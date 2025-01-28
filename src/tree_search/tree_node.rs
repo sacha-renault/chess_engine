@@ -12,7 +12,7 @@ pub type TreeNodeRef = Rc<RefCell<TreeNode>>;
 pub struct TreeNode {
     // About the tree
     children: Vec<TreeNodeRef>,
-    raw_score: f32,
+    score: f32,
     computed: bool,
 
     // About the game
@@ -55,7 +55,7 @@ impl TreeNode {
         TreeNode {
             engine,
             children: Vec::new(),
-            raw_score: score,
+            score,
             chess_move,
             computed: false,
             moved_piece,
@@ -71,8 +71,8 @@ impl TreeNode {
     }
 
     /// Returns the raw evaluation score of this position
-    pub fn get_raw_score(&self) -> f32 {
-        self.raw_score
+    pub fn get_score(&self) -> f32 {
+        self.score
     }
 
     /// Returns a reference to the vector of child nodes
@@ -104,7 +104,7 @@ impl TreeNode {
 
     /// Historical function that should be used anymore
     pub fn get_best_score(&self) -> f32 {
-        panic!("get_best_score is deprecated, use get_raw_score instead");
+        panic!("get_best_score is deprecated, use get_score instead");
     }
 
     // SETTER
@@ -115,8 +115,8 @@ impl TreeNode {
     }
 
     /// Sets the raw evaluation score for this position
-    pub fn set_raw_score(&mut self, score: f32) {
-        self.raw_score = score;
+    pub fn set_score(&mut self, score: f32) {
+        self.score = score;
     }
 
     /// Adds a child node to this position's children
@@ -154,7 +154,7 @@ impl TreeNode {
     /// * A position is considered mate when raw_score equals CHECK_MATE constant
     fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
         // If current node is a mate, we return its depth
-        if self.raw_score.abs() == values::CHECK_MATE {
+        if self.score.abs() == values::CHECK_MATE {
             return Some(depth);
         }
 
