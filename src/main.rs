@@ -3,6 +3,7 @@ pub mod game_engine;
 pub mod pieces;
 pub mod tree_search;
 pub mod database;
+pub mod lichess_api;
 
 // Define the prelude module
 pub mod prelude {
