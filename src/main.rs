@@ -170,6 +170,7 @@ fn play_against_robot(engine: Engine) {
             output.mate_depth(),
         );
         let _ = tree.select_branch(output.get_move().unwrap());
+        print_board(tree.root().borrow().get_engine().get_board());
 
         // user input
         let mut incorrect_move = true;
@@ -254,30 +255,25 @@ fn test_debug(engine: Engine) {
 
 fn main() {
     let mut engine = Engine::new();
-    let pgn = "1. e4 c5 2. Bc4 e6 3. Qg4 Qf6 4. d3 h6 5. Qg3 d5 6. Qc7 Qd8 7. Qxd8+ Kxd8 8.
-exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
-15. O-O Nxe5 16. Nxe5 Rxe5 17. a3 Be6 18. Bh7 Ra7 19. f3 Bd6 20. Nc3 Ra8 21. f4
-Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
-Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
     // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";
-    let pgn = "e4 e5";
+    let pgn = "1. d4 Nf6 2. Bf4 g6 3. Nf3 Bg7 4. Nc3 Nh5 5. e3 Bf6 6. Bc4 Kf8 7. O-O c6 *";
 
     // engine.play_pgn_str(pgn).unwrap();
-    print_board(engine.get_board());
-    println!("{}", engine.to_string());
+    // print_board(engine.get_board());
+    // println!("{}", engine.to_string());
 
     // println!("White to play : {}", engine.white_to_play());
     // test_debug(engine);
     // test_mate();
-    // play_against_robot(engine);
-    match fetch_lichess_moves(&engine.to_string(), "") {
-        Ok(moves) => {
-            for m in moves {
-                println!("Moves : {:?}", m)
-            }
-        },
-        Err(err) => println!("Error : {:?}", err)
-    }
+    play_against_robot(engine);
+    // match fetch_lichess_moves(&engine.to_string(), "") {
+    //     Ok(moves) => {
+    //         for m in moves {
+    //             println!("Moves : {:?}", m)
+    //         }
+    //     },
+    //     Err(err) => println!("Error : {:?}", err)
+    // }
 
     // test_mate();
     // drop_branch_test();

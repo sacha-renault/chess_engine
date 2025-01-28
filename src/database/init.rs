@@ -53,12 +53,5 @@ pub fn init_db() -> Result<Connection, rusqlite::Error> {
         []
     )?;
 
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS games (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pgn_hash BLOB UNIQUE NOT NULL
-        );",
-        []
-    )?;
     Ok(conn)
 }
