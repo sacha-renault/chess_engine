@@ -82,4 +82,29 @@ impl ColorBoard {
         }
         result
     }
+
+    /// Returns the piece at the specified square, if any.
+    ///
+    /// # Arguments
+    /// * `square` - A u64 representing the square to check (should be a single bit set)
+    ///
+    /// # Returns
+    /// `Some(Piece)` if a piece is present at the square, `None` if the square is empty
+    pub fn piece_at(&self, square: u64) -> Option<Piece> {
+        if self.pawn & square != 0 {
+            Some(Piece::Pawn)
+        } else if self.knight & square != 0 {
+            Some(Piece::Knight)
+        } else if self.bishop & square != 0 {
+            Some(Piece::Bishop)
+        } else if self.rook & square != 0 {
+            Some(Piece::Rook)
+        } else if self.queen & square != 0 {
+            Some(Piece::Queen)
+        } else if self.king & square != 0 {
+            Some(Piece::King)
+        } else {
+            None
+        }
+    }
 }

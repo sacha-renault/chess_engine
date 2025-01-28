@@ -1,5 +1,5 @@
 use super::player_move::{CastlingMove, NormalMove, PlayerMove, PromotionMove};
-use crate::pieces::Piece;
+use crate::pieces::{Color, Piece};
 
 pub fn parse_str_into_square(target_file: char, target_rank: char) -> Result<u64, ()> {
     // Validate the input
@@ -175,5 +175,21 @@ pub fn create_final_move(
             target_square,
         ))),
         _ => Err(()),
+    }
+}
+
+pub // Helper function to convert a piece to its FEN character
+fn piece_to_char(color: Color, piece: Piece) -> char {
+    let piece_char = match piece {
+        Piece::Pawn => 'P',
+        Piece::Knight => 'N',
+        Piece::Bishop => 'B',
+        Piece::Rook => 'R',
+        Piece::Queen => 'Q',
+        Piece::King => 'K'
+    };
+    match color {
+        Color::Black => piece_char.to_ascii_lowercase(),
+        Color::White => piece_char
     }
 }

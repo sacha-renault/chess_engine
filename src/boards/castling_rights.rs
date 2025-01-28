@@ -45,12 +45,20 @@ impl CastlingRights {
         }
     }
 
-    pub fn long_casting_available(&self, full_bitboard: u64, required_empty: u64) -> bool {
+    pub fn is_long_castling_possible(&self, full_bitboard: u64, required_empty: u64) -> bool {
         self.long && (full_bitboard & required_empty == 0)
     }
 
-    pub fn short_casting_available(&self, full_bitboard: u64, required_empty: u64) -> bool {
+    pub fn is_short_castling_possible(&self, full_bitboard: u64, required_empty: u64) -> bool {
         self.short && (full_bitboard & required_empty == 0)
+    }
+
+    pub fn is_long_castling_available(&self) -> bool {
+        self.long
+    }
+
+    pub fn is_short_castling_available(&self) -> bool {
+        self.short
     }
 
     pub fn as_index(&self) -> usize {

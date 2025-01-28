@@ -370,14 +370,14 @@ impl Engine {
                 // Check if caslting is available
                 player_board
                     .castling_rights
-                    .long_casting_available(full_bitboard, required_empty)
+                    .is_long_castling_possible(full_bitboard, required_empty)
             }
 
             CastlingMove::Short => {
                 // Check if caslting is available
                 player_board
                     .castling_rights
-                    .short_casting_available(full_bitboard, required_empty)
+                    .is_short_castling_possible(full_bitboard, required_empty)
             }
         };
 
@@ -799,5 +799,77 @@ impl Engine {
         // If everything went ok, we can update the current engine
         *self = engine;
         Ok(())
+    }
+
+    /// Return a fen representation of the board
+    pub fn to_string(&self) -> String {
+        // init an empty string for the fen
+        let mut fen = String::new();
+
+        // Init an empty square that we reset to 0 every rank
+        let mut empty_squares = 0;
+
+        // Process each rank from 8 to 1 (top to bottom)
+        for rank in (0..8).rev() {
+            let mut empty_squares = 0;
+
+            // Process each file from a to h (left to right)
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                let square = 1u64 << square_index;
+
+                match self.board.get_piece_at(square) {
+                    Some((color, piece)) => {
+                        // If we had empty squares before this piece, add the count
+                        if empty_squares > 0 {
+                            fen.push_str(&empty_squares.to_string());
+                            empty_squares = 0;
+                        }
+                        fen.push(piece_to_char(color, piece));
+                    }
+                    None => {
+                        empty_squares += 1;
+                    }
+                }
+            }
+
+            // Add any remaining empty squares at the end of the rank
+            if empty_squares > 0 {
+                fen.push_str(&empty_squares.to_string());
+            }
+
+            // Add rank separator (/) except for the last rank
+            if rank > 0 {
+                fen.push('/');
+            }
+        }
+
+        // Add active color
+        fen.push(' ');
+        fen.push(if self.white_to_play() { 'w' } else { 'b' });
+
+        // Add castling rights
+        fen.push(' ');
+        let mut has_castling = false;
+        if self.board.white.castling_rights.is_short_castling_available() { fen.push('K'); has_castling = true; }
+        if self.board.white.castling_rights.is_long_castling_available() { fen.push('Q'); has_castling = true; }
+        if self.board.black.castling_rights.is_short_castling_available() { fen.push('k'); has_castling = true; }
+        if self.board.black.castling_rights.is_long_castling_available() { fen.push('q'); has_castling = true; }
+        if !has_castling { fen.push('-'); }
+
+        // Add en passant square
+        fen.push(' ');
+        let en_passant_squares = self.board.white.en_passant | self.board.black.en_passant;
+        if en_passant_squares != 0 {
+            fen.push(square_to_file(en_passant_squares));
+            fen.push(square_to_rank(en_passant_squares));
+        } else {
+            fen.push('-');
+        }
+
+        // Add halfmove clock and fullmove number
+        fen.push_str(&format!(" {} {}", self.halfmove_clock, 0));
+
+        fen
     }
 }

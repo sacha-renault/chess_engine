@@ -95,4 +95,21 @@ impl Board {
         all_pieces.extend(white_pieces);
         all_pieces
     }
+
+    /// Returns the color and the piece at the specified square, if any.
+    ///
+    /// # Arguments
+    /// * `square` - A u64 representing the square to check (should be a single bit set)
+    ///
+    /// # Returns
+    /// `Some(Color, Piece)` if a piece is present at the square, `None` if the square is empty
+    pub fn get_piece_at(&self, square: u64) -> Option<(Color, Piece)> {
+        if let Some(piece) = self.white.piece_at(square) {
+            Some((Color::White, piece))
+        } else if let Some(piece) = self.black.piece_at(square) {
+            Some((Color::Black, piece))
+        } else {
+            None
+        }
+    }
 }
