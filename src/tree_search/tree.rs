@@ -466,7 +466,7 @@ impl Tree {
                 // add heuristic bonus
                 let bonus = heuristic_move_bonus_from_node(
                     child.clone(),
-                );
+                ) * values::HEURISTIC_WEIGHT;
 
                 // init the node with score
                 if is_white_to_play {
@@ -474,14 +474,13 @@ impl Tree {
                 } else {
                     NodeWithScore::new(child.clone(), score - bonus)
                 }
-                
             })
             .collect::<Vec<NodeWithScore>>();
 
         if is_white_to_play {
-            scored_children.sort_by(|a, b| a.score().partial_cmp(&b.score()).unwrap());
-        } else {
             scored_children.sort_by(|a, b| b.score().partial_cmp(&a.score()).unwrap());
+        } else {
+            scored_children.sort_by(|a, b| a.score().partial_cmp(&b.score()).unwrap());
         }
 
         scored_children
