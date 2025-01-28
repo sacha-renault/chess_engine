@@ -12,6 +12,7 @@ pub struct TTEntry {
     pub node: Weak<RefCell<TreeNode>>,
     pub depth: usize,
     pub flag: TTFlag,
+    pub score: f32,
 }
 
 pub struct TranspositionTable(HashMap<u64, TTEntry>);
@@ -26,7 +27,7 @@ impl TranspositionTable {
     /// # Arguments
     /// * `hash` - The Zobrist hash of the position
     /// * `node` - A strong reference to the TreeNode
-    pub fn insert_entry(&mut self, hash: u64, node: TreeNodeRef, depth: usize, flag: TTFlag) {
+    pub fn insert_entry(&mut self, hash: u64, node: TreeNodeRef, depth: usize, flag: TTFlag, score: f32) {
         // Create a Weak reference to the TreeNode
         let weak_node = Rc::downgrade(&node);
 
@@ -36,7 +37,8 @@ impl TranspositionTable {
             TTEntry {
                 node: weak_node,
                 depth,
-                flag
+                flag,
+                score
             },
         );
     }

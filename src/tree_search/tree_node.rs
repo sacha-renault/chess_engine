@@ -14,7 +14,6 @@ pub struct TreeNode {
     children: Vec<TreeNodeRef>,
     raw_score: f32,
     computed: bool,
-    best_score: f32,
 
     // About the game
     engine: Engine,
@@ -59,7 +58,6 @@ impl TreeNode {
             raw_score: score,
             chess_move,
             computed: false,
-            best_score: 0.,
             moved_piece,
             captured_piece,
         }
@@ -92,11 +90,6 @@ impl TreeNode {
         self.computed
     }
 
-    /// Returns the best evaluation score found in this subtree
-    pub fn get_best_score(&self) -> f32 {
-        self.best_score
-    }
-
     /// Returns the piece that was moved to reach this position (panics on root node)
     pub fn get_moved_piece(&self) -> Piece {
         // this can panic only for very first root node that is
@@ -107,6 +100,11 @@ impl TreeNode {
     /// Returns the piece that was captured in this move, if any
     pub fn get_captured_piece(&self) -> Option<Piece> {
         self.captured_piece
+    }
+
+    /// Historical function that should be used anymore
+    pub fn get_best_score(&self) -> f32 {
+        panic!("get_best_score is deprecated, use get_raw_score instead");
     }
 
     // SETTER
@@ -126,16 +124,10 @@ impl TreeNode {
         self.children.push(child);
     }
 
-    /// Sets the best evaluation score found in this subtree
-    pub fn set_best_score(&mut self, score: f32) {
-        self.best_score = score;
-    }
-
     /// Copies children, computed status, and best score from another node
     pub fn copy_entry(&mut self, node: TreeNodeRef) {
         self.children = node.borrow().children.clone();
         self.computed = true;
-        self.best_score = node.borrow().best_score;
     }
 
     /// Returns the number of moves until checkmate, if the position is a forced mate
@@ -144,11 +136,7 @@ impl TreeNode {
     /// * `Some(depth)` - The number of moves to reach checkmate if a forced mate exists
     /// * `None` - If there is no forced mate in the position
     pub fn get_mate_depth(&self) -> Option<usize> {
-        if self.best_score.abs() == values::CHECK_MATE {
-            self.recursive_get_mate_depth(0)
-        } else {
-            None
-        }
+        self.recursive_get_mate_depth(0)
     }
 
     /// Recursively calculates the depth of a forced mate sequence from the current node
