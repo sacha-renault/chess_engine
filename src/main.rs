@@ -139,10 +139,10 @@ macro_rules! input {
 fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
-        .max_depth(5)
+        .max_depth(10)
         .max_size(5e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(0)
+        .max_quiescence_depth(5)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(-25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
@@ -266,7 +266,7 @@ Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
     // println!("White to play : {}", engine.white_to_play());
     // test_debug(engine);
     // test_mate();
-    // play_against_robot(engine);
+    play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();

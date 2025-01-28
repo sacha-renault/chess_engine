@@ -1,4 +1,6 @@
 use crate::boards::Board;
+use crate::game_engine::move_parsing::square_to_file;
+use crate::game_engine::move_parsing::square_to_rank;
 use crate::pieces::static_positions;
 use crate::pieces::Color;
 use crate::pieces::Piece;
@@ -24,13 +26,13 @@ pub fn print_board(board: &Board) {
     // Print column headers
     print!("    ");
     for col in 0..8 {
-        print!(" {} ", col);
+        print!(" {} ", square_to_file(1 << col));
     }
     println!();
 
     for row in (0..8).rev() {
         // Reverse the row order for correct display (8 to 1)
-        print!("{} | ", row); // Print row number
+        print!("{} | ", square_to_rank(1 << row * 8)); // Print row number
         for col in 0..8 {
             let square = 1 << (row * 8 + col);
             let mut piece_displayed = false;
@@ -85,8 +87,16 @@ pub fn print_board(board: &Board) {
                 print!("{}   {}", bg_color, static_positions::RESET);
             }
         }
+        print!(" | {}", square_to_rank(1 << row * 8)); // Print row number
         println!(); // Move to the next line after each row
     }
+
+    // Print column headers
+    print!("    ");
+    for col in 0..8 {
+        print!(" {} ", square_to_file(1 << col));
+    }
+    println!();
 }
 
 pub fn print_bitboard(bitboard: u64) {
