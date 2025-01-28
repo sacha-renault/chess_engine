@@ -31,7 +31,7 @@ use tree_search::tree_builder::TreeBuilder;
 use tree_search::tree_node::TreeNode;
 use tree_search::values::{get_value_by_piece, ValueRuleSet};
 use std::cell::RefCell;
-use std::panic;
+use std::{panic, usize};
 use std::mem;
 
 use std::io::Write;
@@ -139,26 +139,16 @@ macro_rules! input {
 fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
-        .max_depth(10)
-        .max_size(1e6 as usize)
+        .max_depth(5)
+        .max_size(5e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(5)
+        .max_quiescence_depth(0)
         .razoring_depth(usize::MAX)
-        .razoring_margin_base(25.)
+        .razoring_margin_base(-25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
-    let root_ref = Rc::downgrade(&tree.root());
-    println!("Root is ref ? : {}", root_ref.upgrade().is_some());
-
     loop {
-        // Then the computer plays
-        let depth_reached = tree.generate_tree();
-        let nodes = tree.get_sorted_nodes();
-        if nodes.len() == 0 {
-            break;
-        }
-
         let played_str = {
             if tree.root().borrow().get_engine().white_to_play() {
                 "White"
@@ -167,30 +157,23 @@ fn play_against_robot(engine: Engine) {
             }
         };
 
-        let best_node = &nodes[0];
-        println!("Depth reached : {}. With tree size : {}", depth_reached, tree.size());
-        for scored_node in nodes.iter() {
-            println!(
-                " - {} played: {} with score {} (raw score : {} // mate depth : {:?})",
-                played_str,
-                string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-                scored_node.upgrade().unwrap().borrow().get_best_score(),
-                scored_node.upgrade().unwrap().borrow().get_raw_score(),
-                scored_node.upgrade().unwrap().borrow().get_mate_depth(),
-            );
-        }
-
-        let _ = tree.select_branch(best_node.upgrade().unwrap().borrow().get_move().unwrap());
-        print_board(tree.root().borrow().get_engine().get_board());
-        println!("Number of moves available : {}", nodes.len());
+        let output = tree.iterative_deepening();
+        println!(
+            "{} played: {} with score {} (Depth : {}, mate depth : {:?})",
+            played_str,
+            string_from_move(&output.get_move().unwrap()),
+            output.get_score(),
+            output.get_depth(),
+            output.mate_depth(),
+        );
+        let _ = tree.select_branch(output.get_move().unwrap());
 
         // user input
         let mut incorrect_move = true;
         while incorrect_move {
             let pm = input!(String, "Input a move: ");
             if pm == "moves".to_string() {
-                let moves = tree.get_sorted_nodes();
-                println!("Incorrect move, please retry : {}", moves.len());
+                println!("Incorrect move, please retry",);
                 continue;
             }
             let player_move: PlayerMove;
@@ -199,8 +182,7 @@ fn play_against_robot(engine: Engine) {
                     player_move = mv;
                 }
                 Err(()) => {
-                    let moves = tree.get_sorted_nodes();
-                    println!("Incorrect move, please retry : {}", moves.len());
+                    println!("Incorrect move, please retry");
                     continue;
                 }
             }
@@ -209,8 +191,7 @@ fn play_against_robot(engine: Engine) {
                     incorrect_move = false;
                 }
                 Err(()) => {
-                    let moves = tree.get_sorted_nodes();
-                    println!("Incorrect move, please retry : {}", moves.len());
+                    println!("Couldn't select branch, please retry");
                 }
             }
         }
@@ -235,47 +216,37 @@ fn test_mate() {
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
-    tree.generate_tree();
-    let scored_nodes = tree.get_sorted_nodes();
-    println!("Number of moves : {}", scored_nodes.len());
-    let best_move = &scored_nodes[0]
-        .upgrade()
-        .unwrap()
-        .borrow()
-        .get_move()
-        .unwrap();
-    println!("Best move : {}", string_from_move(best_move));
-    let _ = tree.select_branch(best_move.clone());
+    let output = tree.iterative_deepening();
+
+    println!(
+        "Played: {} with score {} (Depth : {}, mate depth : {:?})",
+        string_from_move(&output.get_move().unwrap()),
+        output.get_score(),
+        output.get_depth(),
+        output.mate_depth(),
+    );
     print_board(tree.root().borrow().get_engine().get_board());
 }
 
 fn test_debug(engine: Engine) {
     let mut tree = TreeBuilder::new()
         .max_depth(6)
-        .max_quiescence_depth(0)
+        .max_quiescence_depth(2)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .razoring_depth(usize::MAX)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
-    let depth = tree.generate_tree();
-    // tree.select_branch(create_move_from_str("d5c3")).unwrap();
+        // tree.select_branch(create_move_from_str("d5c3")).unwrap();
     // tree.select_branch(create_move_from_str("b6f6")).unwrap();
     // tree.select_branch(create_move_from_str("g4g3")).unwrap();
     // tree.select_branch(create_move_from_str("f2f3")).unwrap();
     // tree.select_branch(create_move_from_str("g3g2")).unwrap();
 
-    let scored_nodes = tree.get_sorted_nodes();
-    println!("Reached depth : {} with tree size : {}", depth, tree.size());
-    for scored_node in scored_nodes.iter() {
-        println!(
-            "Move : {} with score : {}, mate depth : {:?}",
-            string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-            scored_node.upgrade().unwrap().borrow().get_best_score(),
-            scored_node.upgrade().unwrap().borrow().get_mate_depth(),
-        );
-    }
+    let output = tree.iterative_deepening();
+    println!("Reached depth : {} with tree size : {}", output.get_depth(), tree.size());
+    println!("Best move : {} with score {}", string_from_move(&output.get_move().unwrap()), output.get_score());
 }
 
 fn main() {
@@ -285,16 +256,16 @@ exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
 15. O-O Nxe5 16. Nxe5 Rxe5 17. a3 Be6 18. Bh7 Ra7 19. f3 Bd6 20. Nc3 Ra8 21. f4
 Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
 Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
-    // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";   
-//     let pgn = "1. e4 c6 2. Bc4 b5 3. Bb3 d5 4. exd5 cxd5 5. d4 Nf6 6. a3 Qd6 7. Be3 Bg4 8. f3
-// Bd7 9. Nc3 h5 "; 
+    let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";
+    let pgn = "e4 e5";
 
     engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
 
     println!("White to play : {}", engine.white_to_play());
-    test_debug(engine);
-    // play_against_robot(engine);
+    // test_debug(engine);
+    // test_mate();
+    play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();
