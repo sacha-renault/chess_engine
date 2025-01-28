@@ -170,13 +170,13 @@ impl Tree {
             if is_maximizing {
                 if score > best_score {
                     best_score = score;
-                    best_node = Some(child.node().clone());
+                    best_node = Some(child.node());   
                 }
                 alpha = alpha.max(best_score);
             } else {
                 if score < best_score {
                     best_score = score;
-                    best_node = Some(child.node().clone());
+                    best_node = Some(child.node());
                 }
                 beta = beta.min(best_score);
             }
@@ -221,7 +221,8 @@ impl Tree {
         // Can early prune the less promising nodes
         let white_to_play = node.borrow().get_engine().white_to_play();
         if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
-            return qval;
+            panic!("Not implemented");
+            // return qval;
         }
 
         // Check the transposition table for existing results
