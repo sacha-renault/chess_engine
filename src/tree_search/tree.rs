@@ -96,54 +96,10 @@ impl Tree {
         self.root.clone()
     }
 
-    /// Returns children nodes sorted by their evaluation scores
+    /// Generates the game tree using iterative deepening and alpha-beta pruning
     ///
     /// # Returns
-    /// Vector of weak references to child nodes, sorted by score (descending for white, ascending for black)
-    pub fn get_sorted_nodes(&self) -> Vec<Weak<RefCell<TreeNode>>> {
-        // Clone the ref to children
-        let mut children = self.root.borrow().get_children().clone();
-        let white_to_play = self.root.borrow().get_engine().white_to_play();
-
-        // Use stored best_score instead of recomputing
-        // When more than a branches lead to a forced mate
-        // The engine doesn't know which one to take
-        // All branches leading to forced mate has a best_score of value::CHECK_MATE
-        // We need a second key to sort the nodes ...
-        children.sort_by(|a, b| {
-            let a_score = a.borrow().get_best_score();
-            let b_score = b.borrow().get_best_score();
-
-            // Primary sort by score
-            let score_cmp = if white_to_play {
-                b_score.partial_cmp(&a_score)
-            } else {
-                a_score.partial_cmp(&b_score)
-            };
-
-            // Secondary sort: prefer faster mate
-            if a_score != b_score {
-                // score is different, we don't even have to bother with mate depth
-                return score_cmp.unwrap();
-            } else if a_score.abs() == values::CHECK_MATE {
-                // Don't need to check for b_score, we know it's equal
-                // If same sign, prefer faster mate (smaller absolute depth)
-                let a_depth = a.borrow().get_mate_depth().unwrap_or(usize::MAX);
-                let b_depth = b.borrow().get_mate_depth().unwrap_or(usize::MAX);
-                return a_depth.partial_cmp(&b_depth).unwrap();
-            } else {
-                // In case scores are equals
-                // We use the heuristic bonus to sort the nodes
-                // We don't care white to play or not since we will abs the value
-                let a_bonus = heuristic_move_bonus_from_node(a.clone());
-                let b_bonus = heuristic_move_bonus_from_node(b.clone());
-                return b_bonus.partial_cmp(&a_bonus).unwrap();
-            }
-        });
-
-        children.iter().map(|child| Rc::downgrade(&child)).collect()
-    }
-
+    /// The maximum depth reached during tree generation
     pub fn iterative_deepening(&mut self) -> MinimaxOutput {
         // We start from depth - 1 (because last was select branch)
         self.current_depth = 1;
@@ -170,37 +126,6 @@ impl Tree {
         }
 
         output
-    }
-
-    /// Generates the game tree using iterative deepening and alpha-beta pruning
-    ///
-    /// # Returns
-    /// The maximum depth reached during tree generation
-    pub fn generate_tree(&mut self) -> usize {
-        // We start from depth - 1 (because last was select branch)
-        self.current_depth = 1;
-
-        // loop until one of break condition is matched
-        loop {
-            // Entries are depth dependent so we have to clear it
-            self.transpose_table.clear();
-
-            // break condition (either too deep or size of the tree to big)
-            if self.max_depth < self.current_depth || self.size() > self.max_size {
-                break;
-            }
-
-            // Start with worst possible values for alpha and beta
-            let alpha = f32::NEG_INFINITY;
-            let beta = f32::INFINITY;
-
-            // Generate the tree recursively with minimax
-            self.minimax(self.root.clone(), self.current_depth, alpha, beta);
-
-            self.current_depth += 1;
-        }
-
-        self.current_depth - 1
     }
 
     /// Evaluates the current game state using the minimax algorithm.

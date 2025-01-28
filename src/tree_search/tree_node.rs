@@ -102,11 +102,6 @@ impl TreeNode {
         self.captured_piece
     }
 
-    /// Historical function that should be used anymore
-    pub fn get_best_score(&self) -> f32 {
-        panic!("get_best_score is deprecated, use get_score instead");
-    }
-
     // SETTER
 
     /// Sets whether this node's children have been computed

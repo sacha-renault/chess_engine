@@ -31,4 +31,11 @@ impl MinimaxOutput {
     pub fn get_depth(&self) -> usize {
         self.depth
     }
+
+    pub fn mate_depth(&self) -> Option<usize> {
+        match &self.best_node {
+            Some(node) => node.borrow().get_mate_depth(),
+            None => None
+        }
+    }
 }
