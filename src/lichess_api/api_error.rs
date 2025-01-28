@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum ApiError {
     HttpError(String), // Error from reqwest
     OpenContentError,  // Error from reqwest

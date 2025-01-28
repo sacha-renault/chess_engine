@@ -17,6 +17,7 @@ pub mod prelude {
 }
 
 use boards::{Board, ColorBoard};
+use lichess_api::api_error;
 use core::f32;
 use game_engine::debug::print_board;
 use game_engine::player_move::PromotionMove;
@@ -34,6 +35,7 @@ use tree_search::values::{get_value_by_piece, ValueRuleSet};
 use std::cell::RefCell;
 use std::{panic, usize};
 use std::mem;
+use lichess_api::lichess_requests::fetch_lichess_moves;
 
 use std::io::Write;
 use std::rc::{Rc, Weak};
@@ -260,14 +262,22 @@ Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
     // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";
     let pgn = "e4 e5";
 
-    engine.play_pgn_str(pgn).unwrap();
+    // engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
     println!("{}", engine.to_string());
 
     // println!("White to play : {}", engine.white_to_play());
     // test_debug(engine);
     // test_mate();
-    play_against_robot(engine);
+    // play_against_robot(engine);
+    match fetch_lichess_moves(&engine.to_string(), "") {
+        Ok(moves) => {
+            for m in moves {
+                println!("Moves : {:?}", m)
+            }
+        },
+        Err(err) => println!("Error : {:?}", err)
+    }
 
     // test_mate();
     // drop_branch_test();
