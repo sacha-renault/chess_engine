@@ -251,7 +251,7 @@ fn test_mate() {
 
 fn test_debug(engine: Engine) {
     let mut tree = TreeBuilder::new()
-        .max_depth(5)
+        .max_depth(6)
         .max_quiescence_depth(0)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
@@ -280,20 +280,21 @@ fn test_debug(engine: Engine) {
 
 fn main() {
     let mut engine = Engine::new();
-//     let pgn = "1. e4 c5 2. Bc4 e6 3. Qg4 Qf6 4. d3 h6 5. Qg3 d5 6. Qc7 Qd8 7. Qxd8+ Kxd8 8.
-// exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
-// 15. O-O Nxe5 16. Nxe5 Rxe5 17. a3 Be6 18. Bh7 Ra7 19. f3 Bd6 20. Nc3 Ra8 21. f4
-// Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
-// Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
+    let pgn = "1. e4 c5 2. Bc4 e6 3. Qg4 Qf6 4. d3 h6 5. Qg3 d5 6. Qc7 Qd8 7. Qxd8+ Kxd8 8.
+exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
+15. O-O Nxe5 16. Nxe5 Rxe5 17. a3 Be6 18. Bh7 Ra7 19. f3 Bd6 20. Nc3 Ra8 21. f4
+Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
+Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
     // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";   
-    let pgn = "e4 c6 2. Bc4 b5 3. Bb3 d5 4. exd5 cxd5 5. d4 Nf6 6. a3 Qd6"; 
+//     let pgn = "1. e4 c6 2. Bc4 b5 3. Bb3 d5 4. exd5 cxd5 5. d4 Nf6 6. a3 Qd6 7. Be3 Bg4 8. f3
+// Bd7 9. Nc3 h5 "; 
 
     engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());
 
     println!("White to play : {}", engine.white_to_play());
-    // test_debug(engine);
-    play_against_robot(engine);
+    test_debug(engine);
+    // play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();
