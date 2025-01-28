@@ -469,7 +469,12 @@ impl Tree {
                 );
 
                 // init the node with score
-                NodeWithScore::new(child.clone(), score)
+                if is_white_to_play {
+                    NodeWithScore::new(child.clone(), score + bonus)
+                } else {
+                    NodeWithScore::new(child.clone(), score - bonus)
+                }
+                
             })
             .collect::<Vec<NodeWithScore>>();
 
