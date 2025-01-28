@@ -143,9 +143,9 @@ fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
         .max_depth(10)
-        .max_size(5e6 as usize)
+        .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(5)
+        .max_quiescence_depth(0)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(-25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
@@ -235,7 +235,7 @@ fn test_mate() {
 fn test_debug(engine: Engine) {
     let mut tree = TreeBuilder::new()
         .max_depth(6)
-        .max_quiescence_depth(2)
+        .max_quiescence_depth(0)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .razoring_depth(usize::MAX)
@@ -256,16 +256,16 @@ fn test_debug(engine: Engine) {
 fn main() {
     let mut engine = Engine::new();
     // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";
-    let pgn = "1. d4 Nf6 2. Bf4 g6 3. Nf3 Bg7 4. Nc3 Nh5 5. e3 Bf6 6. Bc4 Kf8 7. O-O c6 *";
+    let pgn = "1. b4 e6 2. Bb2 Bxb4 3. Bxg7 Nf6";
 
-    // engine.play_pgn_str(pgn).unwrap();
+    engine.play_pgn_str(pgn).unwrap();
     // print_board(engine.get_board());
     // println!("{}", engine.to_string());
 
     // println!("White to play : {}", engine.white_to_play());
-    // test_debug(engine);
+    test_debug(engine);
     // test_mate();
-    play_against_robot(engine);
+    // play_against_robot(engine);
     // match fetch_lichess_moves(&engine.to_string(), "") {
     //     Ok(moves) => {
     //         for m in moves {
