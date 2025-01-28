@@ -194,6 +194,7 @@ impl Tree {
         mut alpha: f32,
         mut beta: f32,
         search_type: SearchType,
+        depth: usize
     ) -> f32 {
         let is_maximizing = node.borrow().get_engine().white_to_play();
         let mut best_score = if scored_children.is_empty() {
@@ -204,10 +205,10 @@ impl Tree {
 
         for child in scored_children.iter() {
             let score = match search_type {
-                SearchType::Full(depth) =>
+                SearchType::Full =>
                     self.minimax(child.node(), depth - 1, alpha, beta),
-                SearchType::Quiescence(qdepth) =>
-                    self.quiescence_search(child.node(), alpha, beta, qdepth + 1)
+                SearchType::Quiescence =>
+                    self.quiescence_search(child.node(), alpha, beta, depth + 1)
 
             };
 
@@ -290,7 +291,8 @@ impl Tree {
             scored_children,
             alpha,
             beta,
-            SearchType::Full(depth),
+            SearchType::Full,
+            depth
         );
 
         // Insert results into the transposition table
@@ -380,7 +382,8 @@ impl Tree {
                 child_nodes,
                 alpha,
                 beta,
-                SearchType::Quiescence(qdepth + 1),
+                SearchType::Quiescence,
+                qdepth + 1
             );
             return best_score;
         } else {
