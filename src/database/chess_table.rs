@@ -35,7 +35,7 @@ impl ChessTablesDb {
         // Get pgn hash and check if it exist in the db
         let pgn_hash = hash_pgn(pgn);
         if !self.insert_pgn_hash(pgn_hash).map_err(|_| ())? {
-            return Ok(()); // already exists in db 
+            return Ok(()); // already exists in db
         }
 
         // We parse the pgn
@@ -79,7 +79,7 @@ impl ChessTablesDb {
         let mut stmt = conn.prepare(
             "SELECT id, win_rate, game_number FROM moves WHERE board_id = ?1 AND move = ?2",
         )?;
-        
+
         let mut rows = stmt.query(params![board_id, move_text])?;
 
         if let Some(row) = rows.next()? {
@@ -114,7 +114,7 @@ impl ChessTablesDb {
             "INSERT OR IGNORE INTO games (pgn_hash) VALUES (?1)",
             params![pgn_hash],
         )?;
-        
+
         // If the affected rows is 0, it means the record already existed (no new rows were inserted)
         Ok(affected_rows > 0)
     }
@@ -194,10 +194,10 @@ impl ChessTablesDb {
                 win_rate: row.get(3)?,
             })
         })?;
-        
+
         // Collect the results into a vector
         let moves: Result<Vec<_>, _> = move_iter.collect();
-        
+
         moves
     }
 }

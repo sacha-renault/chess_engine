@@ -257,7 +257,7 @@ exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
 Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
 Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
     // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";
-    // let pgn = "e4 e5";
+    let pgn = "e4 e5";
 
     engine.play_pgn_str(pgn).unwrap();
     print_board(engine.get_board());

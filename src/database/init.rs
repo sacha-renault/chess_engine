@@ -35,7 +35,7 @@ pub fn init_db() -> Result<Connection, rusqlite::Error> {
         "CREATE TABLE IF NOT EXISTS boards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fen TEXT UNIQUE NOT NULL
-        );", 
+        );",
         []
     )?;
 
@@ -45,9 +45,11 @@ pub fn init_db() -> Result<Connection, rusqlite::Error> {
             board_id INTEGER NOT NULL,
             move TEXT UNIQUE NOT NULL,
             win_rate REAL NOT NULL,
+            draw_rate REAL NOT NULL,
+            loose_rate REAL NOT NULL,
             game_number INTEGER NOT NULL,
             FOREIGN KEY (board_id) REFERENCES boards (id) ON DELETE CASCADE
-        );", 
+        );",
         []
     )?;
 
@@ -55,7 +57,7 @@ pub fn init_db() -> Result<Connection, rusqlite::Error> {
         "CREATE TABLE IF NOT EXISTS games (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pgn_hash BLOB UNIQUE NOT NULL
-        );", 
+        );",
         []
     )?;
     Ok(conn)
