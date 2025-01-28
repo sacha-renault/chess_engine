@@ -219,8 +219,8 @@ impl Tree {
 
         // Check for razoring
         // Can early prune the less promising nodes
-        if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha) {
-            panic!("Razoring at depth {}, not implemented well yet", depth);
+        let white_to_play = node.borrow().get_engine().white_to_play();
+        if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
             return qval;
         }
 
@@ -566,7 +566,12 @@ impl Tree {
     }
 
     /// Checks if a node is a candidate for razoring based on the current depth and alpha value.
-    fn is_razoring_candidate(&mut self, node: TreeNodeRef, depth: usize, alpha: f32) -> Option<MinimaxOutput> {
+    fn is_razoring_candidate(&mut self,
+        node: TreeNodeRef,
+        depth: usize,
+        alpha: f32,
+        white_to_play: bool
+    ) -> Option<MinimaxOutput> {
         // Avoid pruning branch too early
         let actual_depth: usize = self.current_depth - depth;
         if actual_depth <= self.razoring_depth {
@@ -580,8 +585,15 @@ impl Tree {
         // Get the static evaluation of the node
         let score = node.borrow().get_score();
 
+        // Should razor
+        let should_razor = if white_to_play {
+            score < razoring_threshold
+        } else {
+            score > -razoring_threshold
+        };
+
         // If eval is below the threshold, perform a quiescence search
-        if score < razoring_threshold {
+        if should_razor {
             let qval = self.quiescence_search(node.clone(), alpha - 1.0, alpha, 0);
 
             // Check if value fails low and is within a reasonable bound
