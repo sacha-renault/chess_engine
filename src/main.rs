@@ -140,9 +140,9 @@ fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
         .max_depth(10)
-        .max_size(3e6 as usize)
+        .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(0)
+        .max_quiescence_depth(5)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
@@ -168,21 +168,15 @@ fn play_against_robot(engine: Engine) {
         };
 
         let best_node = &nodes[0];
-        println!(
-            "{} played: {} with score {}. Tree size is : {} (mate depth : {:?} // depth {})",
-            played_str,
-            string_from_move(&best_node.upgrade().unwrap().borrow().get_move().unwrap()),
-            best_node.upgrade().unwrap().borrow().get_best_score(),
-            tree.size(),
-            best_node.upgrade().unwrap().borrow().get_mate_depth(),
-            depth_reached,
-        );
-        for scored_node in nodes.iter().skip(1).take(3) {
+        println!("Depth reached : {}. With tree size : {}", depth_reached, tree.size());
+        for scored_node in nodes.iter().take(4) {
             println!(
-                "     - also possible: {} with score: {} (mate depth : {:?})",
+                " - {} played: {} with score {} (raw score : {} // mate depth : {:?})",
+                played_str,
                 string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
                 scored_node.upgrade().unwrap().borrow().get_best_score(),
-                scored_node.upgrade().unwrap().borrow().get_mate_depth()
+                scored_node.upgrade().unwrap().borrow().get_raw_score(),
+                scored_node.upgrade().unwrap().borrow().get_mate_depth(),
             );
         }
 
@@ -257,12 +251,11 @@ fn test_mate() {
 
 fn test_debug(engine: Engine) {
     let mut tree = TreeBuilder::new()
-        .max_depth(10)
+        .max_depth(5)
+        .max_quiescence_depth(0)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(0)
         .razoring_depth(usize::MAX)
-        .razoring_margin_base(25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))
         .unwrap();
 
@@ -287,45 +280,20 @@ fn test_debug(engine: Engine) {
 
 fn main() {
     let mut engine = Engine::new();
-    let pgn = r#"[Event "Play vs Bot"]
-[Site "Chess.com"]
-[Date "2025.01.27"]
-[Round "?"]
-[White "HASAC"]
-[Black "Komodo10"]
-[Result "1-0"]
-[TimeControl "-"]
-[WhiteElo "943"]
-[BlackElo "1400"]
-[Termination "HASAC a gagné par échec et mat"]
-[ECO "C47"]
-[EndDate "2025.01.27"]
-[Link "https://www.chess.com/game/computer/214144563"]
+//     let pgn = "1. e4 c5 2. Bc4 e6 3. Qg4 Qf6 4. d3 h6 5. Qg3 d5 6. Qc7 Qd8 7. Qxd8+ Kxd8 8.
+// exd5 exd5 9. Bxd5 f5 10. Bf4 a5 11. Bc4 g5 12. Be5 Rh7 13. Bxg8 Re7 14. Nf3 Nc6
+// 15. O-O Nxe5 16. Nxe5 Rxe5 17. a3 Be6 18. Bh7 Ra7 19. f3 Bd6 20. Nc3 Ra8 21. f4
+// Re3 22. fxg5 hxg5 23. Bxf5 Bxf5 24. Rxf5 b5 25. Nxb5 Be5 26. Rf8+ Kd7 27. Rxa8
+// Bxb2 28. Ra2 Be5 29. Kf2 Bf4 30. g3 Re8 31. Rxe8 Kxe8";
+    // let pgn = "e4 c5 2. Bc4 d5 3. exd5 Qb6";   
+    let pgn = "e4 c6"; 
 
-1. e4 e5 2. Nf3 Nf6 3. Nc3 Nc6 4. a3 h5 5. b4 b6 6. Bc4 a5 7. b5 Ng4 8. bxc6 Rh7
-9. d4 f6 10. Bd5 Ba6 11. h3 Nh6 12. Nxe5 Bb4 13. cxd7+ Ke7 14. axb4 fxe5 15.
-Bg5+ Kxd7 16. Bxd8 Rxd8 17. Qxh5 Ke7 18. Qg5+ Kd7 19. Qg6 Rf8 20. Qxh7 exd4 21.
-Qxg7+ Rf7 22. Qxh6 Re7 23. Bc6+ Kd8 24. Qf8+ Re8 25. Qxe8# 1-0"#;
+    engine.play_pgn_str(pgn).unwrap();
+    print_board(engine.get_board());
 
-    // get table db
-    let tables = database::chess_table::ChessTablesDb::new().unwrap();
-    
-    // try to insert a pgn ?
-    match tables.populate_database_by_pgn(pgn) {
-        Ok(()) => println!("New pgn inserted"),
-        Err(_) => println!("Couldn't insert pgn")
-    };
-    match tables.get_moves_by_page(0, 100) {
-        Ok(moves) => println!("{:?}", moves),
-        Err(err) => println!("Fetch error : {}", err.to_string())
-    };
-
-
-    // engine.play_pgn_str(pgn).unwrap();
-    // print_board(engine.get_board());
-
+    println!("White to play : {}", engine.white_to_play());
     // test_debug(engine);
-    // play_against_robot(engine);
+    play_against_robot(engine);
 
     // test_mate();
     // drop_branch_test();

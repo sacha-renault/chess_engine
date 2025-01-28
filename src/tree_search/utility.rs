@@ -4,7 +4,7 @@ use super::values::get_value_by_piece;
 use crate::game_engine::player_move::PlayerMove;
 use crate::pieces::Piece;
 
-pub fn heuristic_move_bonus_from_node(node: TreeNodeRef, is_white_to_play: bool) -> f32 {
+pub fn heuristic_move_bonus_from_node(node: TreeNodeRef) -> f32 {
     let node_ref = node.borrow();
     let player_move = node_ref.get_move().unwrap();
     let moved_piece = node_ref.get_moved_piece();
@@ -16,7 +16,6 @@ pub fn heuristic_move_bonus_from_node(node: TreeNodeRef, is_white_to_play: bool)
         captured_piece_opt,
         1,
         is_king_checked,
-        is_white_to_play,
     )
 }
 
@@ -26,7 +25,6 @@ pub fn heuristic_move_bonus(
     captured_piece_opt: Option<Piece>,
     depth: usize,
     is_king_checked: bool,
-    white_to_play: bool,
 ) -> f32 {
     // init a bonus
     let mut bonus = 0.;
@@ -68,12 +66,7 @@ pub fn heuristic_move_bonus(
     // TODO
     // We can keep adding more bonuses but i am really lazy to
     // Implement all, especially i think those are the most important
-
-    if white_to_play {
-        bonus
-    } else {
-        -bonus
-    }
+    bonus   
 }
 
 pub fn is_unstable_position(node: TreeNodeRef) -> bool {

@@ -134,8 +134,8 @@ impl Tree {
                 // In case scores are equals
                 // We use the heuristic bonus to sort the nodes
                 // We don't care white to play or not since we will abs the value
-                let a_bonus = heuristic_move_bonus_from_node(a.clone(), true).abs();
-                let b_bonus = heuristic_move_bonus_from_node(b.clone(), true).abs();
+                let a_bonus = heuristic_move_bonus_from_node(a.clone());
+                let b_bonus = heuristic_move_bonus_from_node(b.clone());
                 return b_bonus.partial_cmp(&a_bonus).unwrap();
             }
         });
@@ -456,7 +456,7 @@ impl Tree {
             .into_iter()
             .map(|child| {
                 // Calc score as a mix of foreseing best move
-                let mut score = self.quiescence_search(
+                let score = self.quiescence_search(
                     child.clone(),
                     self.foreseeing_windowing,
                     -self.foreseeing_windowing,
@@ -464,9 +464,8 @@ impl Tree {
                 );
 
                 // add heuristic bonus
-                score += heuristic_move_bonus_from_node(
+                let bonus = heuristic_move_bonus_from_node(
                     child.clone(),
-                    is_white_to_play,
                 );
 
                 // init the node with score
@@ -475,9 +474,9 @@ impl Tree {
             .collect::<Vec<NodeWithScore>>();
 
         if is_white_to_play {
-            scored_children.sort_by(|a, b| b.score().partial_cmp(&a.score()).unwrap());
-        } else {
             scored_children.sort_by(|a, b| a.score().partial_cmp(&b.score()).unwrap());
+        } else {
+            scored_children.sort_by(|a, b| b.score().partial_cmp(&a.score()).unwrap());
         }
 
         scored_children
