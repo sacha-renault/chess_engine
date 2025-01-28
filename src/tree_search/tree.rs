@@ -458,8 +458,8 @@ impl Tree {
                 // Calc score as a mix of foreseing best move
                 let score = self.quiescence_search(
                     child.clone(),
-                    self.foreseeing_windowing,
                     -self.foreseeing_windowing,
+                    self.foreseeing_windowing,
                     self.max_q_depth - shallow_depth
                 );
 
