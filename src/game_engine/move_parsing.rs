@@ -166,15 +166,18 @@ pub fn create_final_move(
     promotion_piece_opt: Option<Piece>,
     target_square: u64,
 ) -> Result<PlayerMove, ()> {
-    match (player_move, promotion_piece_opt) {
-        (PlayerMove::Promotion(mv), Some(promotion_piece)) => Ok(PlayerMove::Promotion(
-            PromotionMove::new(mv.squares().0, target_square, promotion_piece),
+    let current_square = match player_move {
+        PlayerMove::Promotion(mv) => mv.squares().0,
+        PlayerMove::Normal(mv) => mv.squares().0,
+        _ => { 
+            return Err(());
+        }
+    };
+    match promotion_piece_opt {
+        Some(promotion_piece) => Ok(PlayerMove::Promotion(
+            PromotionMove::new(current_square, target_square, promotion_piece),
         )),
-        (PlayerMove::Normal(mv), _) => Ok(PlayerMove::Normal(NormalMove::new(
-            mv.squares().0,
-            target_square,
-        ))),
-        _ => Err(()),
+        None => Ok(PlayerMove::Normal(NormalMove::new(current_square, target_square)))
     }
 }
 

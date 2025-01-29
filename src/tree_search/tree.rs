@@ -100,23 +100,26 @@ impl Tree {
     ///
     /// # Returns
     /// The maximum depth reached during tree generation
-    pub fn iterative_deepening(&mut self) -> MinimaxOutput {
+    pub fn iterative_deepening(&mut self) -> MinimaxOutput {       
         // If the tree is already too big, we shouldn't return a null result
         // So we use our minimax tree with NO computation
         if self.size() > self.max_size {
+            println!("Trying to get a result ...");
             return self.minimax(
                 self.root().clone(),
-                self.current_depth,
+                0,
                 f32::NEG_INFINITY,
                 f32::INFINITY);
         }
+
+        // When starting iterative deepening, we remove previous results
+        self.transpose_table.maintenance();
 
         // We start from depth = 1 (because last was select branch)
         self.current_depth = 1;
         let mut output= MinimaxOutput::new(None, 0.);
 
         // loop until one of break condition is matched
-        self.transpose_table.maintenance();
         loop {
             // Mark all entries as 'old'
             self.transpose_table.new_search();
@@ -220,7 +223,8 @@ impl Tree {
         // End tree building if reaching max depth
         if depth == self.current_depth {
             // Instead of just evaluating, call quiescence search
-            let quiescence_output = self.quiescence_search(node.clone(), alpha, beta, 1.min(self.current_depth - depth));
+            let quiescence_output = 
+                self.quiescence_search(node.clone(), alpha, beta, 0);
 
             // Store the quiescence score in the transposition table
             self.transpose_table
@@ -253,7 +257,7 @@ impl Tree {
 
         // Get scored children
         let scored_children =
-            self.get_sorted_children_with_best_score(node.clone(), 1);
+            self.get_sorted_children_with_best_score(node.clone());
 
         // Perform minimax evaluation
         let minimax_output = self.minimax_evaluate(
@@ -337,7 +341,7 @@ impl Tree {
 
         // we continue for all the nodes that are unstable
         let child_nodes: Vec<NodeWithScore> = self
-            .get_sorted_children_with_best_score(node.clone(), 0)
+            .get_sorted_children_with_best_score(node.clone())
             .into_iter()
             .filter(|scored_move| is_unstable_position(scored_move.node()))
             .collect::<Vec<_>>();
@@ -412,7 +416,6 @@ impl Tree {
     fn get_sorted_children_with_best_score(
         &mut self,
         node: TreeNodeRef,
-        shallow_depth: usize,
     ) -> Vec<NodeWithScore> {
         // Clone the vec of children
         // It clone a Vec of ptr so
@@ -429,17 +432,10 @@ impl Tree {
                 let hash = self.compute_node_hash(&child);
                 let base_score = self.transpose_table.get_old_entry_score(hash)
                     .unwrap_or_else(|| {
-                        // If no TT entry, do quiescence search as before
-                        let qval = self.quiescence_search(
-                            child.clone(),
-                            -self.foreseeing_windowing,
-                            self.foreseeing_windowing,
-                            self.max_q_depth - shallow_depth
-                        );
-                        qval.get_score()
+                        child.borrow().get_score()
                     });
 
-                // add heuristic bonus
+                // heuristic eval
                 let child_ref = child.borrow();
                 let player_move = child_ref.get_move().unwrap();
                 let moved_piece = child_ref.get_moved_piece();
