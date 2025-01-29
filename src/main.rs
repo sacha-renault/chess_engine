@@ -181,11 +181,11 @@ fn play_against_robot(engine: Engine) {
                 continue;
             }
             let player_move: PlayerMove;
-            match tree.root().borrow().get_engine().get_move_by_str(&pm) {
+            match tree.root().borrow().get_engine().get_move_by_san(&pm) {
                 Ok(mv) => {
                     player_move = mv;
                 }
-                Err(()) => {
+                Err(_) => {
                     println!("Incorrect move, please retry");
                     continue;
                 }

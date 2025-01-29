@@ -70,7 +70,7 @@ impl Engine {
         self.white_turn
     }
 
-    /// Executes a chess move, handling both normal moves and castling.
+    /// Executes a chess move, handling both normal moves and castling and promotion.
     ///
     /// # Arguments
     /// * `chess_move` - The move to execute, either normal move or castling
@@ -114,6 +114,21 @@ impl Engine {
 
         // Finalize the turn
         Ok(self.finalize_turn())
+    }
+
+    /// Same as `play` but the move is parsed from a **SAN** string (Standard Algebraic Notation).
+    ///
+    /// # Arguments
+    /// * `san` - The move to execute as a SAN string (e.g., "e4", "Nf3", "O-O", "d8=Q+").
+    ///
+    /// # Returns
+    /// * `Ok(CorrectMoveResults)` - Move executed successfully
+    /// * `Err(IncorrectMoveResults)` - Move Failed
+    ///    - `InvalidMove` - The SAN string is invalid
+    ///    - `_` - See `play` for other possible errors
+    pub fn play_san(&mut self, san: &str) -> MoveResult {
+        let player_move = self.get_move_by_san(san).map_err(|_| IncorrectMoveResults::InvalidMove)?;
+        self.play(player_move)
     }
 
     /// Validates and simulates a move before execution.
@@ -239,7 +254,7 @@ impl Engine {
         self.update_all_castling_rights();
 
         // get player and opponent board
-        let (_, opponent_board) = get_half_turn_boards_mut(&mut self.board, color);        
+        let (_, opponent_board) = get_half_turn_boards_mut(&mut self.board, color);
 
         // reset the en passant squares for the opponent
         opponent_board.en_passant = 0;
@@ -267,9 +282,9 @@ impl Engine {
     /// - Moving or losing a king removes all castling rights for that side
     /// - Moving or losing a rook removes castling rights for that side
     fn update_all_castling_rights(&mut self) {
-        let (initial_white_king, initial_white_short_rook, initial_white_long_rook) = 
+        let (initial_white_king, initial_white_short_rook, initial_white_long_rook) =
             get_initial_castling_positions(Color::White);
-        let (initial_black_king, initial_black_short_rook, initial_black_long_rook) = 
+        let (initial_black_king, initial_black_short_rook, initial_black_long_rook) =
             get_initial_castling_positions(Color::Black);
 
         // Update white's castling rights
@@ -619,34 +634,36 @@ impl Engine {
         pieces_with_moves
     }
 
-    /// This function takes a string and returns a player move
+    /// This function takes a move as a **SAN** string and returns a player move
     ///
     /// # Arguments
     ///
-    /// * `input` - a string formatted with a correct (or not) chess move
+    /// * `input` - a string formatted with a correct (or not) SAN chess move. (e.g., "e4", "Nf3", "O-O", "d8=Q+")
     ///
     /// # Returns
     ///
     /// Returns a `Option<PlayerMove>`
-    ///     - Some(PlayerMove) if the move is correct
+    ///     - Ok(PlayerMove) if the move is correct
     ///     - None if the move couldn't be parse into a valid move
-    pub fn get_move_by_str(&self, input: &str) -> Result<PlayerMove, ()> {
+    pub fn get_move_by_san(&self, input: &str) -> Result<PlayerMove, IncorrectMoveResults> {
         if input.len() < 2 {
-            return Err(());
+            return Err(IncorrectMoveResults::InvalidMove);
         }
 
         if let Some(castling_move) = parse_castling(input) {
             return Ok(castling_move);
         }
 
-        let (chars, promotion_piece_opt) = parse_input_string(input)?;
+        let (chars, promotion_piece_opt) = parse_input_string(input)
+            .map_err(|_| IncorrectMoveResults::InvalidMove)?;
 
         if chars.len() < 2 {
-            return Err(());
+            return Err(IncorrectMoveResults::InvalidMove);
         }
 
         let piece = match_piece_by_char(chars[0]);
-        let target_square = parse_str_into_square(chars[chars.len() - 2], chars[chars.len() - 1])?;
+        let target_square = parse_str_into_square(chars[chars.len() - 2], chars[chars.len() - 1])
+            .map_err(|_| IncorrectMoveResults::InvalidMove)?;
         let (from_file, from_rank) = parse_opt_source_file_and_rank(piece, chars);
 
         let possible_moves = self.get_all_moves_by_piece();
@@ -654,10 +671,11 @@ impl Engine {
             filter_possible_moves(possible_moves, piece, target_square, from_file, from_rank);
 
         if filtered_pieces.len() != 1 {
-            return Err(());
+            return Err(IncorrectMoveResults::InvalidMove);
         }
 
         create_final_move(filtered_pieces[0].1, promotion_piece_opt, target_square)
+            .map_err(|_| IncorrectMoveResults::InvalidMove)
     }
 
     /// Generates all possible moves for the current player, considering the current state of the engine.
@@ -799,7 +817,7 @@ impl Engine {
     /// # Returns
     /// - `Ok(())`: If all moves in the PGN string are successfully parsed and played.
     /// - `Err(IncorrectMoveResults::IllegalMove)`: If any move in the PGN string is invalid or illegal.
-    pub fn play_pgn_str(&mut self, pgn: &str) -> Result<(), IncorrectMoveResults> {
+    pub fn play_pgn_str(&mut self, pgn: &str) -> Result<CorrectMoveResults, IncorrectMoveResults> {
         // Split the PGN by whitespace and filter out move numbers and empty tokens
         let moves = pgn
             .split_whitespace()
@@ -810,16 +828,12 @@ impl Engine {
 
         // play on the cloned engine so it doesn't affect the current one
         for mv in moves {
-            let player_move_opt = engine.get_move_by_str(mv);
-            match player_move_opt {
-                Ok(player_move) => { engine.play(player_move)?; },
-                Err(_) => return Err(IncorrectMoveResults::IllegalMove),
-            }
+            engine.play_san(mv)?;
         }
 
         // If everything went ok, we can update the current engine
         *self = engine;
-        Ok(())
+        Ok(CorrectMoveResults::Ok)
     }
 
     /// Return a fen representation of the board
@@ -827,40 +841,8 @@ impl Engine {
         // init an empty string for the fen
         let mut fen = String::new();
 
-        // Process each rank from 8 to 1 (top to bottom)
-        for rank in (0..8).rev() {
-            let mut empty_squares = 0;
-
-            // Process each file from a to h (left to right)
-            for file in 0..8 {
-                let square_index = rank * 8 + file;
-                let square = 1u64 << square_index;
-
-                match self.board.get_piece_at(square) {
-                    Some((color, piece)) => {
-                        // If we had empty squares before this piece, add the count
-                        if empty_squares > 0 {
-                            fen.push_str(&empty_squares.to_string());
-                            empty_squares = 0;
-                        }
-                        fen.push(piece_to_char(color, piece));
-                    }
-                    None => {
-                        empty_squares += 1;
-                    }
-                }
-            }
-
-            // Add any remaining empty squares at the end of the rank
-            if empty_squares > 0 {
-                fen.push_str(&empty_squares.to_string());
-            }
-
-            // Add rank separator (/) except for the last rank
-            if rank > 0 {
-                fen.push('/');
-            }
-        }
+        // Add the board
+        fen.push_str(&fen_board_position(&self.board));
 
         // Add active color
         fen.push(' ');
@@ -868,26 +850,24 @@ impl Engine {
 
         // Add castling rights
         fen.push(' ');
-        let mut has_castling = false;
-        if self.board.white.castling_rights.is_short_castling_available() { fen.push('K'); has_castling = true; }
-        if self.board.white.castling_rights.is_long_castling_available() { fen.push('Q'); has_castling = true; }
-        if self.board.black.castling_rights.is_short_castling_available() { fen.push('k'); has_castling = true; }
-        if self.board.black.castling_rights.is_long_castling_available() { fen.push('q'); has_castling = true; }
-        if !has_castling { fen.push('-'); }
+        fen.push_str(&fen_castling(&self.board));
 
         // Add en passant square
         fen.push(' ');
-        let en_passant_squares = self.board.white.en_passant | self.board.black.en_passant;
-        if en_passant_squares != 0 {
-            fen.push(square_to_file(en_passant_squares));
-            fen.push(square_to_rank(en_passant_squares));
-        } else {
-            fen.push('-');
-        }
+        fen.push_str(&fen_en_passant(&self.board));
 
         // Add halfmove clock and fullmove number
         fen.push_str(&format!(" {} {}", self.halfmove_clock, 0));
 
         fen
+    }
+
+    pub fn from_fen(fen: &str) -> Result<Engine, ()> {
+        // Split FEN string into its components
+        let parts: Vec<&str> = fen.split_whitespace().collect();
+        if parts.len() != 6 {
+            return Err(());
+        }
+        unimplemented!()
     }
 }

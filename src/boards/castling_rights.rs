@@ -13,6 +13,10 @@ impl CastlingRights {
         }
     }
 
+    pub fn new_with_rules(short: bool, long: bool) -> Self {
+        CastlingRights { short, long }
+    }
+
     /// Updates the castling rights based on the current state of the king and rook bitboards.
     ///
     /// # Arguments

@@ -1,5 +1,5 @@
 use super::player_move::{CastlingMove, NormalMove, PlayerMove, PromotionMove};
-use crate::pieces::{Color, Piece};
+use crate::{boards::Board, pieces::{Color, Piece}};
 
 pub fn parse_str_into_square(target_file: char, target_rank: char) -> Result<u64, ()> {
     // Validate the input
@@ -178,8 +178,8 @@ pub fn create_final_move(
     }
 }
 
-pub // Helper function to convert a piece to its FEN character
-fn piece_to_char(color: Color, piece: Piece) -> char {
+// Helper function to convert a piece to its FEN character
+pub fn piece_to_char(color: Color, piece: Piece) -> char {
     let piece_char = match piece {
         Piece::Pawn => 'P',
         Piece::Knight => 'N',
@@ -192,4 +192,73 @@ fn piece_to_char(color: Color, piece: Piece) -> char {
         Color::Black => piece_char.to_ascii_lowercase(),
         Color::White => piece_char
     }
+}
+
+pub fn fen_board_position(board: &Board) -> String {
+    // init an empty string for the fen
+    let mut board_position = String::new();
+
+    // Process each rank from 8 to 1 (top to bottom)
+    for rank in (0..8).rev() {
+        let mut empty_squares = 0;
+
+        // Process each file from a to h (left to right)
+        for file in 0..8 {
+            let square_index = rank * 8 + file;
+            let square = 1u64 << square_index;
+
+            match board.get_piece_at(square) {
+                Some((color, piece)) => {
+                    // If we had empty squares before this piece, add the count
+                    if empty_squares > 0 {
+                        board_position.push_str(&empty_squares.to_string());
+                        empty_squares = 0;
+                    }
+                    board_position.push(piece_to_char(color, piece));
+                }
+                None => {
+                    empty_squares += 1;
+                }
+            }
+        }
+
+        // Add any remaining empty squares at the end of the rank
+        if empty_squares > 0 {
+            board_position.push_str(&empty_squares.to_string());
+        }
+
+        // Add rank separator (/) except for the last rank
+        if rank > 0 {
+            board_position.push('/');
+        }
+    }
+
+    board_position
+}
+
+pub fn fen_castling(board: &Board) -> String {
+    let mut castling_rights = String::new();
+
+    let mut has_castling = false;
+    if board.white.castling_rights.is_short_castling_available() { castling_rights.push('K'); has_castling = true; }
+    if board.white.castling_rights.is_long_castling_available() { castling_rights.push('Q'); has_castling = true; }
+    if board.black.castling_rights.is_short_castling_available() { castling_rights.push('k'); has_castling = true; }
+    if board.black.castling_rights.is_long_castling_available() { castling_rights.push('q'); has_castling = true; }
+    if !has_castling { castling_rights.push('-'); }
+
+    castling_rights
+}
+
+pub fn fen_en_passant(board: &Board) -> String {
+    let mut en_passant = String::new();
+
+    let en_passant_squares = board.white.en_passant | board.black.en_passant;
+    if en_passant_squares != 0 {
+        en_passant.push(square_to_file(en_passant_squares));
+        en_passant.push(square_to_rank(en_passant_squares));
+    } else {
+        en_passant.push('-');
+    }
+
+    en_passant
 }
