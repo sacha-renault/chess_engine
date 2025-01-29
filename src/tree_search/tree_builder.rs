@@ -1,7 +1,7 @@
-use super::evaluate::Evaluator;
 use super::tree::Tree;
-use super::values;
 
+use crate::static_evaluation::values;
+use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::game_engine::engine::Engine;
 
 /// A builder for constructing game analysis trees with customizable parameters

@@ -4,6 +4,7 @@ pub mod pieces;
 pub mod tree_search;
 pub mod database;
 pub mod lichess_api;
+pub mod static_evaluation;
 
 // Define the prelude module
 pub mod prelude {
@@ -26,12 +27,12 @@ use pieces::Piece;
 use prelude::{
     create_move_from_str, iter_into_u64, string_from_move, Engine, NormalMove, PlayerMove,
 };
-use tree_search::evaluate::Evaluator;
+use static_evaluation::evaluator_trait::Evaluator;
 use tree_search::node_with_score::NodeWithScore;
 use tree_search::tree::Tree;
 use tree_search::tree_builder::TreeBuilder;
 use tree_search::tree_node::TreeNode;
-use tree_search::values::{get_value_by_piece, ValueRuleSet};
+use static_evaluation::values::{get_value_by_piece, ValueRuleSet};
 use std::cell::RefCell;
 use std::{panic, usize};
 use std::mem;
@@ -75,7 +76,7 @@ fn play_robot_to_robot(engine: Engine, display: bool) {
         .max_depth(10)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
-        .max_quiescence_depth(0)
+        .max_quiescence_depth(5)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(-25.)
         .build_tree(engine, Box::new(ValueRuleSet::new()))

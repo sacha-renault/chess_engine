@@ -1,8 +1,9 @@
-use super::tree_node::TreeNodeRef;
-use super::values;
-use super::values::get_value_by_piece;
 use crate::game_engine::player_move::PlayerMove;
 use crate::pieces::Piece;
+use crate::static_evaluation::values;
+use crate::static_evaluation::values::get_value_by_piece;
+
+use super::tree_node::TreeNodeRef;
 
 pub fn heuristic_move_bonus_from_node(node: TreeNodeRef) -> f32 {
     let node_ref = node.borrow();
@@ -66,7 +67,7 @@ pub fn heuristic_move_bonus(
     // TODO
     // We can keep adding more bonuses but i am really lazy to
     // Implement all, especially i think those are the most important
-    bonus   
+    bonus
 }
 
 pub fn is_unstable_position(node: TreeNodeRef) -> bool {

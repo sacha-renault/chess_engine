@@ -1,4 +1,4 @@
-use super::evaluate::Evaluator;
+use super::evaluator_trait::Evaluator;
 use crate::boards::board::Board;
 use crate::pieces::{Color, Piece};
 

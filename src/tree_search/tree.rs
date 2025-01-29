@@ -19,16 +19,17 @@ use std::usize;
 use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
-use crate::prelude::Engine;
+use crate::game_engine::engine::Engine;
+use crate::static_evaluation::evaluator_trait::Evaluator;
+use crate::static_evaluation::values;
 
-use super::evaluate::Evaluator;
+
 use super::minimax_output::MinimaxOutput;
 use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
 use super::utility::{heuristic_move_bonus_from_node, is_unstable_position};
-use super::values;
 
 /// A tree structure for chess move analysis
 ///
