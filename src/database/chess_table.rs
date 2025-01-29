@@ -7,13 +7,20 @@ use super::models::MoveModel;
 
 use crate::lichess_api::models::LichessMove;
 
+/// Database interface for storing and retrieving chess positions and moves
+/// 
+/// Provides functionality to store chess positions in FEN notation and their associated moves,
+/// along with statistical information about move outcomes from real games.
 pub struct ChessTablesDb {
     conn: Mutex<Connection>,
     db_path: PathBuf
 }
 
-
 impl ChessTablesDb {
+    /// Creates a new database connection using the default database path
+    /// 
+    /// # Returns
+    /// * `Result<Self>` - New database connection or SQLite error
     pub fn new() -> Result<Self, rusqlite::Error> {
         let db_path = get_db_path();
         let conn = init_db(&db_path)?;
@@ -23,6 +30,13 @@ impl ChessTablesDb {
         })
     }
 
+    /// Creates a new database connection using a specified path
+    /// 
+    /// # Arguments
+    /// * `db_path` - Custom path to the SQLite database file
+    /// 
+    /// # Returns
+    /// * `Result<Self>` - New database connection or SQLite error
     pub fn at_path(db_path: PathBuf) -> Result<Self, rusqlite::Error> {
         let conn = init_db(&db_path)?;
         Ok(Self {
@@ -31,10 +45,21 @@ impl ChessTablesDb {
         })
     }
 
+    /// Returns the current database file path
+    /// 
+    /// # Returns
+    /// * `&PathBuf` - Reference to the database path
     pub fn get_db_path(&self) -> &PathBuf {
         &self.db_path
     }
 
+    /// Inserts a chess position into the database or returns existing ID
+    /// 
+    /// # Arguments
+    /// * `fen` - The FEN string representing the chess position
+    /// 
+    /// # Returns
+    /// * `Result<i64>` - Board ID in the database or SQLite error
     pub fn insert_board(&self, fen: &str) -> Result<i64, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         
@@ -56,6 +81,17 @@ impl ChessTablesDb {
         Ok(conn.last_insert_rowid())
     }
 
+    /// Stores multiple chess moves with their statistics for a given board position
+    /// 
+    /// # Arguments
+    /// * `chess_moves` - Vector of moves with their statistics
+    /// * `board_id` - ID of the board position these moves belong to
+    /// 
+    /// # Returns
+    /// * `Result<()>` - Success or SQLite error
+    /// 
+    /// # Note
+    /// Updates existing moves if they already exist for the given position
     pub fn insert_moves(&self, chess_moves: Vec<LichessMove>, board_id: i64) -> Result<(), rusqlite::Error> {
         let mut conn = self.conn.lock().unwrap();
         let tx = conn.transaction()?;
@@ -85,12 +121,27 @@ impl ChessTablesDb {
         Ok(())
     }
 
+    /// Inserts both a board position and its associated moves in one transaction
+    /// 
+    /// # Arguments
+    /// * `fen` - The FEN string representing the chess position
+    /// * `chess_moves` - Vector of moves with their statistics
+    /// 
+    /// # Returns
+    /// * `Result<i64>` - Board ID in the database or SQLite error
     pub fn insert_board_with_moves(&self, fen: &str, chess_moves: Vec<LichessMove>) -> Result<i64, rusqlite::Error> {
         let board_id = self.insert_board(&fen)?;
         self.insert_moves(chess_moves, board_id)?;
         Ok(board_id)
     }
 
+    /// Retrieves all stored moves for a given chess position
+    /// 
+    /// # Arguments
+    /// * `fen` - The FEN string representing the chess position
+    /// 
+    /// # Returns
+    /// * `Result<Vec<MoveModel>>` - List of moves with their statistics or SQLite error
     pub fn get_moves_by_fen(&self, fen: &str) -> Result<Vec<MoveModel>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         

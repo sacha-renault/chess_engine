@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use directories_next::ProjectDirs;
 use rusqlite::Connection;
 
+/// Get the default path for the database
 pub fn get_db_path() -> PathBuf {
     // App's parameters
     let qualifier = "com";
@@ -24,6 +25,7 @@ pub fn get_db_path() -> PathBuf {
     }
 }
 
+/// Initialize the database connection
 pub fn init_db(db_path: &PathBuf) -> Result<Connection, rusqlite::Error> {
     // Open the database
     let conn = Connection::open(db_path)?;
