@@ -29,7 +29,7 @@ use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
-use super::utility::{heuristic_move_bonus_from_node, is_unstable_position};
+use super::utility::is_unstable_position;
 
 /// A tree structure for chess move analysis
 ///
@@ -383,7 +383,7 @@ impl Tree {
         // children of current node
         for possible_move in possible_moves.into_iter() {
             // calc the raw score of this board
-            let score = self.evaluator.evaluate(possible_move.engine.get_board());
+            let score = self.evaluator.evaluate_engine_state(&possible_move.engine, self.current_depth);
 
             // create a new node for the child
             let child_node = TreeNode::new_cell(
@@ -438,9 +438,15 @@ impl Tree {
                     });
 
                 // add heuristic bonus
-                let bonus = heuristic_move_bonus_from_node(
-                    child.clone(),
-                ) * values::HEURISTIC_WEIGHT;
+                let child_ref = child.borrow();
+                let player_move = child_ref.get_move().unwrap();
+                let moved_piece = child_ref.get_moved_piece();
+                let captured_piece_opt = child_ref.get_captured_piece();
+                let is_king_checked = child_ref.get_engine().is_current_king_checked();
+                let bonus = self.evaluator.evaluate_heuristic_move(player_move,
+                    moved_piece,
+                    captured_piece_opt,
+                    is_king_checked) * values::HEURISTIC_WEIGHT;
 
                 // init the node with score
                 if is_white_to_play {

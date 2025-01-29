@@ -1,6 +1,9 @@
-use super::evaluator_trait::Evaluator;
-use crate::boards::board::Board;
+use crate::game_engine::engine::Engine;
 use crate::pieces::{Color, Piece};
+use crate::game_engine::player_move::PlayerMove;
+
+use super::utility::classic_heuristic_move_bonus;
+use super::evaluator_trait::Evaluator;
 
 // Evaluator const values
 pub const CASTLING_BONUS: f32 = 5.;
@@ -74,7 +77,8 @@ impl ValueRuleSet {
 }
 
 impl Evaluator for ValueRuleSet {
-    fn evaluate(&self, board: &Board) -> f32 {
+    fn evaluate_engine_state(&self, engine: &Engine, _: usize) -> f32 {
+        let board = engine.get_board();
         let mut score: f32 = 0.;
         for it in board.individual_pieces() {
             let position = it.0;
@@ -85,5 +89,15 @@ impl Evaluator for ValueRuleSet {
             score += piece_score * ((color as isize) as f32);
         }
         score
+    }
+
+    fn evaluate_heuristic_move(
+        &self,
+        player_move: PlayerMove,
+        moved_piece: Piece,
+        captured_piece_opt: Option<Piece>,
+        is_king_checked: bool
+    ) -> f32 {
+        classic_heuristic_move_bonus(player_move, moved_piece, captured_piece_opt, is_king_checked)
     }
 }

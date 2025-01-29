@@ -3,13 +3,10 @@ use crate::pieces::Piece;
 use crate::static_evaluation::values;
 use crate::static_evaluation::values::get_value_by_piece;
 
-use super::tree_node::TreeNodeRef;
-
-pub fn heuristic_move_bonus(
+pub fn classic_heuristic_move_bonus(
     player_move: PlayerMove,
     moved_piece: Piece,
     captured_piece_opt: Option<Piece>,
-    depth: usize,
     is_king_checked: bool,
 ) -> f32 {
     // init a bonus
@@ -20,7 +17,7 @@ pub fn heuristic_move_bonus(
         // Castling bonus is depth dependent
         // We wanna castle as soon as possible
         // TO protect the king
-        bonus += values::CASTLING_BONUS * depth as f32;
+        bonus += values::CASTLING_BONUS;
     }
 
     // Some bonus for a promotion
@@ -28,7 +25,7 @@ pub fn heuristic_move_bonus(
         // Promotion bonus is depth dependent
         // We wanna promote as soon as possible
         // To get a queen
-        bonus += get_value_by_piece(promotion_move.promotion_piece()) * depth as f32;
+        bonus += get_value_by_piece(promotion_move.promotion_piece());
     }
 
     // Some bonus for capturing a piece
@@ -53,15 +50,4 @@ pub fn heuristic_move_bonus(
     // We can keep adding more bonuses but i am really lazy to
     // Implement all, especially i think those are the most important
     bonus
-}
-
-pub fn is_unstable_position(node: TreeNodeRef) -> bool {
-    let borrowed = node.borrow();
-    if !borrowed.get_engine().is_current_king_checked() {
-        false
-    } else if borrowed.get_captured_piece().is_none() {
-        false
-    } else {
-        true
-    }
 }
