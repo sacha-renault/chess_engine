@@ -9,7 +9,7 @@ use super::utility::{get_initial_castling_positions, get_piece_type, get_possibl
 use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
 use super::utility::{is_promotion_available, iter_into_u64, move_piece};
 
-use crate::boards::Board;
+use crate::boards::{Board, ColorBoard};
 use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
 use crate::pieces::Piece;
@@ -235,27 +235,11 @@ impl Engine {
         // get the color
         let color = get_color(self.white_turn);
 
-        // get player and opponent board
-        let (player_board, opponent_board) = get_half_turn_boards_mut(&mut self.board, color);
-
-        // Get the initial position by color
-        let (initial_king_pos, initial_short_rook_pos, initial_long_rook_pos) =
-            get_initial_castling_positions(get_color(self.white_turn));
-
         // Update castling rights directly on the player's board
-        player_board.castling_rights.update_castling_rights(
-            player_board.king,
-            player_board.rook,
-            initial_king_pos,
-            initial_short_rook_pos,
-            initial_long_rook_pos,
-        );
+        self.update_all_castling_rights();
 
-        // Check if there is still any pawns on the last rank
-        // a promotion move is needed instead of normal move
-        // if player_board.pawn & get_promotion_rank_by_color(color) != 0 {
-        //      return IncorrectMoveResults::PromotionExpected;
-        // }
+        // get player and opponent board
+        let (_, opponent_board) = get_half_turn_boards_mut(&mut self.board, color);        
 
         // reset the en passant squares for the opponent
         opponent_board.en_passant = 0;
@@ -268,6 +252,43 @@ impl Engine {
         self.compute_king_checked();
 
         CorrectMoveResults::Ok
+    }
+
+    /// Updates castling rights for both players based on current board state
+    ///
+    /// This function checks and updates castling rights for both the player and opponent by:
+    /// 1. Verifying if the kings are still on their initial squares
+    /// 2. Checking if the rooks are still on their initial squares
+    /// 3. Removing castling rights if either piece has moved or been captured
+    ///
+    /// # Note
+    /// It's crucial to update both players' castling rights after every move because:
+    /// - A player capturing an opponent's rook should remove opponent's castling rights for that side
+    /// - Moving or losing a king removes all castling rights for that side
+    /// - Moving or losing a rook removes castling rights for that side
+    fn update_all_castling_rights(&mut self) {
+        let (initial_white_king, initial_white_short_rook, initial_white_long_rook) = 
+            get_initial_castling_positions(Color::White);
+        let (initial_black_king, initial_black_short_rook, initial_black_long_rook) = 
+            get_initial_castling_positions(Color::Black);
+
+        // Update white's castling rights
+        self.board.white.castling_rights.update_castling_rights(
+            self.board.white.king,
+            self.board.white.rook,
+            initial_white_king,
+            initial_white_short_rook,
+            initial_white_long_rook,
+        );
+
+        // Update black's castling rights
+        self.board.black.castling_rights.update_castling_rights(
+            self.board.black.king,
+            self.board.black.rook,
+            initial_black_king,
+            initial_black_short_rook,
+            initial_black_long_rook,
+        );
     }
 
     /// Handles all en passant-related logic after a move, including both setting up and executing en passant captures.
