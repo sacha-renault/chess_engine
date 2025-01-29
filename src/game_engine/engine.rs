@@ -27,7 +27,7 @@ pub struct Engine {
     // rules
     board: Board,
     white_turn: bool,
-    halfmove_clock: u32, // Number of halfmoves since the last pawn move or capture
+    halfmove_clock: u32,
     current_king_checked: bool,
 }
 
@@ -549,7 +549,7 @@ impl Engine {
         self.halfmove_clock
     }
 
-    /// Returns is king checked for the ones who has to move
+    /// Update the `current_king_checked` flag based on the current board state
     fn compute_king_checked(&mut self) {
         let color = get_color(self.white_turn);
         let (player_board, opponent_board) = get_half_turn_boards(&self.board, color);
@@ -557,6 +557,7 @@ impl Engine {
             is_king_checked(player_board.king, &opponent_board, &player_board, color);
     }
 
+    /// Returns `true` if the king of the current player is checked
     pub fn is_current_king_checked(&self) -> bool {
         self.current_king_checked
     }
@@ -836,7 +837,7 @@ impl Engine {
         Ok(CorrectMoveResults::Ok)
     }
 
-    /// Return a fen representation of the board
+    /// Return a **fen** representation (Forsyth–Edwards Notation) of the current engine
     pub fn to_string(&self) -> String {
         // init an empty string for the fen
         let mut fen = String::new();
@@ -857,11 +858,19 @@ impl Engine {
         fen.push_str(&fen_en_passant(&self.board));
 
         // Add halfmove clock and fullmove number
-        fen.push_str(&format!(" {} {}", self.halfmove_clock, 0));
+        fen.push_str(&format!(" {} {}", self.halfmove_clock, self.get_fullmove_number()));
 
         fen
     }
 
+    /// Build a new Engine from a FEN string
+    ///
+    /// # Arguments
+    /// * `fen` - A reference to a `str` containing the FEN notation of the board.
+    ///
+    /// # Returns
+    /// * `Ok(Engine)` - If the FEN string is successfully parsed and the engine is created.
+    /// * `Err(())` - If the FEN string is invalid or cannot be parsed.
     pub fn from_fen(fen: &str) -> Result<Engine, ()> {
         // Split FEN string into its components
         let parts: Vec<&str> = fen.split_whitespace().collect();
