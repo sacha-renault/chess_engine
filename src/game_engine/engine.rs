@@ -9,7 +9,7 @@ use super::utility::{get_initial_castling_positions, get_piece_type, get_possibl
 use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
 use super::utility::{is_promotion_available, iter_into_u64, move_piece};
 
-use crate::boards::{Board, ColorBoard};
+use crate::boards::Board;
 use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
 use crate::pieces::Piece;
