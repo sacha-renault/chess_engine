@@ -1,9 +1,8 @@
 use super::engine::Engine;
 use super::player_move::PlayerMove;
-use crate::{
-    pieces::{Color, Piece},
-    prelude::CorrectMoveResults,
-};
+
+use crate::pieces::{Piece, Color};
+use crate::game_engine::move_results::CorrectMoveResults;
 
 #[derive(Debug, Clone)]
 pub struct MoveEvaluationContext {

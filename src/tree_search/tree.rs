@@ -232,9 +232,11 @@ impl Tree {
         // Check for razoring
         // Can early prune the less promising nodes
         let white_to_play = node.borrow().get_engine().white_to_play();
-        if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
+        // if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
+        //     return qval;
+        // }
+        if let Some(_) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
             panic!("Not implemented");
-            // return qval;
         }
 
         // Check the transposition table for existing results
@@ -251,7 +253,7 @@ impl Tree {
 
         // Get scored children
         let scored_children =
-            self.get_sorted_children_with_best_score(node.clone(), depth - 1);
+            self.get_sorted_children_with_best_score(node.clone(), 1);
 
         // Perform minimax evaluation
         let minimax_output = self.minimax_evaluate(

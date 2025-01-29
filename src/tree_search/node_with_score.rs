@@ -1,5 +1,6 @@
 use super::tree_node::TreeNodeRef;
-use crate::prelude::PlayerMove;
+
+use crate::game_engine::player_move::PlayerMove;
 
 #[derive(Debug, Clone)]
 pub struct NodeWithScore {

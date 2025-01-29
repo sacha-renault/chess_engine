@@ -2,7 +2,7 @@ use super::move_evaluation_context::MoveEvaluationContext;
 use super::move_parsing::*;
 use super::move_piece_output::PieceMoveOutput;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::player_move::{CastlingMove, PlayerMove, PromotionMove};
+use super::player_move::{CastlingMove, PlayerMove, PromotionMove, NormalMove};
 use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
 use super::utility::{get_en_passant_ranks, get_half_turn_boards_mut};
 use super::utility::{get_initial_castling_positions, get_piece_type, get_possible_move};
@@ -13,7 +13,6 @@ use crate::boards::Board;
 use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
 use crate::pieces::Piece;
-use crate::prelude::NormalMove;
 
 /// Represents a chess engine that manages game state and move validation.
 ///

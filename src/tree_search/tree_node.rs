@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::game_engine::player_move::PlayerMove;
 use crate::pieces::Piece;
-use crate::prelude::Engine;
+use crate::game_engine::engine::Engine;
 use crate::static_evaluation::values;
 
 pub type TreeNodeRef = Rc<RefCell<TreeNode>>;
