@@ -23,7 +23,6 @@ use crate::game_engine::engine::Engine;
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
-
 use super::minimax_output::MinimaxOutput;
 use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
