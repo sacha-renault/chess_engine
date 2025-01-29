@@ -15,8 +15,12 @@ pub mod prelude {
     pub use crate::static_evaluation::evaluators;
     pub use crate::tree_search::tree::Tree;
     pub use crate::tree_search::tree_builder::TreeBuilder;
+    pub use crate::database::chess_table::ChessTablesDb;
 
     // Usefull functions
     pub use crate::game_engine::utility::string_from_move;
     pub use crate::game_engine::debug::{print_board, print_bitboard};
+
+    // usefull module
+    pub use crate::lichess_api::lichess_requests;
 }
