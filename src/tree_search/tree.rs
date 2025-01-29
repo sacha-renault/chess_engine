@@ -100,6 +100,16 @@ impl Tree {
     /// # Returns
     /// The maximum depth reached during tree generation
     pub fn iterative_deepening(&mut self) -> MinimaxOutput {
+        // If the tree is already too big, we shouldn't return a null result
+        // So we use our minimax tree with NO computation
+        if self.size() > self.max_size {
+            return self.minimax(
+                self.root().clone(),
+                self.current_depth,
+                f32::NEG_INFINITY,
+                f32::INFINITY);
+        }
+
         // We start from depth = 1 (because last was select branch)
         self.current_depth = 1;
         let mut output= MinimaxOutput::new(None, 0.);
@@ -642,6 +652,7 @@ impl Tree {
         // Reassign root outside the borrowing scope
         if let Some(node) = kept_node {
             self.root = node;
+            self.current_depth -= 1; // We virtual reduce the size of the tree
             Ok(())
         } else {
             Err(())
