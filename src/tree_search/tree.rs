@@ -122,7 +122,6 @@ impl Tree {
 
             // break condition (either too deep or size of the tree to big)
             if self.max_depth < self.current_depth || self.size() > self.max_size {
-                println!("Breaing at : {}", self.current_depth);
                 break;
             }
 
