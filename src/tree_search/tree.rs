@@ -220,7 +220,7 @@ impl Tree {
         // End tree building if reaching max depth
         if depth == self.current_depth {
             // Instead of just evaluating, call quiescence search
-            let quiescence_output = self.quiescence_search(node.clone(), alpha, beta, 0);
+            let quiescence_output = self.quiescence_search(node.clone(), alpha, beta, 1.min(self.current_depth - depth));
 
             // Store the quiescence score in the transposition table
             self.transpose_table

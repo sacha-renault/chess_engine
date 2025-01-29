@@ -537,7 +537,7 @@ impl Engine {
     /// # Returns
     /// A `u32` representing the number of full moves.
     pub fn get_fullmove_number(&self) -> u32 {
-        (self.halfmove_clock + 1) / 2
+        self.halfmove_clock / 2 + 1
     }
 
     /// Returns the number of halfmoves since the last pawn move or capture.
