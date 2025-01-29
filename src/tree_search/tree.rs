@@ -119,7 +119,7 @@ impl Tree {
             let beta = f32::INFINITY;
 
             // Generate the tree recursively with minimax
-            output = self.minimax(self.root.clone(), self.current_depth, alpha, beta);
+            output = self.minimax(self.root.clone(), 0, alpha, beta);
 
             self.current_depth += 1;
         }
@@ -159,7 +159,7 @@ impl Tree {
         for child in scored_children.iter() {
             let minimax_output = match search_type {
                 SearchType::Full =>
-                    self.minimax(child.node(), depth - 1, alpha, beta),
+                    self.minimax(child.node(), depth + 1, alpha, beta),
                 SearchType::Quiescence =>
                     self.quiescence_search(child.node(), alpha, beta, depth + 1)
 
@@ -170,7 +170,7 @@ impl Tree {
             if is_maximizing {
                 if score > best_score {
                     best_score = score;
-                    best_node = Some(child.node());   
+                    best_node = Some(child.node());
                 }
                 alpha = alpha.max(best_score);
             } else {
@@ -206,7 +206,7 @@ impl Tree {
         let hash = self.compute_node_hash(&node);
 
         // End tree building if reaching max depth
-        if depth == 0 {
+        if depth == self.current_depth {
             // Instead of just evaluating, call quiescence search
             let quiescence_output = self.quiescence_search(node.clone(), alpha, beta, 0);
 
