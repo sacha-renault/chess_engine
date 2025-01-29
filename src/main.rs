@@ -32,7 +32,7 @@ use tree_search::node_with_score::NodeWithScore;
 use tree_search::tree::Tree;
 use tree_search::tree_builder::TreeBuilder;
 use tree_search::tree_node::TreeNode;
-use static_evaluation::values::{get_value_by_piece, ValueRuleSet};
+use static_evaluation::BasicEvaluator;
 use std::cell::RefCell;
 use std::{panic, usize};
 use std::mem;
@@ -79,7 +79,7 @@ fn play_robot_to_robot(engine: Engine, display: bool) {
         .max_quiescence_depth(5)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(-25.)
-        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .build_tree(engine, Box::new(BasicEvaluator::new()))
         .unwrap();
 
     let mut i = 0;
@@ -148,7 +148,7 @@ fn play_against_robot(engine: Engine) {
         .max_quiescence_depth(0)
         .razoring_depth(usize::MAX)
         .razoring_margin_base(-25.)
-        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .build_tree(engine, Box::new(BasicEvaluator::new()))
         .unwrap();
 
     loop {
@@ -217,7 +217,7 @@ fn test_mate() {
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .max_quiescence_depth(0)
-        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .build_tree(engine, Box::new(BasicEvaluator::new()))
         .unwrap();
 
     let output = tree.iterative_deepening();
@@ -239,7 +239,7 @@ fn test_debug(engine: Engine) {
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .razoring_depth(usize::MAX)
-        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .build_tree(engine, Box::new(BasicEvaluator::new()))
         .unwrap();
 
         // tree.select_branch(create_move_from_str("d5c3")).unwrap();
