@@ -69,80 +69,79 @@ macro_rules! input {
     }};
 }
 
-// fn play_robot_to_robot(depth: usize, size: usize, display: bool) {
-//     let mut engine = Engine::new();
-//     engine.play(create_move_from_str("e2e4")).unwrap();
-//     engine.play(create_move_from_str("e7e5")).unwrap();
-//     engine.play(create_move_from_str("f1e2")).unwrap();
-//     engine.play(create_move_from_str("f8e7")).unwrap();
-//     engine.play(create_move_from_str("g1f3")).unwrap();
-//     engine.play(create_move_from_str("g8f6")).unwrap();
-//     // print_board(engine.get_board());
+fn play_robot_to_robot(engine: Engine, display: bool) {
+    // Create the tree from the engine
+    let mut tree = TreeBuilder::new()
+        .max_depth(10)
+        .max_size(1e6 as usize)
+        .foreseeing_windowing(f32::INFINITY)
+        .max_quiescence_depth(0)
+        .razoring_depth(usize::MAX)
+        .razoring_margin_base(-25.)
+        .build_tree(engine, Box::new(ValueRuleSet::new()))
+        .unwrap();
 
-//     let mut tree = Tree::new(engine, Box::new(ValueRuleSet {}), depth, size);
-//     let mut i = 0;
+    let mut i = 0;
 
-//     while tree
-//         .root()
-//         .borrow()
-//         .get_engine()
-//         .get_all_moves_by_piece()
-//         .len()
-//         != 0
-//     {
-//         let depth_reached = tree.generate_tree();
-//         let scored_nodes = tree.get_sorted_nodes();
-//         let best_node = &scored_nodes[0];
-//         let best_move = best_node.upgrade().unwrap().borrow().get_move().unwrap();
+    while tree
+        .root()
+        .borrow()
+        .get_engine()
+        .get_all_moves_by_piece()
+        .len()
+        != 0
+    {
+        let played_str = {
+            if tree.root().borrow().get_engine().white_to_play() {
+                "White"
+            } else {
+                "Black"
+            }
+        };
 
-//         let played_str = {
-//             if tree.root().borrow().get_engine().white_to_play() {
-//                 "White"
-//             } else {
-//                 "Black"
-//             }
-//         };
+        let mv_num = tree.root().borrow().get_engine().get_fullmove_number();
 
-//         let tree_size_before_select = tree.size();
+        let output = tree.iterative_deepening();
+        match output.get_move() {
+            Some(mv) => {
+                println!(
+                    "{} - {} played: {} with score {} (Depth : {}, mate depth : {:?}, tree size : {})",
+                    mv_num,
+                    played_str,
+                    string_from_move(&mv),
+                    output.get_score(),
+                    output.get_depth(),
+                    output.mate_depth(),
+                    tree.size()
+                );
+                let _ = tree.select_branch(mv);
+            }
+            None => {
+                panic!("{}  with score {} (Depth : {}, mate depth : {:?}, tree size : {})",
+                    played_str,
+                    output.get_score(),
+                    output.get_depth(),
+                    output.mate_depth(),
+                    tree.size());
+            },
 
-//         // display the board
-//         match best_node.upgrade() {
-//             Some(mv) => println!(
-//                 "{} - {} played: {} with score : {} (depth = {} & tree size : {})",
-//                 played_str,
-//                 (tree.root().borrow().get_engine().get_halfmove_clock() + 1) / 2,
-//                 string_from_move(&best_move),
-//                 mv.borrow().get_best_score(),
-//                 depth_reached,
-//                 tree_size_before_select
-//             ),
-//             None => println!("What the fuck ? no moves ?"),
-//         }
+        }
 
-//         for scored_node in scored_nodes.iter().skip(1).take(3) {
-//             println!(
-//                 "     - also possible: {} with score: {}",
-//                 string_from_move(&scored_node.upgrade().unwrap().borrow().get_move().unwrap()),
-//                 scored_node.upgrade().unwrap().borrow().get_best_score()
-//             );
-//         }
-//         let _ = tree.select_branch(best_move.clone());
+        i += 1;
+        if display {
+            print_board(tree.root().borrow().get_engine().get_board());
+        }
 
-//         i += 1;
-//         if display {
-//             print_board(tree.root().borrow().get_engine().get_board());
-//         }
-
-//         // if i > 3 {
-//         //     break;
-//         // }
-//     }
-// }
+        // if i > 3 {
+        //     break;
+        // }
+    }
+}
 
 fn play_against_robot(engine: Engine) {
     // Create the tree from the engine
     let mut tree = TreeBuilder::new()
-        .max_depth(10)
+        .max_depth(5)
         .max_size(1e6 as usize)
         .foreseeing_windowing(f32::INFINITY)
         .max_quiescence_depth(0)
@@ -259,13 +258,15 @@ fn main() {
     let pgn = "1. b4 e6 2. Bb2 Bxb4 3. Bxg7 Nf6";
 
     engine.play_pgn_str(pgn).unwrap();
+    play_robot_to_robot(engine, false);
+    // play_against_robot(engine);
     // print_board(engine.get_board());
     // println!("{}", engine.to_string());
 
     // println!("White to play : {}", engine.white_to_play());
-    test_debug(engine);
+    // test_debug(engine);
     // test_mate();
-    // play_against_robot(engine);
+    //
     // match fetch_lichess_moves(&engine.to_string(), "") {
     //     Ok(moves) => {
     //         for m in moves {

@@ -112,6 +112,7 @@ impl Tree {
 
             // break condition (either too deep or size of the tree to big)
             if self.max_depth < self.current_depth || self.size() > self.max_size {
+                println!("Breaing at : {}", self.current_depth);
                 break;
             }
 
@@ -527,9 +528,9 @@ impl Tree {
             }
 
             // Copy information that we care from the node
-            if !node.borrow().has_children_computed() {
-                node.borrow_mut().copy_entry(strong_ref.clone());
-            }
+            // if !node.borrow().has_children_computed() {
+            //     node.borrow_mut().copy_entry(strong_ref.clone());
+            // }
 
             // Get raw score
             let raw_score = strong_ref.borrow().get_score();
@@ -676,7 +677,7 @@ fn get_tree_size_recursive(
 
     // If this node has already been visited, return 0 to prevent double counting
     if !visited.insert(raw_ptr) {
-        return 0;
+        panic!("CYCLIC REFERENCES !!??");
     }
 
     let node = root_node.borrow();

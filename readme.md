@@ -57,7 +57,7 @@ This project implements a chess engine capable of playing chess according to sta
     - [ ] Parallel calculation from the root node
 
 ## TODO
-Investigate on some forced mate when there isn't ??
-Fix castling bug: engine allow castling after rook get captured ??
 Set foreseeing to use qsearch, use static evaluation for stable move and search forward only for unstable.
 Fix razoring that is currently pruning good moves.
+Investigate on why it returns a None lv when tree size is bigger than max size BEFORE generation
+Check how to fix cyclic references with transposition table.
