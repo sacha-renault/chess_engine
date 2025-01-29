@@ -100,14 +100,15 @@ impl Tree {
     /// # Returns
     /// The maximum depth reached during tree generation
     pub fn iterative_deepening(&mut self) -> MinimaxOutput {
-        // We start from depth - 1 (because last was select branch)
+        // We start from depth = 1 (because last was select branch)
         self.current_depth = 1;
         let mut output= MinimaxOutput::new(None, 0.);
 
         // loop until one of break condition is matched
+        self.transpose_table.maintenance();
         loop {
-            // Entries are depth dependent so we have to clear it
-            self.transpose_table.clear();
+            // Mark all entries as 'old'
+            self.transpose_table.new_search();
 
             // break condition (either too deep or size of the tree to big)
             if self.max_depth < self.current_depth || self.size() > self.max_size {
@@ -226,10 +227,10 @@ impl Tree {
         }
 
         // Check the transposition table for existing results
-        if let Some(best_score) =
+        if let Some(minimax_output) =
             self.handle_transposition_table(hash, node.clone(), depth, &mut alpha, &mut beta)
         {
-            return best_score;
+            return minimax_output;
         }
 
         // Check if children were already computed and if there were not, compute them
@@ -509,14 +510,14 @@ impl Tree {
 
             // Build MinimaxOutput with the stored node
             let output = MinimaxOutput::new(
-                Some(strong_ref.clone()),
+                None,
                 score);
 
             // match flag to know what to do
             match entry.flag {
                 TTFlag::Exact => return Some(output),
                 TTFlag::LowerBound => *alpha = alpha.max(strong_ref.borrow().get_score()),
-                TTFlag::UperBound => *beta = beta.min(strong_ref.borrow().get_score()),
+                TTFlag::UpperBound => *beta = beta.min(strong_ref.borrow().get_score()),
             }
 
             // Copy information that we care from the node
@@ -556,7 +557,7 @@ impl Tree {
         beta: f32,
     ) {
         let flag = if best_score <= alpha {
-            TTFlag::UperBound
+            TTFlag::UpperBound
         } else if best_score >= beta {
             TTFlag::LowerBound
         } else {
@@ -574,14 +575,13 @@ impl Tree {
         white_to_play: bool
     ) -> Option<MinimaxOutput> {
         // Avoid pruning branch too early
-        let actual_depth: usize = self.current_depth - depth;
-        if actual_depth <= self.razoring_depth {
+        if depth <= self.razoring_depth {
             return None;
         }
 
         // razoring threshold
         let razoring_threshold = self.razoring_margin_base *
-            f32::powi(values::RAZORING_DEPTH_MULTIPLIER, (actual_depth - self.razoring_depth) as i32);
+            f32::powi(values::RAZORING_DEPTH_MULTIPLIER, (depth - self.razoring_depth) as i32);
 
         // Get the static evaluation of the node
         let score = node.borrow().get_score();
