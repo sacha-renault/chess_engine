@@ -411,14 +411,20 @@ impl Tree {
         let mut scored_children = children
             .into_iter()
             .map(|child| {
-                // Calc score as a mix of foreseing best move
-                let qval = self.quiescence_search(
-                    child.clone(),
-                    -self.foreseeing_windowing,
-                    self.foreseeing_windowing,
-                    self.max_q_depth - shallow_depth
-                );
-                let score = qval.get_score();
+                // Calculate some the hash to know if we already have a score for this node
+                // Old score aren't perfect but for sufficient for move ordering
+                let hash = self.compute_node_hash(&child);
+                let base_score = self.transpose_table.get_old_entry_score(hash)
+                    .unwrap_or_else(|| {
+                        // If no TT entry, do quiescence search as before
+                        let qval = self.quiescence_search(
+                            child.clone(),
+                            -self.foreseeing_windowing,
+                            self.foreseeing_windowing,
+                            self.max_q_depth - shallow_depth
+                        );
+                        qval.get_score()
+                    });
 
                 // add heuristic bonus
                 let bonus = heuristic_move_bonus_from_node(
@@ -427,9 +433,9 @@ impl Tree {
 
                 // init the node with score
                 if is_white_to_play {
-                    NodeWithScore::new(child.clone(), score + bonus)
+                    NodeWithScore::new(child.clone(), base_score + bonus)
                 } else {
-                    NodeWithScore::new(child.clone(), score - bonus)
+                    NodeWithScore::new(child.clone(), base_score - bonus)
                 }
             })
             .collect::<Vec<NodeWithScore>>();

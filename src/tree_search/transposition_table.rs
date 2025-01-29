@@ -92,6 +92,15 @@ impl TranspositionTable {
         None
     }
 
+    pub fn get_old_entry_score(&self, hash: u64) -> Option<f32> {
+        let entry_opt = self.table.get(&hash);
+        if let Some(entry) = entry_opt {
+            Some(entry.score)
+        } else {
+            None
+        }
+    }
+
     /// Remove all entries from the hash table
     pub fn clear(&mut self) {
         self.table.clear();
