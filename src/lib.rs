@@ -5,6 +5,7 @@ pub mod lichess_api;
 pub mod pieces;
 pub mod static_evaluation;
 pub mod tree_search;
+pub mod smart_engine;
 
 pub mod prelude {
     // Usefull struct

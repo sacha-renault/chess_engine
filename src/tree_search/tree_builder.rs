@@ -107,7 +107,7 @@ impl TreeBuilder {
     ///
     /// # Panics
     /// * If no evaluator was set
-    pub fn build_tree(self) -> Result<Tree, ()> {
+    pub fn build(self) -> Result<Tree, ()> {
         match (self.max_depth, self.max_size) {
             // Cannot start a tree with both size and max depth unset
             // It would result in an infinit tree that would never be able to compute
