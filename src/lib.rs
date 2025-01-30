@@ -17,6 +17,9 @@ pub mod prelude {
     pub use crate::tree_search::tree::Tree;
     pub use crate::tree_search::tree_builder::TreeBuilder;
     pub use crate::database::chess_table::ChessTablesDb;
+    pub use crate::smart_engine::engine::SmartEngine;
+    pub use crate::smart_engine::config::EngineConfig;
+    pub use crate::smart_engine::next_move::MoveEvaluation;
 
     // Usefull functions
     pub use crate::game_engine::utility::string_from_move;

@@ -73,26 +73,27 @@ impl SmartEngine {
 
             // Sort moves based on evaluation
             moves.sort_by(|a, b| {
-                let cmp = a.to_eval().partial_cmp(&b.to_eval()).unwrap();
-                if maximize { cmp } else { cmp.reverse() }
+                // let cmp = a.to_eval().partial_cmp(&b.to_eval()).unwrap();
+                // if maximize { cmp.reverse() } else { cmp }
+                b.game_number.partial_cmp(&a.game_number).unwrap()
             });
 
             // We now return the first result (best move)
-            let best_move = moves.first().unwrap();
+            if let Some(best_move) = moves.first() {
+                // Convert the san into a player_move
+                let chess_move 
+                    = self.tree.root().borrow().get_engine().get_move_by_san(&best_move.san).ok()?;
 
-            // Convert the san into a player_move
-            let chess_move 
-                = self.tree.root().borrow().get_engine().get_move_by_san(&best_move.san).ok()?;
+                // Play on the root node 
+                // (this will reset any tree if there was one already builded)
+                self.tree.root().borrow_mut().play(chess_move.clone()).ok()?;
 
-            // Play on the root node 
-            // (this will reset any tree if there was one already builded)
-            self.tree.root().borrow_mut().play(chess_move.clone()).ok()?;
-
-            return Some(NextMove::new_from_db(
-                chess_move, 
-                best_move.win_rate as f32, 
-                best_move.draw_rate as f32, 
-                best_move.loose_rate as f32));     
+                return Some(NextMove::new_from_db(
+                    chess_move, 
+                    best_move.win_rate as f32, 
+                    best_move.draw_rate as f32, 
+                    best_move.loose_rate as f32));
+            }      
         }
         None
     }
@@ -142,4 +143,22 @@ impl SmartEngine {
         // It failed nooooo :'(
         return None;
     }
+
+    pub fn opponent_move(&mut self, chess_move: PlayerMove) -> Result<(), ()> {
+        self.try_select_branch(chess_move)
+    }
+
+    pub fn opponent_move_san(&mut self, san: &str) -> Result<(), ()> {
+        let chess_move =  self.tree
+            .root()
+            .borrow()
+            .get_engine()
+            .get_move_by_san(san)
+            .map_err(|_| ())?;
+        self.try_select_branch(chess_move)
+    }
+
+    pub fn white_to_play(&self) -> bool {
+        self.tree.root().borrow().get_engine().white_to_play()
+    } 
 }
