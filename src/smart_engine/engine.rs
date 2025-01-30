@@ -1,4 +1,3 @@
-use crate::game_engine::player_move;
 use crate::prelude::PlayerMove;
 use crate::tree_search::tree::Tree;
 use crate::database::chess_table::ChessTablesDb;
@@ -6,7 +5,7 @@ use crate::database::models::MoveModel;
 use crate::lichess_api::lichess_requests::fetch_lichess_moves;
 
 use super::config::EngineConfig;
-use super::next_move::{NextMove, MoveEvaluation, DbRatios, TreeEval};
+use super::next_move::NextMove;
 
 pub struct SmartEngine {
     tree: Tree,
@@ -63,7 +62,7 @@ impl SmartEngine {
     fn try_db_search(&mut self) -> Option<NextMove> {
         let fullmove_num = self.tree.root().borrow().get_engine().get_fullmove_number();
         let fen = self.tree.root().borrow().get_engine().to_string();
-        let maximize = self.tree.root().borrow().get_engine().white_to_play();
+        let _maximize = self.tree.root().borrow().get_engine().white_to_play();
 
         // First, if possible, we try can get anything from the database
         let db_moves = self.try_get_db_moves(&fen);

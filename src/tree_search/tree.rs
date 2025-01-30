@@ -171,8 +171,8 @@ impl Tree {
             let minimax_output = match search_type {
                 SearchType::Full =>
                     self.minimax(child.node(), depth + 1, alpha, beta),
-                SearchType::Quiescence =>
-                    self.quiescence_search(child.node(), alpha, beta, depth + 1)
+                SearchType::Quiescence(max_q_depth) =>
+                    self.quiescence_search(child.node(), alpha, beta, depth + 1, max_q_depth)
 
             };
             let score = minimax_output.get_score();
@@ -193,7 +193,8 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha && score.abs() != values::CHECK_MATE {
+            if beta <= alpha && score.abs() != values::CHECK_MATE 
+            {
                 break;
             }
         }
@@ -218,15 +219,26 @@ impl Tree {
 
         // End tree building if reaching max depth
         if depth == self.current_depth {
-            // Instead of just evaluating, call quiescence search
-            let quiescence_output = 
-                self.quiescence_search(node.clone(), alpha, beta, 0);
+            // Use static evaluation for very early stage of iterative deepening
+            if self.current_depth <= 2 {
+                return MinimaxOutput::new(Some(node.clone()), node.borrow().get_score());
+            }
+
+            // Chose the depth of qsearch
+            let max_qdepth = if self.current_depth < 5 {
+                self.current_depth
+            } else {
+                self.max_q_depth
+            };
+
+            // Instead of raw eval, we call qsearch
+            let qoutput = self.quiescence_search(node.clone(), alpha, beta, 0, max_qdepth);
 
             // Store the quiescence score in the transposition table
             self.transpose_table
-                .insert_entry(hash, node.clone(), depth, TTFlag::Exact, quiescence_output.get_score());
+                .insert_entry(hash, node.clone(), depth, TTFlag::Exact, qoutput.get_score());
 
-            return quiescence_output;
+            return qoutput;
         }
 
         // Check for razoring
@@ -310,9 +322,10 @@ impl Tree {
         mut alpha: f32,
         beta: f32,
         qdepth: usize,
+        max_qdepth: usize
     ) -> MinimaxOutput {
         // we want to limit qdepth to a certain level
-        if qdepth >= self.max_q_depth {
+        if qdepth >= max_qdepth {
             return MinimaxOutput::new(None, node.borrow().get_score());
         }
 
@@ -343,18 +356,18 @@ impl Tree {
             .collect::<Vec<_>>();
 
         // use minimax evaluation if there is at least one child
-        if !child_nodes.is_empty() {
-            self.minimax_evaluate(
-                node,
-                child_nodes,
-                alpha,
-                beta,
-                SearchType::Quiescence,
-                qdepth + 1
-            )
-        } else {
-            MinimaxOutput::new(None, raw_score)
-        }
+        if child_nodes.is_empty() {
+            MinimaxOutput::new(None, raw_score);
+            
+        } 
+        self.minimax_evaluate(
+            node,
+            child_nodes,
+            alpha,
+            beta,
+            SearchType::Quiescence(max_qdepth),
+            qdepth
+        )
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -612,7 +625,7 @@ impl Tree {
 
         // If eval is below the threshold, perform a quiescence search
         if should_razor {
-            let qval = self.quiescence_search(node.clone(), alpha - 1.0, alpha, 0);
+            let qval = self.quiescence_search(node.clone(), alpha - 1.0, alpha, 0, self.max_size);
 
             // Check if value fails low and is within a reasonable bound
             let score = qval.get_score();

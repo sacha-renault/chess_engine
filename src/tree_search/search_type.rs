@@ -7,6 +7,6 @@ pub enum SearchType {
 
     /// A quiescence search focuses on resolving "noisy" positions (e.g., captures, checks)
     /// until the position becomes stable.
-    Quiescence,
+    Quiescence(usize),
 }
 
