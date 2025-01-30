@@ -97,7 +97,7 @@ impl ChessTablesDb {
         let tx = conn.transaction()?;
 
         for chess_move in chess_moves {
-            let total_games = chess_move.white + chess_move.black + chess_move.draws;
+            let db_move = MoveModel::from_lichess_move(&chess_move, board_id);
             tx.execute(
                 "INSERT INTO moves (board_id, san, win_rate, draw_rate, loose_rate, game_number)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
@@ -108,11 +108,11 @@ impl ChessTablesDb {
                     game_number = ?6",
                 params![
                     board_id,
-                    chess_move.san,
-                    chess_move.white as f64 / total_games as f64,
-                    chess_move.draws as f64 / total_games as f64,
-                    chess_move.black as f64 / total_games as f64,
-                    total_games,
+                    db_move.san,
+                    db_move.win_rate,
+                    db_move.draw_rate,
+                    db_move.loose_rate,
+                    db_move.game_number,
                 ],
             )?;
         }

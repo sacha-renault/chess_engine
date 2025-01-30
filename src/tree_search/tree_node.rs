@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::game_engine::move_results::MoveResult;
 use crate::game_engine::player_move::PlayerMove;
 use crate::pieces::Piece;
 use crate::game_engine::engine::Engine;
@@ -70,9 +71,30 @@ impl TreeNode {
         &self.engine
     }
     
-    /// Return a mutable reference of the Negine
-    pub fn get_engine_mut(&mut self) -> &mut Engine {
-        &mut self.engine
+    /// Plays a move on this node's engine, modifying its position.
+    /// 
+    /// # Important Side Effects
+    /// If the move is successfully played, this method clears ALL child nodes.
+    /// This is necessary because playing a move directly (instead of selecting an existing branch)
+    /// invalidates all previously calculated variations, as the new position might lead to
+    /// completely different tactical possibilities.
+    ///
+    /// # Arguments
+    /// * `mv` - The chess move to play
+    ///
+    /// # Returns
+    /// * `MoveResult` - Success or failure of the move attempt
+    ///
+    /// # Implementation Note
+    /// This differs from `select_branch()` which follows an existing calculated variation.
+    /// Use `play()` when executing a new move that wasn't part of the calculated tree,
+    /// and `select_branch()` when following a previously analyzed line.
+    pub fn play(&mut self, mv: PlayerMove) -> MoveResult {
+        let result = self.engine.play(mv);
+        if result.is_ok() {
+            self.children.clear();
+        }
+        return result;
     }
 
     /// Returns the raw evaluation score of this position

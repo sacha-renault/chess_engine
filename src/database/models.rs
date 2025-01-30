@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::lichess_api::models::LichessMove;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BoardModel {
     pub id: Option<i64>,
@@ -26,5 +28,18 @@ impl MoveModel {
         // Convert to centipawn-like scale (multiply by 100)
         // This makes it more comparable with typical engine evaluations
         ((white_score - black_score) * 100.0) as f32
+    }
+
+    pub fn from_lichess_move(mv: &LichessMove, board_id: i64) -> Self {
+        let total_games = mv.white + mv.black + mv.draws;
+        MoveModel {
+            board_id: board_id,
+            san: mv.san.clone(),
+            win_rate: mv.white as f64 / total_games as f64,
+            draw_rate: mv.draws as f64 / total_games as f64,
+            loose_rate: mv.black as f64 / total_games as f64,
+            game_number: total_games as i64,
+            id: None
+        }
     }
 }
