@@ -2,6 +2,7 @@ use super::tree::Tree;
 
 use crate::static_evaluation::values;
 use crate::static_evaluation::evaluator_trait::Evaluator;
+use crate::static_evaluation::evaluators::BasicEvaluator;
 use crate::game_engine::engine::Engine;
 
 /// A builder for constructing game analysis trees with customizable parameters
@@ -14,7 +15,8 @@ pub struct TreeBuilder {
     max_q_depth: Option<usize>,
     razoring_margin_base: Option<f32>,
     razoring_depth: Option<usize>,
-    foreseeing_windowing: Option<f32>,
+    engine: Option<Engine>,
+    evaluator: Option<Box<dyn Evaluator>>
 }
 
 impl TreeBuilder {
@@ -24,9 +26,10 @@ impl TreeBuilder {
             max_depth: None,
             max_size: None,
             max_q_depth: None,
-            foreseeing_windowing: None,
             razoring_margin_base: None,
-            razoring_depth: None
+            razoring_depth: None,
+            engine: None,
+            evaluator: None
         }
     }
 
@@ -75,6 +78,24 @@ impl TreeBuilder {
         self
     }
 
+    /// Sets the engine for the tree
+    ///
+    /// # Arguments
+    /// * `engine` - Engine
+    pub fn engine(mut self, engine: Engine) -> Self {
+        self.engine = Some(engine);
+        self
+    }
+
+    /// Set the evaluator for the tree
+    ///
+    /// # Arguments
+    /// * `evaluator` - struct that impl Evaluator trait
+    pub fn evaluator(mut self, evaluator: Box<dyn Evaluator>) -> Self {
+        self.evaluator = Some(evaluator);
+        self
+    }
+
     /// Builds and returns a new game analysis tree with the configured parameters
     ///
     /// # Arguments
@@ -86,7 +107,7 @@ impl TreeBuilder {
     ///
     /// # Panics
     /// * If no evaluator was set
-    pub fn build_tree(self, engine: Engine, evaluator: Box<dyn Evaluator>) -> Result<Tree, ()> {
+    pub fn build_tree(self) -> Result<Tree, ()> {
         match (self.max_depth, self.max_size) {
             // Cannot start a tree with both size and max depth unset
             // It would result in an infinit tree that would never be able to compute
@@ -96,8 +117,8 @@ impl TreeBuilder {
         };
 
         let tree = Tree::new(
-            engine,
-            evaluator,
+            self.engine.unwrap_or(Engine::new()),
+            self.evaluator.unwrap_or(Box::new(BasicEvaluator::new())),
             self.max_depth.unwrap_or(usize::MAX),
             self.max_size.unwrap_or(usize::MAX),
             self.max_q_depth.unwrap_or(usize::MAX),

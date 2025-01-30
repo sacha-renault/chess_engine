@@ -69,6 +69,11 @@ impl TreeNode {
     pub fn get_engine(&self) -> &Engine {
         &self.engine
     }
+    
+    /// Return a mutable reference of the Negine
+    pub fn get_engine_mut(&mut self) -> &mut Engine {
+        &mut self.engine
+    }
 
     /// Returns the raw evaluation score of this position
     pub fn get_score(&self) -> f32 {
