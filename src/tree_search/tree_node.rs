@@ -14,6 +14,7 @@ pub struct TreeNode {
     // About the tree
     children: Vec<TreeNodeRef>,
     score: f32,
+    best_score: f32,
     computed: bool,
 
     // About the game
@@ -58,6 +59,7 @@ impl TreeNode {
             children: Vec::new(),
             score,
             chess_move,
+            best_score: 0.,
             computed: false,
             moved_piece,
             captured_piece,
@@ -102,6 +104,11 @@ impl TreeNode {
         self.score
     }
 
+    /// Get the best score
+    pub fn get_best_score(&self) -> f32 {
+        self.best_score
+    }
+
     /// Returns a reference to the vector of child nodes
     pub fn get_children(&self) -> &Vec<TreeNodeRef> {
         &self.children
@@ -130,6 +137,11 @@ impl TreeNode {
     }
 
     // SETTER
+
+    /// Set the best score
+    pub fn set_best_score(&mut self, score: f32) {
+        self.best_score = score;
+    }
 
     /// Sets whether this node's children have been computed
     pub fn set_computed(&mut self, is_computed: bool) {
@@ -161,15 +173,6 @@ impl TreeNode {
         self.recursive_get_mate_depth(0)
     }
 
-    /// Return the depths of the current node
-    pub fn get_depth(&self) -> usize {
-        self.children
-            .iter()
-            .map(|child| child.borrow().get_depth())
-            .max()
-            .unwrap_or(0) + 1
-    }
-
     /// Recursively calculates the depth of a forced mate sequence from the current node
     ///
     /// # Arguments
@@ -184,39 +187,52 @@ impl TreeNode {
     /// * For Black (minimizing): Returns the longest mate sequence only if ALL moves lead to mate
     /// * A position is considered mate when raw_score equals CHECK_MATE constant
     fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
-        // If current node is a mate, we return its depth
+        // Check if we've found a mate score
+        if self.best_score.abs() != values::CHECK_MATE {
+            return None;
+        }
+
         if self.score.abs() == values::CHECK_MATE {
             return Some(depth);
         }
 
         // If current node has no children, it is a leaf node
-        // and we return None
         if self.children.is_empty() {
             return None;
         }
 
-        // Get who is it to maximize
+        // Rest of your original logic stays exactly the same
         let is_maximizing = self.engine.white_to_play();
 
         if is_maximizing {
             // For maximizing player (White), ANY move leading to mate is sufficient
-            self.children
+            let r = self.children
                 .iter()
                 .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
-                .min()
+                .min();
+            
+            return r;
         } else {
-            // For minimizing player (Black), ALL moves must lead to mate
-            // If any move escapes mate, return None
+            // For minimizing player ALL moves must lead to mate
             let mate_depths: Vec<_> = self.children
                 .iter()
                 .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
                 .collect();
 
             if mate_depths.len() != self.children.len() {
-                None // Some move escapes mate
+                None
             } else {
-                mate_depths.into_iter().max() // All moves lead to mate, take the longest (worst case)
+                mate_depths.into_iter().max() // All moves lead to mate, take the longest
             }
         }
+    }
+
+    /// Return the max depth reached for the current node
+    pub fn get_depth(&self) -> usize {
+        self.children
+            .iter()
+            .map(|child| child.borrow().get_depth())
+            .max()
+            .unwrap_or(0) + 1
     }
 }

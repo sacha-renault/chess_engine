@@ -193,12 +193,13 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha && score.abs() != values::CHECK_MATE 
+            if beta <= alpha //&& score.abs() != values::CHECK_MATE 
             {
                 break;
             }
         }
 
+        node.borrow_mut().set_best_score(best_score);
         MinimaxOutput::new(best_node, best_score)
     }
 
@@ -490,9 +491,11 @@ impl Tree {
             let multiplier: f32 = (color_checkmate as isize) as f32;
             let score = values::CHECK_MATE * multiplier;
             node.borrow_mut().set_score(score);
+            node.borrow_mut().set_best_score(score);
             score
         } else {
             node.borrow_mut().set_score(0.);
+            node.borrow_mut().set_best_score(0.);
             0.
         }
     }
