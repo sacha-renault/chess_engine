@@ -1,4 +1,5 @@
 use crate::game_engine::player_move::PlayerMove;
+use crate::tree_search::tree_node::TreeNodeRef;
 
 pub struct DbRatios {
     pub white_win_rate: f32,
@@ -20,7 +21,8 @@ impl DbRatios {
 
 pub struct TreeEval {
     pub score: f32,
-    pub depth: usize
+    pub depth: usize,
+    pub node: Option<TreeNodeRef>
 }
 
 pub enum MoveEvaluation {
@@ -43,10 +45,10 @@ pub struct NextMove {
 }
 
 impl NextMove {
-    pub fn new_from_tree(chess_move: PlayerMove, score: f32, depth: usize) -> Self {
+    pub fn new_from_tree(chess_move: PlayerMove, score: f32, depth: usize, node: Option<TreeNodeRef>) -> Self {
         Self {
             chess_move,
-            eval: MoveEvaluation::TreeEvaluation(TreeEval { score, depth })
+            eval: MoveEvaluation::TreeEvaluation(TreeEval { score, depth, node })
         }
     }
 

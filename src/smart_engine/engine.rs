@@ -126,7 +126,7 @@ impl SmartEngine {
         let chess_move = best_move.get_move().unwrap().clone();
 
         self.try_select_branch(chess_move).ok()?;
-        return Some(NextMove::new_from_tree(chess_move, best_move.get_score(), best_move.get_depth()));
+        return Some(NextMove::new_from_tree(chess_move, best_move.get_score(), best_move.get_depth(), best_move.node()));
     }
 
     pub fn get_next_move(&mut self) -> Option<NextMove> {
@@ -164,5 +164,9 @@ impl SmartEngine {
 
     pub fn get_tree_root(&self) -> TreeNodeRef {
         return self.tree.root();
+    }
+
+    pub fn tree_size(&self) -> usize {
+        return self.tree.size();
     }
 }
