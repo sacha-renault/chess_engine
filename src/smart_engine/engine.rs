@@ -1,8 +1,9 @@
-use crate::prelude::PlayerMove;
+use crate::game_engine::player_move::PlayerMove;
 use crate::tree_search::tree::Tree;
 use crate::database::chess_table::ChessTablesDb;
 use crate::database::models::MoveModel;
 use crate::lichess_api::lichess_requests::fetch_lichess_moves;
+use crate::tree_search::tree_node::TreeNodeRef;
 
 use super::config::EngineConfig;
 use super::next_move::NextMove;
@@ -159,5 +160,9 @@ impl SmartEngine {
 
     pub fn white_to_play(&self) -> bool {
         self.tree.root().borrow().get_engine().white_to_play()
-    } 
+    }
+
+    pub fn get_tree_root(&self) -> TreeNodeRef {
+        return self.tree.root();
+    }
 }
