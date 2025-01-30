@@ -41,7 +41,6 @@ pub struct Tree {
     max_depth: usize,
     max_size: usize,
     max_q_depth: usize,
-    foreseeing_windowing: f32,
     razoring_margin_base: f32,
     razoring_depth: usize,
 
@@ -68,7 +67,6 @@ impl Tree {
         max_depth: usize,
         max_size: usize,
         max_q_depth: usize,
-        foreseeing_windowing: f32,
         razoring_margin_base: f32,
         razoring_depth: usize,
     ) -> Self {
@@ -79,7 +77,6 @@ impl Tree {
             max_size,
             max_q_depth,
             current_depth: 1,
-            foreseeing_windowing,
             razoring_margin_base,
             razoring_depth,
             hasher: Zobrist::new(),

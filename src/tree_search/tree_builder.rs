@@ -75,15 +75,6 @@ impl TreeBuilder {
         self
     }
 
-    /// Sets the foreseeing window for position evaluation
-    ///
-    /// # Arguments
-    /// * `window` - A float value representing the evaluation window size
-    pub fn foreseeing_windowing(mut self, window: f32) -> Self {
-        self.foreseeing_windowing = Some(window);
-        self
-    }
-
     /// Builds and returns a new game analysis tree with the configured parameters
     ///
     /// # Arguments
@@ -110,8 +101,6 @@ impl TreeBuilder {
             self.max_depth.unwrap_or(usize::MAX),
             self.max_size.unwrap_or(usize::MAX),
             self.max_q_depth.unwrap_or(usize::MAX),
-            self.foreseeing_windowing
-                .unwrap_or(values::FORESEEING_WINDOW),
             self.razoring_margin_base.unwrap_or(values::RAZORING_MARGIN_BASE),
             self.razoring_depth.unwrap_or(values::RAZORING_DEPTH),
         );
