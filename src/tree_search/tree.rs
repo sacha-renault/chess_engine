@@ -138,6 +138,24 @@ impl Tree {
         output
     }
 
+    // Helper function to adjust scores based on depth
+    fn adjust_score_for_depth(&self, score: f32, depth: usize) -> f32 {
+        if score.abs() >= values::VALUE_TB_WIN_IN_MAX_PLY {
+            // If it's a checkmate score, adjust it based on depth
+            // The deeper the depth, the less valuable the checkmate becomes
+            if score > 0.0 {
+                // For positive scores (winning), earlier mates are better
+                score - depth as f32
+            } else {
+                // For negative scores (losing), later mates are better
+                score + depth as f32
+            }
+        } else {
+            // For non-checkmate scores, return as is
+            score
+        }
+    }
+
     /// Evaluates the current game state using the minimax algorithm.
     ///
     /// # Parameters
@@ -175,7 +193,7 @@ impl Tree {
                     self.quiescence_search(child.node(), alpha, beta, depth + 1, max_q_depth)
 
             };
-            let score = minimax_output.get_score();
+            let score = self.adjust_score_for_depth(minimax_output.get_score(), depth);
 
             // Update best move if we found a better score
             if is_maximizing {
@@ -193,7 +211,7 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha //&& score.abs() != values::CHECK_MATE 
+            if beta <= alpha && score.abs() <= values::VALUE_TB_WIN_IN_MAX_PLY
             {
                 break;
             }
