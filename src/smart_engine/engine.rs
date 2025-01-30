@@ -124,9 +124,11 @@ impl SmartEngine {
 
         // Else we can use the chess move
         let chess_move = best_move.get_move().unwrap().clone();
-
         self.try_select_branch(chess_move).ok()?;
-        return Some(NextMove::new_from_tree(chess_move, best_move.get_score(), best_move.get_depth(), best_move.node()));
+
+        // Get the mate depth on the new node
+        let mate_depth = self.tree.root().borrow().get_mate_depth();
+        return Some(NextMove::new_from_tree(chess_move, best_move.get_score(), best_move.get_depth(), mate_depth));
     }
 
     pub fn get_next_move(&mut self) -> Option<NextMove> {

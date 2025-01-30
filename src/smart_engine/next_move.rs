@@ -22,7 +22,7 @@ impl DbRatios {
 pub struct TreeEval {
     pub score: f32,
     pub depth: usize,
-    pub node: Option<TreeNodeRef>
+    pub mate_depth: Option<usize>
 }
 
 pub enum MoveEvaluation {
@@ -45,10 +45,10 @@ pub struct NextMove {
 }
 
 impl NextMove {
-    pub fn new_from_tree(chess_move: PlayerMove, score: f32, depth: usize, node: Option<TreeNodeRef>) -> Self {
+    pub fn new_from_tree(chess_move: PlayerMove, score: f32, depth: usize, mate_depth: Option<usize>) -> Self {
         Self {
             chess_move,
-            eval: MoveEvaluation::TreeEvaluation(TreeEval { score, depth, node })
+            eval: MoveEvaluation::TreeEvaluation(TreeEval { score, depth, mate_depth })
         }
     }
 
