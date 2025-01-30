@@ -39,4 +39,11 @@ impl MinimaxOutput {
             None => None
         }
     }
+
+    pub fn node(&self) -> Option<TreeNodeRef> {
+        match &self.best_node {
+            Some(node) => Some(node.clone()),
+            None => None
+        }
+    }
 }

@@ -193,7 +193,7 @@ impl Tree {
             }
 
             // Prune if the current branch can no longer affect the result
-            if beta <= alpha && score.abs() != values::CHECK_MATE 
+            if beta <= alpha // && score.abs() != values::CHECK_MATE 
             {
                 break;
             }
@@ -244,11 +244,8 @@ impl Tree {
         // Check for razoring
         // Can early prune the less promising nodes
         let white_to_play = node.borrow().get_engine().white_to_play();
-        // if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
-        //     return qval;
-        // }
-        if let Some(_) = self.is_razoring_candidate(node.clone(), depth, alpha, white_to_play) {
-            panic!("Not implemented");
+        if let Some(qval) = self.is_razoring_candidate(node.clone(), depth, alpha, beta, white_to_play) {
+            return qval;
         }
 
         // Check the transposition table for existing results
@@ -602,6 +599,7 @@ impl Tree {
         node: TreeNodeRef,
         depth: usize,
         alpha: f32,
+        beta: f32,
         white_to_play: bool
     ) -> Option<MinimaxOutput> {
         // Avoid pruning branch too early
@@ -611,21 +609,28 @@ impl Tree {
 
         // razoring threshold
         let razoring_threshold = self.razoring_margin_base *
-            f32::powi(values::RAZORING_DEPTH_MULTIPLIER, (depth - self.razoring_depth) as i32);
+            f32::powi(values::RAZORING_DEPTH_MULTIPLIER, depth as i32);
 
         // Get the static evaluation of the node
         let score = node.borrow().get_score();
 
         // Should razor
         let should_razor = if white_to_play {
-            score < razoring_threshold
+            score + razoring_threshold <= alpha
         } else {
-            score > -razoring_threshold
+            score - razoring_threshold >= beta
+        };
+
+        // Get bounds for the qsearch
+        let (a, b) = if white_to_play {
+            (alpha - razoring_threshold, alpha)
+        } else {
+            (beta, beta + razoring_threshold)
         };
 
         // If eval is below the threshold, perform a quiescence search
         if should_razor {
-            let qval = self.quiescence_search(node.clone(), alpha - 1.0, alpha, 0, self.max_size);
+            let qval = self.quiescence_search(node.clone(), a, b, 0, self.max_size);
 
             // Check if value fails low and is within a reasonable bound
             let score = qval.get_score();
