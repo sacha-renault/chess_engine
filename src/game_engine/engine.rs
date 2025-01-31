@@ -9,6 +9,7 @@ use super::utility::{get_initial_castling_positions, get_piece_type, get_possibl
 use super::utility::{get_promotion_rank_by_color, get_required_empty_squares, is_king_checked};
 use super::utility::{is_promotion_available, iter_into_u64, move_piece};
 
+use crate::boards::zobrist_hash::HASHER;
 use crate::boards::Board;
 use crate::pieces::piece::PROMOTE_PIECE;
 use crate::pieces::Color;
@@ -877,5 +878,19 @@ impl Engine {
             return Err(());
         }
         unimplemented!()
+    }
+
+    /// Computes the hash for a given node based on the board and whose turn it is.
+    ///
+    /// # Arguments
+    /// * `node` - A reference to the node whose hash needs to be computed.
+    ///
+    /// # Returns
+    /// A 64-bit unsigned integer representing the hash of the node.
+    pub fn compute_board_hash(&self) -> u64 {
+        HASHER.compute_hash(
+            &self.board,
+            self.white_to_play()
+        )
     }
 }

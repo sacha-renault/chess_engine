@@ -112,6 +112,7 @@ name = "chess_engine"
 version = "0.1.0"
 dependencies = [
  "directories-next",
+ "once_cell",
  "rand",
  "regex",
  "reqwest",

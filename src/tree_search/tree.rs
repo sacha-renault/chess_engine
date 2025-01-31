@@ -46,7 +46,6 @@ pub struct Tree {
 
     // auto initialized
     current_depth: usize,
-    hasher: Zobrist,
     transpose_table: TranspositionTable,
 }
 
@@ -79,7 +78,6 @@ impl Tree {
             current_depth: 1,
             razoring_margin_base,
             razoring_depth,
-            hasher: Zobrist::new(),
             transpose_table: TranspositionTable::new(),
         }
     }
@@ -234,7 +232,7 @@ impl Tree {
     /// The best score found for the current node.
     fn minimax(&mut self, node: TreeNodeRef, depth: usize, mut alpha: f32, mut beta: f32) -> MinimaxOutput {
         // get the hash to see if this node exist somewhere in the tt
-        let hash = self.compute_node_hash(&node);
+        let hash = node.borrow().get_engine().compute_board_hash();
 
         // End tree building if reaching max depth
         if depth == self.current_depth {
@@ -454,7 +452,7 @@ impl Tree {
             .map(|child| {
                 // Calculate some the hash to know if we already have a score for this node
                 // Old score aren't perfect but for sufficient for move ordering
-                let hash = self.compute_node_hash(&child);
+                let hash = child.borrow().get_engine().compute_board_hash();
                 let base_score = self.transpose_table.get_old_entry_score(hash)
                     .unwrap_or_else(|| {
                         child.borrow().get_score()
@@ -516,20 +514,6 @@ impl Tree {
             node.borrow_mut().set_best_score(0.);
             0.
         }
-    }
-
-    /// Computes the hash for a given node based on the board and whose turn it is.
-    ///
-    /// # Arguments
-    /// * `node` - A reference to the node whose hash needs to be computed.
-    ///
-    /// # Returns
-    /// A 64-bit unsigned integer representing the hash of the node.
-    fn compute_node_hash(&self, node: &TreeNodeRef) -> u64 {
-        self.hasher.compute_hash(
-            node.borrow().get_engine().get_board(),
-            node.borrow().get_engine().white_to_play(),
-        )
     }
 
     /// Checks the transposition table for an existing entry and updates alpha and beta values accordingly.

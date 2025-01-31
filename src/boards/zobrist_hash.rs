@@ -1,6 +1,7 @@
 use super::{Board, ColorBoard};
 use crate::pieces::Color;
 use rand::Rng;
+use once_cell::sync::Lazy;
 
 const NUM_SQUARES: usize = 64;
 const NUM_PIECE_TYPES: usize = 6; // Pawn, Knight, Bishop, Rook, Queen, King
@@ -95,3 +96,5 @@ impl Zobrist {
         hash
     }
 }
+
+pub static HASHER: Lazy<Zobrist> = Lazy::new(|| Zobrist::new());
