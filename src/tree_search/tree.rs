@@ -16,7 +16,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::usize;
 
-use crate::boards::zobrist_hash::Zobrist;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::game_engine::engine::Engine;
@@ -28,7 +27,7 @@ use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
-use super::utility::is_unstable_position;
+use super::utility::{is_unstable_position, adjust_score_for_depth};
 
 /// A tree structure for chess move analysis
 ///
@@ -136,24 +135,6 @@ impl Tree {
         output
     }
 
-    // Helper function to adjust scores based on depth
-    fn adjust_score_for_depth(&self, score: f32, depth: usize) -> f32 {
-        if score.abs() >= values::VALUE_TB_WIN_IN_MAX_PLY {
-            // If it's a checkmate score, adjust it based on depth
-            // The deeper the depth, the less valuable the checkmate becomes
-            if score > 0.0 {
-                // For positive scores (winning), earlier mates are better
-                score - depth as f32
-            } else {
-                // For negative scores (losing), later mates are better
-                score + depth as f32
-            }
-        } else {
-            // For non-checkmate scores, return as is
-            score
-        }
-    }
-
     /// Evaluates the current game state using the minimax algorithm.
     ///
     /// # Parameters
@@ -191,7 +172,7 @@ impl Tree {
                     self.quiescence_search(child.node(), alpha, beta, depth + 1, max_q_depth)
 
             };
-            let score = self.adjust_score_for_depth(minimax_output.get_score(), depth);
+            let score = adjust_score_for_depth(minimax_output.get_score(), depth);
 
             // Update best move if we found a better score
             if is_maximizing {

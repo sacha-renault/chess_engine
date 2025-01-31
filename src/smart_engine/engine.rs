@@ -127,7 +127,7 @@ impl SmartEngine {
         self.try_select_branch(chess_move).ok()?;
 
         // Get the mate depth on the new node
-        let mate_depth = self.tree.root().borrow().get_mate_depth();
+        let mate_depth = self.tree.root().borrow().get_plies_to_mate();
         return Some(NextMove::new_from_tree(chess_move, best_move.get_score(), best_move.get_depth(), mate_depth));
     }
 

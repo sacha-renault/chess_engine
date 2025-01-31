@@ -169,61 +169,19 @@ impl TreeNode {
     /// # Returns
     /// * `Some(depth)` - The number of moves to reach checkmate if a forced mate exists
     /// * `None` - If there is no forced mate in the position
-    pub fn get_mate_depth(&self) -> Option<usize> {
-        self.recursive_get_mate_depth(0)
-    }
-
-    /// Recursively calculates the depth of a forced mate sequence from the current node
-    ///
-    /// # Arguments
-    /// * `depth` - Current depth in the mate calculation (number of moves from root)
-    ///
-    /// # Returns
-    /// * `Some(depth)` - Number of moves to reach checkmate from this position
-    /// * `None` - If there is no forced mate sequence from this position
-    ///
-    /// # Notes
-    /// * For White (maximizing): Returns the shortest mate sequence if ANY move leads to mate
-    /// * For Black (minimizing): Returns the longest mate sequence only if ALL moves lead to mate
-    /// * A position is considered mate when raw_score equals CHECK_MATE constant
-    fn recursive_get_mate_depth(&self, depth: usize) -> Option<usize> {
-        // Check if we've found a mate score
-        if self.best_score.abs() != values::CHECK_MATE {
-            return None;
-        }
-
-        if self.score.abs() == values::CHECK_MATE {
-            return Some(depth);
-        }
-
-        // If current node has no children, it is a leaf node
-        if self.children.is_empty() {
-            return None;
-        }
-
-        // Rest of your original logic stays exactly the same
-        let is_maximizing = self.engine.white_to_play();
-
-        if is_maximizing {
-            // For maximizing player (White), ANY move leading to mate is sufficient
-            let r = self.children
-                .iter()
-                .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
-                .min();
+    pub fn get_plies_to_mate(&self) -> Option<usize> {
+        if self.best_score >= values::VALUE_TB_WIN_IN_MAX_PLY {
+            // We need to solve: score = MATE_SCORE - (n * (n + 1) / 2)
+            // Or: (n * (n + 1) / 2) = MATE_SCORE - score
+            let diff = (values::CHECK_MATE - self.best_score.abs()) as f32;
             
-            return r;
+            // Quadratic formula: n^2 + n - 2*diff = 0
+            // (-1 ± sqrt(1 + 8*diff)) / 2
+            let n = (-1.0 + f32::sqrt(1.0 + 8.0 * diff)) / 2.0;
+            
+            Some(n.ceil() as usize)
         } else {
-            // For minimizing player ALL moves must lead to mate
-            let mate_depths: Vec<_> = self.children
-                .iter()
-                .filter_map(|child| child.borrow().recursive_get_mate_depth(depth + 1))
-                .collect();
-
-            if mate_depths.len() != self.children.len() {
-                None
-            } else {
-                mate_depths.into_iter().max() // All moves lead to mate, take the longest
-            }
+            None
         }
     }
 
