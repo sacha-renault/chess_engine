@@ -12,7 +12,6 @@
 //! The tree maintains a current position and can generate future positions up to
 //! a specified depth or size limit.
 
-use std::collections::HashSet;
 use std::rc::Rc;
 use std::usize;
 
@@ -28,7 +27,8 @@ use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
 use super::tree_node::{TreeNode, TreeNodeRef};
-use super::utility::{is_unstable_position, adjust_score_for_depth};
+use super::utility::{is_unstable_position, adjust_score_for_depth, init_best_score};
+use super::utility::{get_tree_size, exceed_size_limit_prob};
 
 /// A tree structure for chess move analysis
 ///
@@ -47,6 +47,7 @@ pub struct Tree {
     // auto initialized
     current_depth: usize,
     transpose_table: TranspositionTable,
+    node_count: usize
 }
 
 impl SearchEngine for Tree{
@@ -71,6 +72,11 @@ impl SearchEngine for Tree{
     /// # Returns
     /// The best score found for the current node.
     fn search(&mut self, node: TreeNodeRef, depth: usize, mut alpha: f32, mut beta: f32) -> SearchOutput {
+        // Early exit if size limit reached
+        if self.size() > self.max_size {
+            return SearchOutput::new_invalid();
+        }
+
         // get the hash to see if this node exist somewhere in the tt
         let hash = node.borrow().get_engine().compute_board_hash();
 
@@ -178,6 +184,11 @@ impl SearchEngine for Tree{
         qdepth: usize,
         max_qdepth: usize
     ) -> SearchOutput {
+        // Early exit if size limit reached
+        if self.size() > self.max_size {
+            return SearchOutput::new_invalid();
+        }
+
         // we want to limit qdepth to a certain level
         if qdepth >= max_qdepth {
             return SearchOutput::new(None, node.borrow().get_score());
@@ -261,6 +272,7 @@ impl Tree {
             razoring_margin_base,
             razoring_depth,
             transpose_table: TranspositionTable::new(),
+            node_count: 1 // just the root
         }
     }
 
@@ -341,18 +353,7 @@ impl Tree {
     ///
     /// # Returns
     /// The maximum depth reached during tree generation
-    fn iterative_deepening(&mut self) -> SearchOutput {       
-        // If the tree is already too big, we shouldn't return a null result
-        // So we use our minimax tree with NO computation
-        if self.size() > self.max_size {
-            println!("Trying to get a result ...");
-            return self.search(
-                self.root().clone(),
-                0,
-                f32::NEG_INFINITY,
-                f32::INFINITY);
-        }
-
+    fn iterative_deepening(&mut self) -> SearchOutput {
         // When starting iterative deepening, we remove previous results
         self.transpose_table.maintenance();
 
@@ -366,8 +367,9 @@ impl Tree {
             self.transpose_table.new_search();
 
             // break condition (either too deep or size of the tree to big)
-            if self.max_depth < self.current_depth || self.size() > self.max_size {
-                break;
+            if self.max_depth < self.current_depth || exceed_size_limit_prob(self.size(), self.max_size) {
+                println!("ouput 1, size : {}", self.size());
+                return output;
             }
 
             // Start with worst possible values for alpha and beta
@@ -375,12 +377,19 @@ impl Tree {
             let beta = f32::INFINITY;
 
             // Generate the tree recursively with minimax
-            output = self.search(self.root.clone(), 0, alpha, beta);
+            let iteration_output = self.search(self.root.clone(), 0, alpha, beta);
+
+            // Check if this iteration output was correct
+            match iteration_output {
+                SearchOutput::Invalid => {
+                    println!("ouput 2, size : {}", self.size());
+                    return output; // Return the last valid output
+                }
+                SearchOutput::Valid { .. } => output = iteration_output
+            }
 
             self.current_depth += 1;
         }
-
-        output
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -406,6 +415,9 @@ impl Tree {
             self.evaluate_terminal_node(node.clone());
             return;
         }
+
+        // add tu number of children into the total count
+        self.node_count += possible_moves.len();
 
         // add all the moves into node that will be
         // children of current node
@@ -651,7 +663,7 @@ impl Tree {
     /// # Returns
     /// Total count of nodes in the tree, avoiding double counting in cycles
     pub fn size(&self) -> usize {
-        get_tree_size(self.root.clone())
+        self.node_count
     }
 
     /// Selects a branch of the tree by following the given move
@@ -673,68 +685,19 @@ impl Tree {
 
         // Reassign root outside the borrowing scope
         if let Some(node) = kept_node {
+            // We reassigne the root of the tree
             self.root = node;
-            self.current_depth -= 1; // We virtual reduce the size of the tree
+
+            // We virtual reduce the size of the tree
+            self.current_depth -= 1; 
+
+            // Recalculate the size of the Tree
+            self.node_count = get_tree_size(self.root.clone());
+
+            // Everything went well
             Ok(())
         } else {
             Err(())
         }
-    }
-}
-
-/// Calculates the total size of a tree starting from given root
-///
-/// # Parameters
-/// * `root_node` - Starting node for size calculation
-///
-/// # Returns
-/// Total number of unique nodes in the tree
-fn get_tree_size(root_node: TreeNodeRef) -> usize {
-    let mut visited = HashSet::new();
-    get_tree_size_recursive(root_node, &mut visited)
-}
-
-/// Helper function for tree size calculation that handles cycles
-///
-/// # Parameters
-/// * `root_node` - Current node being processed
-/// * `visited` - Set of already visited nodes
-///
-/// # Returns
-/// Number of unique nodes in this subtree
-fn get_tree_size_recursive(
-    root_node: TreeNodeRef,
-    visited: &mut HashSet<*const std::cell::RefCell<TreeNode>>,
-) -> usize {
-    let raw_ptr = Rc::as_ptr(&root_node);
-
-    // If this node has already been visited, return 0 to prevent double counting
-    if !visited.insert(raw_ptr) {
-        panic!("CYCLIC REFERENCES !!??");
-    }
-
-    let node = root_node.borrow();
-    let mut size = 1; // Count current node
-
-    // Recursively count children
-    for child in node.get_children().iter() {
-        size += get_tree_size_recursive(child.clone(), visited);
-    }
-
-    size
-}
-
-/// Returns initial score based on whether the player is maximizing
-///
-/// # Parameters
-/// * `is_maximizing` - Whether the current player is maximizing
-///
-/// # Returns
-/// Negative infinity for maximizing player, positive infinity for minimizing player
-fn init_best_score(is_maximizing: bool) -> f32 {
-    if is_maximizing {
-        f32::NEG_INFINITY
-    } else {
-        f32::INFINITY
     }
 }

@@ -36,9 +36,9 @@ This project implements a chess engine capable of playing chess according to sta
 - [ ] Null Move Pruning
 - [ ] Futility Pruning
 - [ ] Late Move Reductions
-- [ ] Razoring
+- [x] Razoring
 - [ ] Opening Optimization
-    - [ ] Books based : precomputed known good opening moves
+    - [x] Books based : precomputed known good opening moves
     - [ ] Knowledge based : specific rules for opening (like how many square from the center are attacked)
 - [ ] Endgame tables
 
