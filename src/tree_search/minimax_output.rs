@@ -2,14 +2,14 @@ use crate::game_engine::player_move::PlayerMove;
 
 use super::tree_node::TreeNodeRef;
 
-pub struct MinimaxOutput {
+pub struct SearchOutput {
     best_node: Option<TreeNodeRef>,
     score: f32,
 }
 
-impl MinimaxOutput {
-    pub fn new(best_node: Option<TreeNodeRef>, score: f32) -> MinimaxOutput {
-        MinimaxOutput {
+impl SearchOutput {
+    pub fn new(best_node: Option<TreeNodeRef>, score: f32) -> SearchOutput {
+        SearchOutput {
             best_node: best_node,
             score,
         }

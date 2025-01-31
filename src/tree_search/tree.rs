@@ -22,7 +22,8 @@ use crate::game_engine::engine::Engine;
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
-use super::minimax_output::MinimaxOutput;
+use super::tree_trait::{SearchEngine, MoveOrderer};
+use super::minimax_output::SearchOutput;
 use super::node_with_score::NodeWithScore;
 use super::search_type::SearchType;
 use super::transposition_table::{TTFlag, TranspositionTable};
@@ -48,157 +49,15 @@ pub struct Tree {
     transpose_table: TranspositionTable,
 }
 
-impl Tree {
-    /// Creates a new game tree with specified parameters
-    ///
-    /// # Parameters
-    /// * `engine` - Initial game state
-    /// * `evaluator` - Strategy for evaluating board positions
-    /// * `max_depth` - Maximum depth to explore in the tree
-    /// * `max_size` - Maximum number of nodes allowed in the tree
-    ///
-    /// # Returns
-    /// A new Tree instance initialized with the given parameters
-    pub fn new(
-        engine: Engine,
-        evaluator: Box<dyn Evaluator>,
-        max_depth: usize,
-        max_size: usize,
-        max_q_depth: usize,
-        razoring_margin_base: f32,
-        razoring_depth: usize,
-    ) -> Self {
-        Tree {
-            root: TreeNode::create_root_node(engine),
-            evaluator,
-            max_depth,
-            max_size,
-            max_q_depth,
-            current_depth: 1,
-            razoring_margin_base,
-            razoring_depth,
-            transpose_table: TranspositionTable::new(),
-        }
-    }
-
-    /// Returns a reference to the root node of the tree
-    ///
-    /// # Returns
-    /// Cloned reference to the root node
-    pub fn root(&self) -> TreeNodeRef {
-        self.root.clone()
-    }
-
+impl SearchEngine for Tree{
     /// Generates the game tree using iterative deepening and alpha-beta pruning
     ///
     /// # Returns
-    /// The maximum depth reached during tree generation
-    pub fn iterative_deepening(&mut self) -> MinimaxOutput {       
-        // If the tree is already too big, we shouldn't return a null result
-        // So we use our minimax tree with NO computation
-        if self.size() > self.max_size {
-            println!("Trying to get a result ...");
-            return self.minimax(
-                self.root().clone(),
-                0,
-                f32::NEG_INFINITY,
-                f32::INFINITY);
-        }
-
-        // When starting iterative deepening, we remove previous results
-        self.transpose_table.maintenance();
-
-        // We start from depth = 1 (because last was select branch)
-        self.current_depth = 1;
-        let mut output= MinimaxOutput::new(None, 0.);
-
-        // loop until one of break condition is matched
-        loop {
-            // Mark all entries as 'old'
-            self.transpose_table.new_search();
-
-            // break condition (either too deep or size of the tree to big)
-            if self.max_depth < self.current_depth || self.size() > self.max_size {
-                break;
-            }
-
-            // Start with worst possible values for alpha and beta
-            let alpha = f32::NEG_INFINITY;
-            let beta = f32::INFINITY;
-
-            // Generate the tree recursively with minimax
-            output = self.minimax(self.root.clone(), 0, alpha, beta);
-
-            self.current_depth += 1;
-        }
-
-        output
+    /// The best move found during search
+    fn search_best_move(&mut self) -> SearchOutput {
+        self.iterative_deepening()
     }
 
-    /// Evaluates the current game state using the minimax algorithm.
-    ///
-    /// # Parameters
-    /// * `node` - The node representing the current game state.
-    /// * `alpha` - The minimum score that the maximizing player is assured of
-    /// * `beta` - The maximum score that the minimizing player is assured of
-    /// * `search_type` - - The type of search to perform:
-    ///   - `SearchType::Full(depth)` - Standard minimax search to specified depth
-    ///   - `SearchType::Quiescence(qdepth)` - Tactical evaluation search
-    ///
-    /// # Returns
-    /// The static evaluation score of the game state for the given depth.
-    fn minimax_evaluate(
-        &mut self,
-        node: TreeNodeRef,
-        scored_children: Vec<NodeWithScore>,
-        mut alpha: f32,
-        mut beta: f32,
-        search_type: SearchType,
-        depth: usize
-    ) -> MinimaxOutput {
-        let is_maximizing = node.borrow().get_engine().white_to_play();
-        let mut best_score = if scored_children.is_empty() {
-            node.borrow().get_score()
-        } else {
-            init_best_score(is_maximizing)
-        };
-        let mut best_node = None;
-
-        for child in scored_children.iter() {
-            let minimax_output = match search_type {
-                SearchType::Full =>
-                    self.minimax(child.node(), depth + 1, alpha, beta),
-                SearchType::Quiescence(max_q_depth) =>
-                    self.quiescence_search(child.node(), alpha, beta, depth + 1, max_q_depth)
-
-            };
-            let score = adjust_score_for_depth(minimax_output.get_score(), depth);
-
-            // Update best move if we found a better score
-            if is_maximizing {
-                if score > best_score {
-                    best_score = score;
-                    best_node = Some(child.node());
-                }
-                alpha = alpha.max(best_score);
-            } else {
-                if score < best_score {
-                    best_score = score;
-                    best_node = Some(child.node());
-                }
-                beta = beta.min(best_score);
-            }
-
-            // Prune if the current branch can no longer affect the result
-            if beta <= alpha && score.abs() <= values::VALUE_TB_WIN_IN_MAX_PLY
-            {
-                break;
-            }
-        }
-
-        node.borrow_mut().set_best_score(best_score);
-        MinimaxOutput::new(best_node, best_score)
-    }
 
     /// Recursively generates the game tree using alpha-beta pruning.
     /// This function is the core of the minimax algorithm.
@@ -211,7 +70,7 @@ impl Tree {
     ///
     /// # Returns
     /// The best score found for the current node.
-    fn minimax(&mut self, node: TreeNodeRef, depth: usize, mut alpha: f32, mut beta: f32) -> MinimaxOutput {
+    fn search(&mut self, node: TreeNodeRef, depth: usize, mut alpha: f32, mut beta: f32) -> SearchOutput {
         // get the hash to see if this node exist somewhere in the tt
         let hash = node.borrow().get_engine().compute_board_hash();
 
@@ -219,7 +78,7 @@ impl Tree {
         if depth == self.current_depth {
             // Use static evaluation for very early stage of iterative deepening
             if self.current_depth <= 2 {
-                return MinimaxOutput::new(Some(node.clone()), node.borrow().get_score());
+                return SearchOutput::new(Some(node.clone()), node.borrow().get_score());
             }
 
             // Chose the depth of qsearch
@@ -260,7 +119,7 @@ impl Tree {
 
         // Get scored children
         let scored_children =
-            self.get_sorted_children_with_best_score(node.clone());
+            self.get_ordered_moves(node.clone());
 
         // Perform minimax evaluation
         let minimax_output = self.minimax_evaluate(
@@ -318,10 +177,10 @@ impl Tree {
         beta: f32,
         qdepth: usize,
         max_qdepth: usize
-    ) -> MinimaxOutput {
+    ) -> SearchOutput {
         // we want to limit qdepth to a certain level
         if qdepth >= max_qdepth {
-            return MinimaxOutput::new(None, node.borrow().get_score());
+            return SearchOutput::new(None, node.borrow().get_score());
         }
 
         // Children computation
@@ -335,7 +194,7 @@ impl Tree {
 
         // beta cutoff: opponent is already too good
         if raw_score >= beta {
-            return MinimaxOutput::new(None, raw_score);
+            return SearchOutput::new(None, raw_score);
         }
 
         // // update alpha
@@ -345,14 +204,14 @@ impl Tree {
 
         // we continue for all the nodes that are unstable
         let child_nodes: Vec<NodeWithScore> = self
-            .get_sorted_children_with_best_score(node.clone())
+            .get_ordered_moves(node.clone())
             .into_iter()
             .filter(|scored_move| is_unstable_position(scored_move.node()))
             .collect::<Vec<_>>();
 
         // use minimax evaluation if there is at least one child
         if child_nodes.is_empty() {
-            MinimaxOutput::new(None, raw_score);
+            SearchOutput::new(None, raw_score);
             
         } 
         self.minimax_evaluate(
@@ -363,6 +222,165 @@ impl Tree {
             SearchType::Quiescence(max_qdepth),
             qdepth
         )
+    }
+}
+
+impl MoveOrderer for Tree {
+    fn get_ordered_moves(&mut self, node: TreeNodeRef) -> Vec<NodeWithScore> {
+        self.get_sorted_children_with_best_score(node)
+    }
+}
+
+impl Tree {
+    /// Creates a new game tree with specified parameters
+    ///
+    /// # Parameters
+    /// * `engine` - Initial game state
+    /// * `evaluator` - Strategy for evaluating board positions
+    /// * `max_depth` - Maximum depth to explore in the tree
+    /// * `max_size` - Maximum number of nodes allowed in the tree
+    ///
+    /// # Returns
+    /// A new Tree instance initialized with the given parameters
+    pub fn new(
+        engine: Engine,
+        evaluator: Box<dyn Evaluator>,
+        max_depth: usize,
+        max_size: usize,
+        max_q_depth: usize,
+        razoring_margin_base: f32,
+        razoring_depth: usize,
+    ) -> Self {
+        Tree {
+            root: TreeNode::create_root_node(engine),
+            evaluator,
+            max_depth,
+            max_size,
+            max_q_depth,
+            current_depth: 1,
+            razoring_margin_base,
+            razoring_depth,
+            transpose_table: TranspositionTable::new(),
+        }
+    }
+
+    /// Returns a reference to the root node of the tree
+    ///
+    /// # Returns
+    /// Cloned reference to the root node
+    pub fn root(&self) -> TreeNodeRef {
+        self.root.clone()
+    }
+
+    /// Evaluates the current game state using the minimax algorithm.
+    ///
+    /// # Parameters
+    /// * `node` - The node representing the current game state.
+    /// * `alpha` - The minimum score that the maximizing player is assured of
+    /// * `beta` - The maximum score that the minimizing player is assured of
+    /// * `search_type` - - The type of search to perform:
+    ///   - `SearchType::Full(depth)` - Standard minimax search to specified depth
+    ///   - `SearchType::Quiescence(qdepth)` - Tactical evaluation search
+    ///
+    /// # Returns
+    /// The static evaluation score of the game state for the given depth.
+    fn minimax_evaluate(
+        &mut self,
+        node: TreeNodeRef,
+        scored_children: Vec<NodeWithScore>,
+        mut alpha: f32,
+        mut beta: f32,
+        search_type: SearchType,
+        depth: usize
+    ) -> SearchOutput {
+        let is_maximizing = node.borrow().get_engine().white_to_play();
+        let mut best_score = if scored_children.is_empty() {
+            node.borrow().get_score()
+        } else {
+            init_best_score(is_maximizing)
+        };
+        let mut best_node = None;
+
+        for child in scored_children.iter() {
+            let minimax_output = match search_type {
+                SearchType::Full =>
+                    self.search(child.node(), depth + 1, alpha, beta),
+                SearchType::Quiescence(max_q_depth) =>
+                    self.quiescence_search(child.node(), alpha, beta, depth + 1, max_q_depth)
+
+            };
+            let score = adjust_score_for_depth(minimax_output.get_score(), depth);
+
+            // Update best move if we found a better score
+            if is_maximizing {
+                if score > best_score {
+                    best_score = score;
+                    best_node = Some(child.node());
+                }
+                alpha = alpha.max(best_score);
+            } else {
+                if score < best_score {
+                    best_score = score;
+                    best_node = Some(child.node());
+                }
+                beta = beta.min(best_score);
+            }
+
+            // Prune if the current branch can no longer affect the result
+            if beta <= alpha && score.abs() <= values::VALUE_TB_WIN_IN_MAX_PLY
+            {
+                break;
+            }
+        }
+
+        node.borrow_mut().set_best_score(best_score);
+        SearchOutput::new(best_node, best_score)
+    }
+
+    /// Generates the game tree using iterative deepening and alpha-beta pruning
+    ///
+    /// # Returns
+    /// The maximum depth reached during tree generation
+    fn iterative_deepening(&mut self) -> SearchOutput {       
+        // If the tree is already too big, we shouldn't return a null result
+        // So we use our minimax tree with NO computation
+        if self.size() > self.max_size {
+            println!("Trying to get a result ...");
+            return self.search(
+                self.root().clone(),
+                0,
+                f32::NEG_INFINITY,
+                f32::INFINITY);
+        }
+
+        // When starting iterative deepening, we remove previous results
+        self.transpose_table.maintenance();
+
+        // We start from depth = 1 (because last was select branch)
+        self.current_depth = 1;
+        let mut output= SearchOutput::new(None, 0.);
+
+        // loop until one of break condition is matched
+        loop {
+            // Mark all entries as 'old'
+            self.transpose_table.new_search();
+
+            // break condition (either too deep or size of the tree to big)
+            if self.max_depth < self.current_depth || self.size() > self.max_size {
+                break;
+            }
+
+            // Start with worst possible values for alpha and beta
+            let alpha = f32::NEG_INFINITY;
+            let beta = f32::INFINITY;
+
+            // Generate the tree recursively with minimax
+            output = self.search(self.root.clone(), 0, alpha, beta);
+
+            self.current_depth += 1;
+        }
+
+        output
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -515,14 +533,14 @@ impl Tree {
         depth: usize,
         alpha: &mut f32,
         beta: &mut f32,
-    ) -> Option<MinimaxOutput> {
+    ) -> Option<SearchOutput> {
         if let Some(entry) = self.transpose_table.get_entry(hash, depth) {
             // Upgrade to a strong ref
             let strong_ref = entry.node.upgrade().unwrap();
             let score = entry.score;
 
             // Build MinimaxOutput with the stored node
-            let output = MinimaxOutput::new(
+            let output = SearchOutput::new(
                 None,
                 score);
 
@@ -587,7 +605,7 @@ impl Tree {
         alpha: f32,
         beta: f32,
         white_to_play: bool
-    ) -> Option<MinimaxOutput> {
+    ) -> Option<SearchOutput> {
         // Avoid pruning branch too early
         if depth <= self.razoring_depth {
             return None;

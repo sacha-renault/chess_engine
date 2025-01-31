@@ -4,6 +4,7 @@ use crate::database::chess_table::ChessTablesDb;
 use crate::database::models::MoveModel;
 use crate::lichess_api::lichess_requests::fetch_lichess_moves;
 use crate::tree_search::tree_node::TreeNodeRef;
+use crate::tree_search::tree_trait::SearchEngine;
 
 use super::config::EngineConfig;
 use super::next_move::NextMove;
@@ -115,7 +116,7 @@ impl SmartEngine {
 
     fn tree_search(&mut self) -> Option<NextMove> {
         // Start with the iterative deepening that should return the best move
-        let best_move = self.tree.iterative_deepening();
+        let best_move = self.tree.search_best_move();
 
         // ?? Shouldn't happen but we never know
         if best_move.get_move().is_none() {
