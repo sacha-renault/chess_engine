@@ -191,7 +191,12 @@ impl SearchEngine for Tree{
 
         // we want to limit qdepth to a certain level
         if qdepth >= max_qdepth {
-            return SearchOutput::new(None, node.borrow().get_score());
+            // TODO
+            // We here might wanna check if the position is unstable or not
+            // If yes, we might wanna return a score with a malus due to
+            // the fact that we didn't stop on quiet position
+            let static_eval = node.borrow().get_score();
+            return SearchOutput::new(None, static_eval);
         }
 
         // Children computation
@@ -222,17 +227,17 @@ impl SearchEngine for Tree{
 
         // use minimax evaluation if there is at least one child
         if child_nodes.is_empty() {
-            SearchOutput::new(None, raw_score);
-            
-        } 
-        self.minimax_evaluate(
-            node,
-            child_nodes,
-            alpha,
-            beta,
-            SearchType::Quiescence(max_qdepth),
-            qdepth
-        )
+            SearchOutput::new(None, raw_score)
+        } else {
+            self.minimax_evaluate(
+                node,
+                child_nodes,
+                alpha,
+                beta,
+                SearchType::Quiescence(max_qdepth),
+                qdepth
+            )
+        }
     }
 }
 
@@ -689,7 +694,7 @@ impl Tree {
             self.root = node;
 
             // We virtual reduce the size of the tree
-            self.current_depth -= 1; 
+            self.current_depth -= 1;
 
             // Recalculate the size of the Tree
             self.node_count = get_tree_size(self.root.clone());
