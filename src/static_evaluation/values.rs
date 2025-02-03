@@ -48,3 +48,4 @@ pub const RAZORING_MARGIN_BASE: f32 = 50.;
 pub const RAZORING_DEPTH: usize = usize::MAX;
 pub const RAZORING_DEPTH_MULTIPLIER: f32 = 0.8;
 pub const HEURISTIC_WEIGHT: f32 = 5.;
+pub const UNCERTAINTY_MALUS: f32 = 50000.;
