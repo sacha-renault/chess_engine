@@ -1,5 +1,6 @@
 use super::tree_node::{TreeNode, TreeNodeRef};
 use std::cell::RefCell;
+use std::sync::RwLock;
 use std::{collections::HashMap, rc::Rc, rc::Weak};
 
 pub enum TTFlag {
@@ -17,100 +18,117 @@ pub struct TTEntry {
 }
 
 pub struct TranspositionTable {
-    table: HashMap<u64, TTEntry>,
-    current_generation : u8,
+    table: RwLock<HashMap<u64, TTEntry>>,
+    current_generation: RwLock<u8>,
 }
 
 impl TranspositionTable {
     pub fn new() -> Self {
         TranspositionTable {
-            table: HashMap::new(),
-            current_generation : 0
+            table: RwLock::new(HashMap::new()),
+            current_generation: RwLock::new(0),
         }
     }
 
     /// Start a new search generation
-    pub fn new_search(&mut self) {
-        self.current_generation = self.current_generation.wrapping_add(1);
+    pub fn new_search(&self) {
+        let mut gen = self.current_generation.write().unwrap();
+        *gen = gen.wrapping_add(1);
     }
 
     /// Determine if we should replace an existing entry
     fn should_replace(&self, new_depth: usize, old_entry: &TTEntry) -> bool {
-        old_entry.generation != self.current_generation || new_depth > old_entry.depth
+        let current_gen = *self.current_generation.read().unwrap();
+        old_entry.generation != current_gen || new_depth > old_entry.depth
     }
 
     /// Insert a new entry into the transposition table
     pub fn insert_entry(
-        &mut self,
+        &self,
         hash: u64,
         node: TreeNodeRef,
         depth: usize,
         flag: TTFlag,
         score: f32,
     ) {
+        let mut table = self.table.write().unwrap();
+
         // Check if we should replace existing entry
-        if let Some(existing) = self.table.get(&hash) {
+        if let Some(existing) = table.get(&hash) {
             if !self.should_replace(depth, existing) {
                 return;
             }
         }
 
         let weak_node = Rc::downgrade(&node);
-        self.table.insert(
+        let current_gen = *self.current_generation.read().unwrap();
+
+        table.insert(
             hash,
             TTEntry {
                 node: weak_node,
                 depth,
                 flag,
                 score,
-                generation: self.current_generation,
+                generation: current_gen,
             },
         );
     }
 
     /// Get an entry from its hash with more flexible depth handling
-    pub fn get_entry(&mut self, hash: u64, depth: usize) -> Option<&TTEntry> {
-        let entry_opt = self.table.get(&hash);
-        if let Some(entry) = entry_opt {
+    pub fn get_entry(&self, hash: u64, depth: usize) -> Option<TTEntry> {
+        let table = self.table.read().unwrap();
+        let current_gen = *self.current_generation.read().unwrap();
+
+        if let Some(entry) = table.get(&hash) {
             // Reject entries from old generations
-            if entry.generation != self.current_generation {
+            if entry.generation != current_gen {
                 return None;
             }
 
             // Check if entry is useful for current search
-            // Entry should be deep enough to be useful (you can adjust this threshold)
             if entry.depth >= depth {
-                return Some(entry);
-            }
-
-            // Check if entry is useful for current search
-            // Entry should be deep enough to be useful (you can adjust this threshold)
-            if entry.depth >= depth {
-                return Some(entry);
+                return Some(entry.clone());
             }
         }
         None
     }
 
     pub fn get_old_entry_score(&self, hash: u64) -> Option<f32> {
-        let entry_opt = self.table.get(&hash);
-        if let Some(entry) = entry_opt {
-            Some(entry.score)
-        } else {
-            None
-        }
+        let table = self.table.read().unwrap();
+        table.get(&hash).map(|entry| entry.score)
     }
 
     /// Remove all entries from the hash table
-    pub fn clear(&mut self) {
-        self.table.clear();
+    pub fn clear(&self) {
+        let mut table = self.table.write().unwrap();
+        table.clear();
     }
 
     /// Clean old or invalid entries
-    pub fn maintenance(&mut self) {
-        self.table.retain(|_, entry| {
-            // Keep entry if it's from current generation and node is still valid
-            entry.generation == self.current_generation && entry.node.upgrade().is_some()
+    pub fn maintenance(&self) {
+        let mut table = self.table.write().unwrap();
+        let current_gen = *self.current_generation.read().unwrap();
+
+        table.retain(|_, entry| {
+            entry.generation == current_gen && entry.node.upgrade().is_some()
         });
+    }
+}
+
+// Make TTEntry cloneable for thread-safe access
+impl Clone for TTEntry {
+    fn clone(&self) -> Self {
+        TTEntry {
+            node: self.node.clone(),
+            depth: self.depth,
+            flag: match self.flag {
+                TTFlag::Exact => TTFlag::Exact,
+                TTFlag::LowerBound => TTFlag::LowerBound,
+                TTFlag::UpperBound => TTFlag::UpperBound,
+            },
+            score: self.score,
+            generation: self.generation,
+        }
     }
 }

@@ -1,7 +1,6 @@
 use std::usize;
 use super::minimax_output::SearchOutput;
 use super::node_with_score::NodeWithScore;
-use super::transposition_table::TTEntry;
 use super::tree_node::TreeNodeRef;
 
 // Core search functionality trait
