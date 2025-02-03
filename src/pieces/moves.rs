@@ -206,6 +206,28 @@ pub fn queen_moves(
         | bishops_moves(queen_bitboard, same_color_bitboard, other_color_bitboard)
 }
 
+pub fn pawn_captures(pawn_bitboard: u64,
+    other_color_bitboard: u64,
+    color: Color
+) -> u64 {
+    let shift_fn = match color {
+        Color::Black => rshift,
+        Color::White => lshift,
+    };
+    let (file1, file2) = match color {
+        Color::Black => (FILE_A, FILE_H),
+        Color::White => (FILE_H, FILE_A),
+    };
+
+    // Left capture (diagonal capture to the left for white pawns)
+    let left_capture = shift_fn(pawn_bitboard, 7) & (other_color_bitboard) & !file1;
+
+    // Right capture (diagonal capture to the right for white pawns)
+    let right_capture = shift_fn(pawn_bitboard, 9) & other_color_bitboard & !file2;
+
+    right_capture | left_capture
+}
+
 /// Computes all possible moves for a pawn on the chessboard.
 ///
 /// # Arguments
@@ -236,10 +258,6 @@ pub fn pawn_moves(
         Color::Black => RANK6,
         Color::White => RANK3,
     };
-    let (file1, file2) = match color {
-        Color::Black => (FILE_A, FILE_H),
-        Color::White => (FILE_H, FILE_A),
-    };
 
     // Single push for white pawns
     let single_push = shift_fn(pawn_bitboard, 8) & empty_squares;
@@ -247,13 +265,7 @@ pub fn pawn_moves(
     // Double push (only from the second rank for white pawns)
     let double_push = shift_fn(single_push & double_move_rank, 8) & empty_squares;
 
-    // Left capture (diagonal capture to the left for white pawns)
-    let left_capture = shift_fn(pawn_bitboard, 7) & (other_color_bitboard) & !file1;
-
-    // Right capture (diagonal capture to the right for white pawns)
-    let right_capture = shift_fn(pawn_bitboard, 9) & other_color_bitboard & !file2;
-
-    single_push | double_push | left_capture | right_capture
+    single_push | double_push | pawn_captures(pawn_bitboard, other_color_bitboard, color)
 }
 
 /// Computes all possible moves for knights on the chessboard.

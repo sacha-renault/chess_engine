@@ -53,7 +53,8 @@ This project implements a chess engine capable of playing chess according to sta
 
 ### Parallelization
 - [ ] Lazy SMP
-    - [ ] make transposition table thread safe (best way is probably with a RwLock)
+    - [x] make transposition table thread safe (best way is probably with a RwLock)
+    - [ ] make nodes access thread safe
     - [ ] Parallel calculation from the root node
 
 ## TODO

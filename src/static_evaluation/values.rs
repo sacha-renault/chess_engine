@@ -39,7 +39,7 @@ pub fn get_value_by_piece(piece: Piece) -> f32 {
         Piece::Knight => 30.,
         Piece::Rook => 50.,
         Piece::Queen => 90.,
-        Piece::King => 1e5 as f32,
+        Piece::King => 0.,
     }
 }
 
