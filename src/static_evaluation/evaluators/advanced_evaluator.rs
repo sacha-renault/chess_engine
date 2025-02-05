@@ -18,60 +18,98 @@ const EXTENDED_CENTER: u64 = (RANK3 | RANK4 | RANK5 | RANK6) & (FILE_C | FILE_D 
 
 #[derive(Builder, Default)]
 pub struct AdvancedEvaluator {
+    /// Overall score multiplier
+    /// Default: 1.0
     #[builder(default = "1.0")]
-    score_multiplier: f32,
+    positional_score_multiplier: f32,
 
+    /// Threshold for ignoring phase weights
+    /// Default: 0.2
     #[builder(default = "0.2")]
     weight_ignore_val: f32,
 
+    /// Bonus for developing knights
+    /// Default: 2.0
     #[builder(default = "2.0")]
     knight_develop_bonus: f32,
 
+    /// Bonus for developing bishops
+    /// Default: 2.0
     #[builder(default = "2.0")]
     bishop_develop_bonus: f32,
 
+    /// Penalty for early queen development
+    /// Default: 2.50
     #[builder(default = "2.50")]
     queen_early_penalty: f32,
 
+    /// Bonus for pawns in central squares
+    /// Default: 3.0
     #[builder(default = "3.0")]
     center_pawn_bonus: f32,
 
+    /// Bonus for pawns in extended center squares
+    /// Default: 1.5
     #[builder(default = "1.5")]
     extended_center_pawn_bonus: f32,
 
+    /// Bonus for minor pieces in central squares
+    /// Default: 2.0
     #[builder(default = "2.0")]
     center_minor_bonus: f32,
 
+    /// Bonus for minor pieces in extended center squares
+    /// Default: 1.0
     #[builder(default = "1.0")]
     extended_center_minor_bonus: f32,
 
+    /// Bonus for queen presence in center squares
+    /// Default: 1.5
     #[builder(default = "1.5")]
     center_queen_bonus: f32,
 
+    /// Bonus for controlling center squares
+    /// Default: 1.0
     #[builder(default = "1.0")]
     center_control_bonus: f32,
 
+    /// Bonus for pawns protecting the king
+    /// Default: 2.0
     #[builder(default = "2.0")]
     pawn_shield_bonus: f32,
 
+    /// Material threshold for entering endgame phase
+    /// Default: 15
     #[builder(default = "15")]
     endgame_material_threshold: usize,
 
+    /// Penalty for doubled pawns
+    /// Default: 2.0
     #[builder(default = "2.0")]
     double_pawn_penalty: f32,
 
+    /// Penalty for isolated pawns
+    /// Default: 2.0
     #[builder(default = "2.0")]
     isoled_pawn_penalty: f32,
 
+    /// Bonus for connected pawn chains
+    /// Default: 2.0
     #[builder(default = "2.0")]
     pawn_chain_bonus: f32,
 
+    /// Bonus for king centralization in endgame
+    /// Default: 2.0
     #[builder(default = "2.0")]
     king_center_bonus: f32,
 
+    /// Bonus for passed pawns
+    /// Default: 3.0
     #[builder(default = "3.0")]
     passed_pawn_bonus: f32,
 
+    /// Multiplier for pawn rank advancement
+    /// Default: 1.0
     #[builder(default = "1.0")]
     rank_multiplier: f32,
 }
@@ -439,11 +477,11 @@ impl Evaluator for AdvancedEvaluator {
         // Add opening, endgame bonus / malus depending on game state
         if opening_weight != 0.0 {
             let opening_score = opening_weight * self.calculate_opening_score(engine);
-            score += opening_score * self.score_multiplier;
+            score += opening_score * self.positional_score_multiplier;
         }
         if end_weight != 0.0 {
             let endgame_score = end_weight * self.calculate_end_score(engine);
-            score += endgame_score * self.score_multiplier;
+            score += endgame_score * self.positional_score_multiplier;
         }
 
         score
