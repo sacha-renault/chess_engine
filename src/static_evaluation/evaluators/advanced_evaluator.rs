@@ -97,36 +97,48 @@ impl AdvancedEvaluator {
         phase.max(0.0).min(1.0)
     }
 
-    fn calculate_opening_score(&self, engine: &Engine, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
+    fn calculate_material_score(&self, _: &Engine, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
+        let mut score = 0.0;
+        let white = &Color::White;
+
+        // Iterate over the piece to get the material score
+        for (bitboard, piece, color) in pieces {
+            let piece_score = self.evaluate_material(*piece, *color, *bitboard);
+            if color == white {
+                score += piece_score;
+            } else {
+                score -= piece_score;
+            }
+        }
+        score
+    }
+
+    fn calculate_opening_score(&self, engine: &Engine) -> f32 {
         let board = engine.get_board();
         let white_board = &board.white;
         let black_board = &board.black;
         let white_score = self.calculate_opening_score_side(
             white_board,
             black_board,
-            pieces,
             true);
         let black_score = self.calculate_opening_score_side(
             black_board,
             white_board,
-            pieces,
             false);
         white_score - black_score
     }
 
-    fn calculate_end_score(&self, engine: &Engine, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
+    fn calculate_end_score(&self, engine: &Engine) -> f32 {
         let board = engine.get_board();
         let white_board = &board.white;
         let black_board = &board.black;
         let white_score = self.calculate_end_score_side(
             white_board,
             black_board,
-            pieces,
             true);
         let black_score = self.calculate_end_score_side(
             black_board,
             white_board,
-            pieces,
             false);
         white_score - black_score
     }
@@ -135,13 +147,9 @@ impl AdvancedEvaluator {
         &self,
         player_board: &ColorBoard,
         opponent_board: &ColorBoard,
-        pieces: &Vec<(u64, Piece, Color)>,
         is_white: bool
     ) -> f32 {
         let mut score = 0.0;
-
-        // Material score
-        score += self.evaluate_material(pieces);
 
         // Piece development
         score += self.evaluate_development_side(player_board, is_white);
@@ -165,13 +173,9 @@ impl AdvancedEvaluator {
         &self,
         player_board: &ColorBoard,
         opponent_board: &ColorBoard,
-        pieces: &Vec<(u64, Piece, Color)>,
         is_white: bool
     ) -> f32 {
         let mut score = 0.0;
-
-        // Material score (weighted differently in endgame)
-        score += self.evaluate_material(pieces) * 1.5;
 
         // // King centralization
         score += self.calculate_king_center_bonus(player_board.king.trailing_zeros() as u8);
@@ -189,14 +193,10 @@ impl AdvancedEvaluator {
     }
 
     // Helper evaluation functions
-    fn evaluate_material(&self, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
-        let mut score = 0.0;
-        for (bitboard, piece, color) in pieces {
-            let piece_value = get_value_by_piece(*piece);
-            let position_multiplier = get_value_multiplier_by_piece(*piece, *color, *bitboard);
-            score += piece_value * position_multiplier;
-        }
-        score
+    fn evaluate_material(&self, piece: Piece, color: Color, bitboard: u64) -> f32 {
+        let piece_value = get_value_by_piece(piece);
+        let position_multiplier = get_value_multiplier_by_piece(piece, color, bitboard);
+        piece_value * position_multiplier
     }
 
     fn clip_weight_values(&self, weight: f32) -> (f32, f32) {
@@ -407,19 +407,22 @@ impl AdvancedEvaluator {
 impl Evaluator for AdvancedEvaluator {
     fn evaluate_engine_state(&self, engine: &Engine, _: usize) -> f32 {
         let board = engine.get_board();
-        let pieces = board.individual_pieces();
+        let pieces: Vec<(u64, Piece, Color)> = board.individual_pieces();
         let weight = self.evaluate_game_state(&pieces);
-
         let (opening_weight, end_weight) = self.clip_weight_values(weight);
-        println!("Weight {} : {}:{}", weight, opening_weight, end_weight);
 
-        let mut score = 0.0;
+        // Init the score with the materials
+        let material_score = self.calculate_material_score(engine, &pieces);
+        let mut score = material_score;
 
+        // Add opening, endgame bonus / malus depending on game state
         if opening_weight != 0.0 {
-            score += opening_weight * self.calculate_opening_score(engine, &pieces);
+            let opening_score = opening_weight * self.calculate_opening_score(engine);
+            score += opening_score;
         }
         if end_weight != 0.0 {
-            score += end_weight * self.calculate_end_score(engine, &pieces);
+            let endgame_score = end_weight * self.calculate_end_score(engine);
+            score += endgame_score;
         }
 
         score
