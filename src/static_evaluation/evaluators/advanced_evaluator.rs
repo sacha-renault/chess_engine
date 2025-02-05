@@ -18,6 +18,9 @@ const EXTENDED_CENTER: u64 = (RANK3 | RANK4 | RANK5 | RANK6) & (FILE_C | FILE_D 
 
 #[derive(Builder, Default)]
 pub struct AdvancedEvaluator {
+    #[builder(default = "1.0")]
+    score_multiplier: f32,
+
     #[builder(default = "0.2")]
     weight_ignore_val: f32,
 
@@ -418,11 +421,11 @@ impl Evaluator for AdvancedEvaluator {
         // Add opening, endgame bonus / malus depending on game state
         if opening_weight != 0.0 {
             let opening_score = opening_weight * self.calculate_opening_score(engine);
-            score += opening_score;
+            score += opening_score * self.score_multiplier;
         }
         if end_weight != 0.0 {
             let endgame_score = end_weight * self.calculate_end_score(engine);
-            score += endgame_score;
+            score += endgame_score * self.score_multiplier;
         }
 
         score
