@@ -1,5 +1,3 @@
-use crate::pieces::Piece;
-
 // Evaluator const values
 pub const CASTLING_BONUS: f32 = 5.;
 pub const CAPTURE_BONUS: f32 = 1.;
@@ -31,17 +29,6 @@ pub const KNIGHTS_VALUE: [f32; 64] = [
     0.97, 1.01, 1.07, 1.19, 1.19, 1.07, 1.01, 0.97, 0.96, 0.99, 1.03, 1.07, 1.07, 1.03, 0.99, 0.96,
     0.95, 0.97, 0.99, 1.01, 1.01, 0.99, 0.97, 0.95, 0.93, 0.95, 0.96, 0.97, 0.97, 0.96, 0.95, 0.93,
 ];
-
-pub fn get_value_by_piece(piece: Piece) -> f32 {
-    match piece {
-        Piece::Pawn => 10.,
-        Piece::Bishop => 30.,
-        Piece::Knight => 30.,
-        Piece::Rook => 50.,
-        Piece::Queen => 90.,
-        Piece::King => 0.,
-    }
-}
 
 // Tree const values
 pub const RAZORING_MARGIN_BASE: f32 = 50.;

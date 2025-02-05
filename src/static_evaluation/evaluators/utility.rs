@@ -1,7 +1,6 @@
 use crate::game_engine::player_move::PlayerMove;
-use crate::pieces::Piece;
+use crate::pieces::{Color, Piece};
 use crate::static_evaluation::values;
-use crate::static_evaluation::values::get_value_by_piece;
 
 pub fn classic_heuristic_move_bonus(
     player_move: PlayerMove,
@@ -50,4 +49,28 @@ pub fn classic_heuristic_move_bonus(
     // We can keep adding more bonuses but i am really lazy to
     // Implement all, especially i think those are the most important
     bonus
+}
+
+pub fn get_value_multiplier_by_piece(piece: Piece, color: Color, bitboard: u64) -> f32 {
+    let index = bitboard.trailing_zeros() as usize;
+    match piece {
+        Piece::Pawn => match color {
+            Color::White => values::WHITE_PAWNS_VALUE[index],
+            Color::Black => values::BLACK_PAWNS_VALUE[index],
+        },
+        Piece::Bishop => values::BISHOPS_VALUE[index],
+        Piece::Knight => values::KNIGHTS_VALUE[index],
+        _ => 1.,
+    }
+}
+
+pub fn get_value_by_piece(piece: Piece) -> f32 {
+    match piece {
+        Piece::Pawn => 10.,
+        Piece::Bishop => 30.,
+        Piece::Knight => 30.,
+        Piece::Rook => 50.,
+        Piece::Queen => 90.,
+        Piece::King => 0.,
+    }
 }
