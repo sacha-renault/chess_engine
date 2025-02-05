@@ -100,7 +100,7 @@ impl AdvancedEvaluator {
         phase.max(0.0).min(1.0)
     }
 
-    fn calculate_material_score(&self, _: &Engine, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
+    fn calculate_material_score(&self, pieces: &Vec<(u64, Piece, Color)>) -> f32 {
         let mut score = 0.0;
         let white = &Color::White;
 
@@ -415,8 +415,7 @@ impl Evaluator for AdvancedEvaluator {
         let (opening_weight, end_weight) = self.clip_weight_values(weight);
 
         // Init the score with the materials
-        let material_score = self.calculate_material_score(engine, &pieces);
-        let mut score = material_score;
+        let mut score = self.calculate_material_score(&pieces);
 
         // Add opening, endgame bonus / malus depending on game state
         if opening_weight != 0.0 {
