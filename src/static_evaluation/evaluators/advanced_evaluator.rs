@@ -116,36 +116,53 @@ impl AdvancedEvaluator {
         score
     }
 
+    /// Calculate the absolute score for opening phase
     fn calculate_opening_score(&self, engine: &Engine) -> f32 {
+        // init board of white and black color board
         let board = engine.get_board();
         let white_board = &board.white;
         let black_board = &board.black;
+
+        // score white side
         let white_score = self.calculate_opening_score_side(
             white_board,
             black_board,
             true);
+
+        // score black side
         let black_score = self.calculate_opening_score_side(
             black_board,
             white_board,
             false);
+
+        // return the score as the difference of both score
         white_score - black_score
     }
 
+    /// Calculate the absolute score for endgame phase
     fn calculate_end_score(&self, engine: &Engine) -> f32 {
+        // init board of white and black color board
         let board = engine.get_board();
         let white_board = &board.white;
         let black_board = &board.black;
+
+        // score white side
         let white_score = self.calculate_end_score_side(
             white_board,
             black_board,
             true);
+
+        // score black side
         let black_score = self.calculate_end_score_side(
             black_board,
             white_board,
             false);
+
+        // return the score as the difference of both score
         white_score - black_score
     }
 
+    /// Calculate the score for a side in the opening phase
     fn calculate_opening_score_side(
         &self,
         player_board: &ColorBoard,
@@ -172,6 +189,7 @@ impl AdvancedEvaluator {
         score
     }
 
+    /// Calculate the score for a side in the endgame phase
     fn calculate_end_score_side(
         &self,
         player_board: &ColorBoard,
@@ -195,13 +213,14 @@ impl AdvancedEvaluator {
         score
     }
 
-    // Helper evaluation functions
+    /// Helper evaluation functions
     fn evaluate_material(&self, piece: Piece, color: Color, bitboard: u64) -> f32 {
         let piece_value = get_value_by_piece(piece);
         let position_multiplier = get_value_multiplier_by_piece(piece, color, bitboard);
         piece_value * position_multiplier
     }
 
+    /// Clip weight values to 0.0 and 1.0
     fn clip_weight_values(&self, weight: f32) -> (f32, f32) {
         if weight < self.weight_ignore_val {
             (0. , 1.)
