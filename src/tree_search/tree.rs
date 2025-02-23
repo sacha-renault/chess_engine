@@ -18,6 +18,7 @@ use std::usize;
 use crate::game_engine::player_move::PlayerMove;
 use crate::game_engine::utility::get_color;
 use crate::game_engine::engine::Engine;
+use crate::prelude::string_from_move;
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
@@ -89,7 +90,7 @@ impl SearchEngine for Tree{
 
             // Chose the depth of qsearch
             let max_qdepth = if self.current_depth < 5 {
-                self.current_depth
+                self.current_depth.min(self.max_q_depth)
             } else {
                 self.max_q_depth
             };
@@ -390,8 +391,13 @@ impl Tree {
                     println!("ouput 2, size : {}", self.size());
                     return output; // Return the last valid output
                 }
-                SearchOutput::Valid { .. } => output = iteration_output
+                SearchOutput::Valid { .. } => {
+                    output = iteration_output;
+                    println!("Best at iteration {} : {}", self.current_depth, string_from_move(&output.get_move().unwrap()));
+                }
             }
+
+            
 
             self.current_depth += 1;
         }
@@ -459,12 +465,13 @@ impl Tree {
         // Clone the vec of children
         // It clone a Vec of ptr so
         // Cost is pretty small
-        let children = node.borrow().get_children().clone();
         let is_white_to_play = node.borrow().get_engine().white_to_play();
 
         // Map best score to each children
-        let mut scored_children = children
-            .into_iter()
+        let mut scored_children = node
+            .borrow()
+            .get_children()
+            .iter()
             .map(|child| {
                 // Calculate some the hash to know if we already have a score for this node
                 // Old score aren't perfect but for sufficient for move ordering
