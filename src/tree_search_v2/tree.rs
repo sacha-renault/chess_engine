@@ -70,7 +70,6 @@ impl TreeSearch {
         beta: f32,
     ) -> Result<f32, ()> {
         if depth == 0 {
-            // Return evaluation * color for negamax
             if self.is_tactical_node(node_handle) {
                 return self.quiescence_search(node_handle, alpha, beta);
             } else {
@@ -78,7 +77,6 @@ impl TreeSearch {
             }
         }
 
-        // Generate children if not done yet
         if !self
             .pool
             .get_node(node_handle)
@@ -88,50 +86,47 @@ impl TreeSearch {
             self.generate_children(node_handle)?;
         }
 
-        let mut best_score = f32::NEG_INFINITY;
-
-        // Get children
         let children = self.get_children_sorted_by_score(node_handle)?;
 
-        // If there is no children at all, it means it's a terminal node
-        // We can return instant the best score!
         if children.is_empty() {
+            // Terminal position - return the static evaluation
             return Ok(self
                 .pool
                 .get_node(node_handle)
                 .expect("`negamax` need a valid node handle")
-                .get_best_score());
+                .get_score());
         }
 
-        // Iterate over the child
+        let mut best_score = f32::NEG_INFINITY;
+
         for child_handle in children {
+            // Standard negamax recursion
             let score = -self.negamax(child_handle, depth - 1, -beta, -alpha)?;
 
-            // Adjust mate scores to prefer shorter paths
+            // Mate score adjustment
             let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
-                if score > 0. {
-                    score - 1.0 // Reduce mate score by 1 for each additional ply
+                if score > 0.0 {
+                    score - 1.0
                 } else {
-                    score + 1.0 // Increase (make less negative) mate score
+                    score + 1.0
                 }
             } else {
                 score
             };
 
-            if adjusted_score > best_score {
-                best_score = adjusted_score;
-                // Update best move tracking
-                self.pool
-                    .get_node_mut(node_handle)
-                    .expect("`negamax` children need a valid node handle")
-                    .set_best_score(adjusted_score);
-            }
-
+            best_score = best_score.max(adjusted_score);
             alpha = alpha.max(adjusted_score);
+
             if alpha >= beta {
-                break; // Alpha-beta pruning
+                break;
             }
         }
+
+        // Store the best score for this node
+        self.pool
+            .get_node_mut(node_handle)
+            .expect("`negamax` children need a valid node handle")
+            .set_best_score(best_score);
 
         Ok(best_score)
     }
@@ -352,7 +347,6 @@ impl TreeSearch {
     fn get_best_move(&self, root_handle: NodeHandle) -> Option<PlayerMove> {
         let root_node = self.pool.get_node(root_handle)?;
 
-        // If no children, no moves available (game over)
         if root_node.get_children().is_empty() {
             return None;
         }
@@ -360,17 +354,11 @@ impl TreeSearch {
         let mut best_move = None;
         let mut best_score = f32::NEG_INFINITY;
 
-        // Iterate through all child nodes to find the one with the best score
-        for child_handle in self.get_children_sorted_by_score(root_handle).ok()? {
+        for &child_handle in root_node.get_children() {
             if let Some(child_node) = self.pool.get_node(child_handle) {
-                // Get the score for this child (negated because we're looking from root's perspective)
+                // The child's best_score represents the value from the child's perspective
+                // So we negate it to get the value from root's perspective
                 let child_score = -child_node.get_best_score();
-
-                // println!(
-                //     "For move : {} - Best score : {}",
-                //     string_from_move(&child_node.get_move().unwrap()),
-                //     child_score
-                // );
 
                 if child_score > best_score {
                     best_score = child_score;
