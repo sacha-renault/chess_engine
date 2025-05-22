@@ -1,8 +1,5 @@
-pub mod basic_evaluator;
 pub mod advanced_evaluator;
-mod utility;
+pub mod basic_evaluator;
+pub mod utility;
 
-pub use {
-    basic_evaluator::BasicEvaluator,
-    advanced_evaluator::AdvancedEvaluator,
-};
+pub use {advanced_evaluator::AdvancedEvaluator, basic_evaluator::BasicEvaluator};

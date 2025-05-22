@@ -2,7 +2,7 @@ use super::move_evaluation_context::MoveEvaluationContext;
 use super::move_parsing::*;
 use super::move_piece_output::PieceMoveOutput;
 use super::move_results::{CorrectMoveResults, IncorrectMoveResults, MoveResult};
-use super::player_move::{CastlingMove, PlayerMove, PromotionMove, NormalMove};
+use super::player_move::{CastlingMove, NormalMove, PlayerMove, PromotionMove};
 use super::utility::{get_color, get_final_castling_positions, get_half_turn_boards};
 use super::utility::{get_en_passant_ranks, get_half_turn_boards_mut};
 use super::utility::{get_initial_castling_positions, get_piece_type, get_possible_move};
@@ -127,7 +127,9 @@ impl Engine {
     ///    - `InvalidMove` - The SAN string is invalid
     ///    - `_` - See `play` for other possible errors
     pub fn play_san(&mut self, san: &str) -> MoveResult {
-        let player_move = self.get_move_by_san(san).map_err(|_| IncorrectMoveResults::InvalidMove)?;
+        let player_move = self
+            .get_move_by_san(san)
+            .map_err(|_| IncorrectMoveResults::InvalidMove)?;
         self.play(player_move)
     }
 
@@ -380,7 +382,7 @@ impl Engine {
     /// 3. Ensures the king is not in check after the move
     fn perform_castling(&self, castling: CastlingMove) -> Result<Board, IncorrectMoveResults> {
         // Discard directly if current king is checked
-        if self.is_current_king_checked() {
+        if self.is_king_checked() {
             return Err(IncorrectMoveResults::CastlingNotAllowed);
         }
 
@@ -558,7 +560,7 @@ impl Engine {
     }
 
     /// Returns `true` if the king of the current player is checked
-    pub fn is_current_king_checked(&self) -> bool {
+    pub fn is_king_checked(&self) -> bool {
         self.current_king_checked
     }
 
@@ -655,8 +657,8 @@ impl Engine {
             return Ok(castling_move);
         }
 
-        let (chars, promotion_piece_opt) = parse_input_string(input)
-            .map_err(|_| IncorrectMoveResults::InvalidMove)?;
+        let (chars, promotion_piece_opt) =
+            parse_input_string(input).map_err(|_| IncorrectMoveResults::InvalidMove)?;
 
         if chars.len() < 2 {
             return Err(IncorrectMoveResults::InvalidMove);
@@ -858,7 +860,11 @@ impl Engine {
         fen.push_str(&fen_en_passant(&self.board));
 
         // Add halfmove clock and fullmove number
-        fen.push_str(&format!(" {} {}", self.halfmove_clock, self.get_fullmove_number()));
+        fen.push_str(&format!(
+            " {} {}",
+            self.halfmove_clock,
+            self.get_fullmove_number()
+        ));
 
         fen
     }
@@ -888,9 +894,6 @@ impl Engine {
     /// # Returns
     /// A 64-bit unsigned integer representing the hash of the node.
     pub fn compute_board_hash(&self) -> u64 {
-        HASHER.compute_hash(
-            &self.board,
-            self.white_to_play()
-        )
+        HASHER.compute_hash(&self.board, self.white_to_play())
     }
 }

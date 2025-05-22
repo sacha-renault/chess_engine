@@ -73,6 +73,46 @@ fn play_against_robot(mut engine: Engine, mut tree: TreeSearch) {
     }
 }
 
+fn play_robot_vs_robot_same_engine(
+    mut engine: Engine,
+    mut tree: TreeSearch,
+    white_depth: u8,
+    black_depth: u8,
+) {
+    loop {
+        let played_str = {
+            if engine.white_to_play() {
+                "White"
+            } else {
+                "Black"
+            }
+        };
+
+        // Use different search depths for variety
+        let search_depth = if engine.white_to_play() {
+            white_depth
+        } else {
+            black_depth
+        };
+
+        let next_move = tree.iterative_search(engine.clone(), search_depth).unwrap();
+        let _ = engine.play(next_move);
+
+        print_board(engine.get_board());
+
+        println!("{} played: {}", played_str, string_from_move(&next_move));
+
+        // Optional: Add a small delay to make the game watchable
+        // std::thread::sleep(std::time::Duration::from_millis(1000));
+
+        // Check for game end conditions
+        if engine.get_all_moves_by_piece().is_empty() {
+            println!("Game over!");
+            break;
+        }
+    }
+}
+
 fn main() {
     // Init the tree
     let evaluator = BasicEvaluator::new();
@@ -80,16 +120,9 @@ fn main() {
 
     // init the engine
     let mut engine = Engine::new();
-    engine
-        .play_pgn_str(
-            r"1. Nc3 d5 2. e3 e5 3. Qh5 Nf6 4. Bb5+ c6 5. Qxe5+ Be7 6. Bd3 Nbd7 7. Qg5 h6 8.
-Qxg7 Rg8 9. Qxh6 Ne5 10. Qf4 Bd6 11. Qh4 Nxd3+ 12. cxd3 Qe7 13. Nge2 Nd7 14. Qh7
-Nf6 15. Qh4 Rg4 16. Qh3 Bf5 17. e4 Bc8 18. exd5 Rg6 19. Qe3 Nxd5 20. Nxd5 cxd5
-21. Qd4 Rxg2 22. h3 Bc5 23. Qh8+ Qf8 24. Qxf8+ Kxf8 25. b3 Bf5 26. a3 Re8 27.
-Kd1 Bxd3 Nf4 Bd4 Ng2 Be2 Kc2 Rc8 Kb1 Bd3 Ka2 Rc2 Bb2",
-        )
-        .unwrap();
+    engine.play_pgn_str(r"").unwrap();
 
     // search best move
     play_against_robot(engine, tree);
+    // play_robot_vs_robot_same_engine(engine, tree, 8, 8);
 }

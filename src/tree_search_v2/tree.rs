@@ -1,3 +1,5 @@
+use crate::pieces::Piece;
+use crate::prelude::evaluators::utility::get_value_by_piece;
 use crate::prelude::{string_from_move, Engine, PlayerMove};
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
@@ -22,9 +24,6 @@ impl TreeSearch {
         // Clear pool for new search
         self.pool.clear();
 
-        // Get if it's white turn or black
-        let color = if position.white_to_play() { 1 } else { -1 };
-
         // Create root node
         let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
 
@@ -33,7 +32,7 @@ impl TreeSearch {
 
         // Iterative deepening
         for i_depth in 1..=depth {
-            match self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY, color) {
+            match self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
                 Ok(_) => best_move = self.get_best_move(root),
                 Err(_) => break,
             }
@@ -57,7 +56,7 @@ impl TreeSearch {
         let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
 
         // Run negamax
-        let _ = self.negamax(root, depth, f32::NEG_INFINITY, f32::INFINITY, 1);
+        let _ = self.negamax(root, depth, f32::NEG_INFINITY, f32::INFINITY);
 
         // Return best move from root's children
         self.get_best_move(root)
@@ -69,12 +68,14 @@ impl TreeSearch {
         depth: u8,
         mut alpha: f32,
         beta: f32,
-        color: i8,
     ) -> Result<f32, ()> {
         if depth == 0 {
             // Return evaluation * color for negamax
-            return Ok(self.pool.get_node(node_handle).ok_or(())?.get_score() * color as f32);
-            return self.quiescence_search(node_handle, -beta, -alpha, -color);
+            if self.is_tactical_node(node_handle) {
+                return self.quiescence_search(node_handle, alpha, beta);
+            } else {
+                return Ok(self.pool.get_node(node_handle).ok_or(())?.get_score());
+            }
         }
 
         // Generate children if not done yet
@@ -104,7 +105,7 @@ impl TreeSearch {
 
         // Iterate over the child
         for child_handle in children {
-            let score = -self.negamax(child_handle, depth - 1, -beta, -alpha, -color)?;
+            let score = -self.negamax(child_handle, depth - 1, -beta, -alpha)?;
 
             // Adjust mate scores to prefer shorter paths
             let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
@@ -140,7 +141,6 @@ impl TreeSearch {
         node_handle: NodeHandle,
         mut alpha: f32,
         beta: f32,
-        color: i8,
     ) -> Result<f32, ()> {
         // Stand pat evaluation
         let stand_pat = self.pool.get_node(node_handle).ok_or(())?.get_score();
@@ -150,6 +150,11 @@ impl TreeSearch {
         }
 
         alpha = alpha.max(stand_pat);
+
+        // Delta pruning - if even the best possible capture won't improve alpha enough
+        if stand_pat + get_value_by_piece(Piece::Queen) < alpha {
+            return Ok(alpha);
+        }
 
         // Generate only tactical moves (captures, checks, maybe promotions)
         // Generate children if not done yet
@@ -169,7 +174,7 @@ impl TreeSearch {
 
         for child_handle in children {
             if self.is_tactical_node(child_handle) {
-                let score = -self.quiescence_search(child_handle, -beta, -alpha, -color)?;
+                let score = -self.quiescence_search(child_handle, -beta, -alpha)?;
 
                 best_score = best_score.max(score);
                 alpha = alpha.max(score);
@@ -190,7 +195,7 @@ impl TreeSearch {
             .expect("`is_tactical_node` needs a valid handle");
 
         // Check if the move is a capture or gives check
-        if node.get_engine().is_current_king_checked() {
+        if node.get_engine().is_king_checked() {
             true
         } else if node.get_captured_piece().is_some() {
             true
@@ -283,7 +288,7 @@ impl TreeSearch {
 
         // if it's terminal node (number of moves == 0)
         // it means it's either check mate or stale mate
-        if node.get_engine().is_current_king_checked() {
+        if node.get_engine().is_king_checked() {
             let score = -values::CHECK_MATE;
             node.set_score(score);
             node.set_best_score(score);
@@ -316,7 +321,7 @@ impl TreeSearch {
                 let player_move = child.get_move().ok_or(())?;
                 let moved_piece = child.get_moved_piece();
                 let captured_piece_opt = child.get_captured_piece();
-                let is_king_checked = child.get_engine().is_current_king_checked();
+                let is_king_checked = child.get_engine().is_king_checked();
 
                 let bonus = self.evaluator.evaluate_heuristic_move(
                     player_move,
