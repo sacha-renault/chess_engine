@@ -1,5 +1,6 @@
 use crate::prelude::{string_from_move, Engine, PlayerMove};
 use crate::static_evaluation::evaluator_trait::Evaluator;
+use crate::static_evaluation::values;
 
 use super::tree_node::NodeHandle;
 use super::tree_node_pool::TreeNodePool;
@@ -83,13 +84,9 @@ impl TreeSearch {
         let mut best_score = f32::NEG_INFINITY;
 
         // Get children (need to clone to avoid borrow issues)
-        let children = self
-            .pool
-            .get_node(node_handle)
-            .ok_or(())?
-            .get_children()
-            .clone();
+        let children = self.get_children_sorted_by_score(node_handle)?;
 
+        // Iterate over the child
         for child_handle in children {
             let score = -self.negamax(child_handle, depth - 1, -beta, -alpha, -color)?;
 
@@ -135,6 +132,13 @@ impl TreeSearch {
             .generate_moves_with_engine_state()
             .unwrap_or_default();
 
+        // If there is no possible moves, it means it's either stalemate
+        // or checkmate
+        if possible_moves.is_empty() {
+            self.evaluate_terminal_node(handle);
+            return Ok(());
+        }
+
         // Collect child handles first
         let mut child_handles = Vec::new();
 
@@ -168,6 +172,72 @@ impl TreeSearch {
         node.set_computed(true);
 
         Ok(())
+    }
+
+    /// Evaluates a terminal node (checkmate or stalemate)
+    ///
+    /// # Parameters
+    /// * `node` - Terminal node to evaluate
+    ///
+    /// # Returns
+    /// Score for the terminal position (0 for stalemate, CHECK_MATE_VALUE for checkmate)
+    fn evaluate_terminal_node(&mut self, handle: NodeHandle) -> f32 {
+        // Get the node
+        let node = self.pool.get_node_mut(handle).unwrap();
+
+        // if it's terminal node (number of moves == 0)
+        // it means it's either check mate or stale mate
+        if node.get_engine().is_current_king_checked() {
+            node.set_score(values::CHECK_MATE);
+            node.set_best_score(values::CHECK_MATE);
+            values::CHECK_MATE
+        } else {
+            // This is a stalemate case
+            node.set_score(0.);
+            node.set_best_score(0.);
+            0.
+        }
+    }
+
+    /// Returns sorted children nodes with their evaluation scores
+    ///
+    /// # Parameters
+    /// * `node` - Parent node whose children to sort
+    /// * `shallow_depth` - Depth for preliminary evaluation
+    ///
+    /// # Returns
+    /// Vector of node handles sorted by there score
+    fn get_children_sorted_by_score(&mut self, handle: NodeHandle) -> Result<Vec<NodeHandle>, ()> {
+        let children = self.pool.get_node(handle).ok_or(())?.get_children().clone();
+
+        let mut scored_children = children
+            .iter()
+            .map(|&child_handle| {
+                let child = self.pool.get_node(child_handle).ok_or(())?;
+                let base_score = child.get_score();
+
+                let player_move = child.get_move().ok_or(())?;
+                let moved_piece = child.get_moved_piece();
+                let captured_piece_opt = child.get_captured_piece();
+                let is_king_checked = child.get_engine().is_current_king_checked();
+
+                let bonus = self.evaluator.evaluate_heuristic_move(
+                    player_move,
+                    moved_piece,
+                    captured_piece_opt,
+                    is_king_checked,
+                ) * values::HEURISTIC_WEIGHT;
+
+                Ok((child_handle, base_score + bonus))
+            })
+            .collect::<Result<Vec<_>, ()>>()?;
+
+        scored_children.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        Ok(scored_children
+            .into_iter()
+            .map(|(handle, _)| handle)
+            .collect())
     }
 
     /// Gets the best move from the root node based on the search results
