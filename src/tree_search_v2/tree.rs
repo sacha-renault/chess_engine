@@ -22,6 +22,9 @@ impl TreeSearch {
         // Clear pool for new search
         self.pool.clear();
 
+        // Get if it's white turn or black
+        let color = if position.white_to_play() { 1 } else { -1 };
+
         // Create root node
         let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
 
@@ -30,14 +33,16 @@ impl TreeSearch {
 
         // Iterative deepening
         for i_depth in 1..=depth {
-            match self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY, 1) {
+            match self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY, color) {
                 Ok(_) => best_move = self.get_best_move(root),
                 Err(_) => break,
             }
             println!(
                 "Depth : {}, best move : {}",
                 i_depth,
-                string_from_move(&best_move.unwrap())
+                string_from_move(
+                    &best_move.expect(&format!("??? Why does it crashes ? : {}", i_depth))
+                )
             )
         }
 
@@ -69,13 +74,14 @@ impl TreeSearch {
         if depth == 0 {
             // Return evaluation * color for negamax
             return Ok(self.pool.get_node(node_handle).ok_or(())?.get_score() * color as f32);
+            return self.quiescence_search(node_handle, -beta, -alpha, -color);
         }
 
         // Generate children if not done yet
         if !self
             .pool
             .get_node(node_handle)
-            .unwrap()
+            .expect("`negamax` need a valid node handle")
             .has_children_computed()
         {
             self.generate_children(node_handle)?;
@@ -83,8 +89,18 @@ impl TreeSearch {
 
         let mut best_score = f32::NEG_INFINITY;
 
-        // Get children (need to clone to avoid borrow issues)
+        // Get children
         let children = self.get_children_sorted_by_score(node_handle)?;
+
+        // If there is no children at all, it means it's a terminal node
+        // We can return instant the best score!
+        if children.is_empty() {
+            return Ok(self
+                .pool
+                .get_node(node_handle)
+                .expect("`negamax` need a valid node handle")
+                .get_best_score());
+        }
 
         // Iterate over the child
         for child_handle in children {
@@ -95,7 +111,7 @@ impl TreeSearch {
                 // Update best move tracking
                 self.pool
                     .get_node_mut(node_handle)
-                    .unwrap()
+                    .expect("`negamax` children need a valid node handle")
                     .set_best_score(score);
             }
 
@@ -106,6 +122,72 @@ impl TreeSearch {
         }
 
         Ok(best_score)
+    }
+
+    fn quiescence_search(
+        &mut self,
+        node_handle: NodeHandle,
+        mut alpha: f32,
+        beta: f32,
+        color: i8,
+    ) -> Result<f32, ()> {
+        // Stand pat evaluation
+        let stand_pat = self.pool.get_node(node_handle).ok_or(())?.get_score();
+
+        if stand_pat >= beta {
+            return Ok(beta);
+        }
+
+        alpha = alpha.max(stand_pat);
+
+        // Generate only tactical moves (captures, checks, maybe promotions)
+        // Generate children if not done yet
+        if !self
+            .pool
+            .get_node(node_handle)
+            .unwrap()
+            .has_children_computed()
+        {
+            // TODO, we want to generate only tactical moves here
+            self.generate_children(node_handle)?;
+        }
+
+        // Get children (need to clone to avoid borrow issues)
+        let children = self.get_children_sorted_by_score(node_handle)?;
+        let mut best_score = stand_pat;
+
+        for child_handle in children {
+            if self.is_tactical_node(child_handle) {
+                let score = -self.quiescence_search(child_handle, -beta, -alpha, -color)?;
+
+                best_score = best_score.max(score);
+                alpha = alpha.max(score);
+
+                if alpha >= beta {
+                    break;
+                }
+            }
+        }
+
+        Ok(best_score)
+    }
+
+    fn is_tactical_node(&self, handle: NodeHandle) -> bool {
+        let node = self
+            .pool
+            .get_node(handle)
+            .expect("`is_tactical_node` needs a valid handle");
+
+        // Check if the move is a capture or gives check
+        if node.get_engine().is_current_king_checked() {
+            true
+        } else if node.get_captured_piece().is_some() {
+            true
+        } else if matches!(node.get_move(), Some(PlayerMove::Promotion(_))) {
+            true
+        } else {
+            false
+        }
     }
 
     /// Computes and adds all possible child nodes for a given position
@@ -183,14 +265,18 @@ impl TreeSearch {
     /// Score for the terminal position (0 for stalemate, CHECK_MATE_VALUE for checkmate)
     fn evaluate_terminal_node(&mut self, handle: NodeHandle) -> f32 {
         // Get the node
-        let node = self.pool.get_node_mut(handle).unwrap();
+        let node = self
+            .pool
+            .get_node_mut(handle)
+            .expect("`evaluate_terminal_node` needs a valid handle");
 
         // if it's terminal node (number of moves == 0)
         // it means it's either check mate or stale mate
         if node.get_engine().is_current_king_checked() {
-            node.set_score(values::CHECK_MATE);
-            node.set_best_score(values::CHECK_MATE);
-            values::CHECK_MATE
+            let score = -values::CHECK_MATE;
+            node.set_score(score);
+            node.set_best_score(score);
+            score
         } else {
             // This is a stalemate case
             node.set_score(0.);
@@ -207,7 +293,7 @@ impl TreeSearch {
     ///
     /// # Returns
     /// Vector of node handles sorted by there score
-    fn get_children_sorted_by_score(&mut self, handle: NodeHandle) -> Result<Vec<NodeHandle>, ()> {
+    fn get_children_sorted_by_score(&self, handle: NodeHandle) -> Result<Vec<NodeHandle>, ()> {
         let children = self.pool.get_node(handle).ok_or(())?.get_children().clone();
 
         let mut scored_children = children
@@ -255,21 +341,20 @@ impl TreeSearch {
             return None;
         }
 
-        // Get whos turn it is
-        let white_to_play = root_node.get_engine().white_to_play();
-
         let mut best_move = None;
         let mut best_score = f32::NEG_INFINITY;
 
         // Iterate through all child nodes to find the one with the best score
-        for &child_handle in root_node.get_children() {
+        for child_handle in self.get_children_sorted_by_score(root_handle).ok()? {
             if let Some(child_node) = self.pool.get_node(child_handle) {
                 // Get the score for this child (negated because we're looking from root's perspective)
-                let child_score = if white_to_play {
-                    -child_node.get_best_score()
-                } else {
-                    child_node.get_best_score()
-                };
+                let child_score = -child_node.get_best_score();
+
+                // println!(
+                //     "For move : {} - Best score : {}",
+                //     string_from_move(&child_node.get_move().unwrap()),
+                //     child_score
+                // );
 
                 if child_score > best_score {
                     best_score = child_score;
@@ -278,6 +363,7 @@ impl TreeSearch {
             }
         }
 
+        println!("Best mv score : {}", best_score);
         best_move
     }
 }
