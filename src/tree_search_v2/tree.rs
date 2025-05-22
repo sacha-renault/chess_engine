@@ -106,16 +106,27 @@ impl TreeSearch {
         for child_handle in children {
             let score = -self.negamax(child_handle, depth - 1, -beta, -alpha, -color)?;
 
-            if score > best_score {
-                best_score = score;
+            // Adjust mate scores to prefer shorter paths
+            let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
+                if score > 0. {
+                    score - 1.0 // Reduce mate score by 1 for each additional ply
+                } else {
+                    score + 1.0 // Increase (make less negative) mate score
+                }
+            } else {
+                score
+            };
+
+            if adjusted_score > best_score {
+                best_score = adjusted_score;
                 // Update best move tracking
                 self.pool
                     .get_node_mut(node_handle)
                     .expect("`negamax` children need a valid node handle")
-                    .set_best_score(score);
+                    .set_best_score(adjusted_score);
             }
 
-            alpha = alpha.max(score);
+            alpha = alpha.max(adjusted_score);
             if alpha >= beta {
                 break; // Alpha-beta pruning
             }

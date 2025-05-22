@@ -86,7 +86,7 @@ fn main() {
 Qxg7 Rg8 9. Qxh6 Ne5 10. Qf4 Bd6 11. Qh4 Nxd3+ 12. cxd3 Qe7 13. Nge2 Nd7 14. Qh7
 Nf6 15. Qh4 Rg4 16. Qh3 Bf5 17. e4 Bc8 18. exd5 Rg6 19. Qe3 Nxd5 20. Nxd5 cxd5
 21. Qd4 Rxg2 22. h3 Bc5 23. Qh8+ Qf8 24. Qxf8+ Kxf8 25. b3 Bf5 26. a3 Re8 27.
-Kd1 Bxd3 Nf4 Bd4 Ng2 Be2 Kc2 Rc8 Kb1 Bd3 Ka2 Rc2 Kb1 Rc3 Kb2 Rc2 Kb1",
+Kd1 Bxd3 Nf4 Bd4 Ng2 Be2 Kc2 Rc8 Kb1 Bd3 Ka2 Rc2 Bb2",
         )
         .unwrap();
 

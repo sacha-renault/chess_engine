@@ -4,6 +4,7 @@ pub const CAPTURE_BONUS: f32 = 1.;
 pub const CAPTURE_MVV_LVA_FACTOR: f32 = 1.;
 pub const CHECK_BONUS: f32 = 5.;
 pub const CHECK_MATE: f32 = 1e5 as f32;
+pub const MATE_THRESHOLD: f32 = 9e4 as f32;
 pub const VALUE_TB_WIN_IN_MAX_PLY: f32 = (CHECK_MATE as f32) / 2.;
 pub const WHITE_PAWNS_VALUE: [f32; 64] = [
     0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.83, 0.87, 0.87, 0.87, 0.9, 0.9, 0.87, 0.87, 0.87,
