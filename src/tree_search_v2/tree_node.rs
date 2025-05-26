@@ -13,7 +13,7 @@ pub struct TreeNode {
 
     // About the tree
     score: f32,
-    best_score: f32,
+    best_score: Option<f32>,
     computed: bool,
     children: Vec<NodeHandle>,
 }
@@ -32,7 +32,7 @@ impl TreeNode {
             children: Vec::new(),
             score,
             chess_move,
-            best_score: 0.,
+            best_score: None,
             computed: false,
             moved_piece,
             captured_piece,
@@ -50,7 +50,7 @@ impl TreeNode {
     }
 
     /// Get the best score
-    pub fn get_best_score(&self) -> f32 {
+    pub fn get_best_score(&self) -> Option<f32> {
         self.best_score
     }
 
@@ -85,7 +85,7 @@ impl TreeNode {
 
     /// Set the best score
     pub fn set_best_score(&mut self, score: f32) {
-        self.best_score = score;
+        self.best_score = Some(score);
     }
 
     /// Sets whether this node's children have been computed

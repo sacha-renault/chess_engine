@@ -4,6 +4,7 @@ use crate::prelude::{string_from_move, Engine, PlayerMove};
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
+use super::search_result::SearchResult;
 use super::tree_node::NodeHandle;
 use super::tree_node_pool::TreeNodePool;
 
@@ -20,46 +21,30 @@ impl TreeSearch {
         }
     }
 
-    pub fn iterative_search(&mut self, position: Engine, depth: u8) -> Option<PlayerMove> {
+    pub fn iterative_search(&mut self, position: Engine, depth: u8) -> Option<SearchResult> {
         // Clear pool for new search
         self.pool.clear();
 
         // Create root node
         let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
 
-        // Init best move
-        let mut best_move = None;
+        // Init best score
+        let mut score = 0.;
+        let mut depth_reached = 0;
 
         // Iterative deepening
         for i_depth in 1..=depth {
-            match self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
-                Ok(_) => best_move = self.get_best_move(root),
-                Err(_) => break,
+            if let Ok(dscore) = self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
+                score = dscore;
+                depth_reached = i_depth;
+            } else {
+                break;
             }
-            println!(
-                "Depth : {}, best move : {}",
-                i_depth,
-                string_from_move(
-                    &best_move.expect(&format!("??? Why does it crashes ? : {}", i_depth))
-                )
-            )
         }
 
-        best_move
-    }
-
-    pub fn search(&mut self, position: Engine, depth: u8) -> Option<PlayerMove> {
-        // Clear pool for new search
-        self.pool.clear();
-
-        // Create root node
-        let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
-
-        // Run negamax
-        let _ = self.negamax(root, depth, f32::NEG_INFINITY, f32::INFINITY);
-
-        // Return best move from root's children
-        self.get_best_move(root)
+        // Extract principale variation
+        let pv = self.extract_principal_variation(root);
+        Some(SearchResult::new(pv, score, depth_reached.into()))
     }
 
     fn negamax(
@@ -73,7 +58,15 @@ impl TreeSearch {
             if self.is_tactical_node(node_handle) {
                 return self.quiescence_search(node_handle, alpha, beta);
             } else {
-                return Ok(self.pool.get_node(node_handle).ok_or(())?.get_score());
+                let static_eval = self.pool.get_node(node_handle).ok_or(())?.get_score();
+
+                // Set the best_score for this leaf node
+                self.pool
+                    .get_node_mut(node_handle)
+                    .ok_or(())?
+                    .set_best_score(static_eval);
+
+                return Ok(static_eval);
             }
         }
 
@@ -137,21 +130,27 @@ impl TreeSearch {
         mut alpha: f32,
         beta: f32,
     ) -> Result<f32, ()> {
-        // Stand pat evaluation
         let stand_pat = self.pool.get_node(node_handle).ok_or(())?.get_score();
 
         if stand_pat >= beta {
+            self.pool
+                .get_node_mut(node_handle)
+                .ok_or(())?
+                .set_best_score(beta);
             return Ok(beta);
         }
 
         alpha = alpha.max(stand_pat);
 
-        // Delta pruning - if even the best possible capture won't improve alpha enough
+        // Delta pruning
         if stand_pat + get_value_by_piece(Piece::Queen) < alpha {
+            self.pool
+                .get_node_mut(node_handle)
+                .ok_or(())?
+                .set_best_score(alpha);
             return Ok(alpha);
         }
 
-        // Generate only tactical moves (captures, checks, maybe promotions)
         // Generate children if not done yet
         if !self
             .pool
@@ -159,11 +158,9 @@ impl TreeSearch {
             .unwrap()
             .has_children_computed()
         {
-            // TODO, we want to generate only tactical moves here
             self.generate_children(node_handle)?;
         }
 
-        // Get children (need to clone to avoid borrow issues)
         let children = self.get_children_sorted_by_score(node_handle)?;
         let mut best_score = stand_pat;
 
@@ -180,6 +177,11 @@ impl TreeSearch {
             }
         }
 
+        // IMPORTANT: Always set the best_score before returning
+        self.pool
+            .get_node_mut(node_handle)
+            .ok_or(())?
+            .set_best_score(best_score);
         Ok(best_score)
     }
 
@@ -311,6 +313,7 @@ impl TreeSearch {
             .iter()
             .map(|&child_handle| {
                 let child = self.pool.get_node(child_handle).ok_or(())?;
+                // let base_score = child.get_best_score().unwrap_or(child.get_score());
                 let base_score = child.get_score();
 
                 let player_move = child.get_move().ok_or(())?;
@@ -337,37 +340,51 @@ impl TreeSearch {
             .collect())
     }
 
-    /// Gets the best move from the root node based on the search results
-    ///
-    /// # Parameters
-    /// * `root_handle` - Handle to the root node of the search tree
-    ///
-    /// # Returns
-    /// * `Some(PlayerMove)` - The best move found, or None if no moves available
-    fn get_best_move(&self, root_handle: NodeHandle) -> Option<PlayerMove> {
-        let root_node = self.pool.get_node(root_handle)?;
+    fn extract_principal_variation(&self, mut current_handle: NodeHandle) -> Vec<PlayerMove> {
+        let mut pv = Vec::new();
 
-        if root_node.get_children().is_empty() {
-            return None;
-        }
+        loop {
+            let current_node = match self.pool.get_node(current_handle) {
+                Some(node) => node,
+                None => break,
+            };
 
-        let mut best_move = None;
-        let mut best_score = f32::NEG_INFINITY;
+            if current_node.get_children().is_empty() {
+                break;
+            }
 
-        for &child_handle in root_node.get_children() {
-            if let Some(child_node) = self.pool.get_node(child_handle) {
-                // The child's best_score represents the value from the child's perspective
-                // So we negate it to get the value from root's perspective
-                let child_score = -child_node.get_best_score();
+            let mut best_child_handle = None;
+            let mut best_score = f32::NEG_INFINITY;
 
-                if child_score > best_score {
-                    best_score = child_score;
-                    best_move = child_node.get_move().clone();
+            for &child_handle in current_node.get_children() {
+                if let Some(child_node) = self.pool.get_node(child_handle) {
+                    // Only consider evaluated nodes
+                    if let Some(child_best_score) = child_node.get_best_score() {
+                        let child_score = -child_best_score;
+
+                        if child_score > best_score {
+                            best_score = child_score;
+                            best_child_handle = Some(child_handle);
+                        }
+                    }
                 }
+            }
+
+            match best_child_handle {
+                Some(handle) => {
+                    if let Some(best_child) = self.pool.get_node(handle) {
+                        if let Some(move_) = best_child.get_move() {
+                            pv.push(move_.clone());
+                        }
+                        current_handle = handle;
+                    } else {
+                        break;
+                    }
+                }
+                None => break,
             }
         }
 
-        println!("Best mv score : {}", best_score);
-        best_move
+        pv
     }
 }
