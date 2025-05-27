@@ -1,15 +1,20 @@
 use crate::prelude::PlayerMove;
+use crate::static_evaluation::values;
 use std::collections::HashMap;
 
 /// Type of bound stored in the transposition table entry
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BoundType {
-    /// Exact score (PV node)
     Exact,
-    /// Lower bound (beta cutoff, fail-high)
     LowerBound,
-    /// Upper bound (fail-low, all moves searched without improving alpha)
     UpperBound,
+}
+
+#[derive(Debug, Clone)]
+pub enum ProbeResult {
+    Score(f32),
+    Move(PlayerMove),
+    Miss,
 }
 
 /// Entry in the transposition table
@@ -21,8 +26,10 @@ pub struct TTEntry {
     pub best_move: Option<PlayerMove>,
     /// Evaluation score
     pub score: f32,
-    /// Search depth when this entry was created
+    /// Search depth when this entry was created (remaining depth from this position)
     pub depth: usize,
+    /// Ply from root when this entry was created
+    pub ply: usize,
     /// Type of bound (exact, lower, upper)
     pub bound_type: BoundType,
     /// Age/generation for replacement scheme
@@ -35,6 +42,7 @@ impl TTEntry {
         best_move: Option<PlayerMove>,
         score: f32,
         depth: usize,
+        ply: usize,
         bound_type: BoundType,
         age: u32,
     ) -> Self {
@@ -43,6 +51,7 @@ impl TTEntry {
             best_move,
             score,
             depth,
+            ply,
             bound_type,
             age,
         }
@@ -51,19 +60,14 @@ impl TTEntry {
 
 /// Transposition Table for storing search results
 pub struct TranspositionTable {
-    /// The actual table storing entries
     table: HashMap<u64, TTEntry>,
-    /// Maximum number of entries (for memory management)
     max_size: usize,
-    /// Current age/generation for replacement scheme
     current_age: u32,
-    /// Statistics
     hits: u64,
     misses: u64,
 }
 
 impl TranspositionTable {
-    /// Create a new transposition table with given capacity
     pub fn with_capacity(max_size: usize) -> Self {
         Self {
             table: HashMap::with_capacity(max_size),
@@ -74,71 +78,124 @@ impl TranspositionTable {
         }
     }
 
-    /// Create with default capacity (1M entries ≈ 64MB)
     pub fn with_default_capacity() -> Self {
         Self::with_capacity(1_000_000)
     }
 
     /// Probe the transposition table for a position
+    ///
+    /// # Parameters
+    /// * `hash` - Zobrist hash of the position
+    /// * `depth` - Remaining depth needed for this search
+    /// * `ply` - Distance from root (for mate score adjustment)
+    /// * `alpha`, `beta` - Alpha-beta bounds
     pub fn probe(
         &mut self,
         hash: u64,
         depth: usize,
+        ply: usize,
         alpha: f32,
         beta: f32,
-    ) -> Option<(f32, Option<PlayerMove>)> {
-        if let Some(entry) = self.table.get(&hash) {
-            // Verify hash collision protection
-            if entry.hash != hash {
-                self.misses += 1;
-                return None;
-            }
+    ) -> ProbeResult {
+        if (self.hits + self.misses) % 100000 == 0 {
+            println!("Probing hash: {:x} at depth {} ply {}", hash, depth, ply);
 
-            // Only use entries from equal or greater depth
-            if entry.depth >= depth {
-                let score = self.adjust_mate_score_from_tt(entry.score, depth);
-
-                // Check if we can use this score based on bound type
-                let can_use = match entry.bound_type {
-                    BoundType::Exact => true,
-                    BoundType::LowerBound => score >= beta,
-                    BoundType::UpperBound => score <= alpha,
-                };
-
-                if can_use {
-                    self.hits += 1;
-                    return Some((score, entry.best_move.clone()));
+            // Check if we're storing this position
+            match self.table.get(&hash) {
+                Some(entry) => {
+                    println!(
+                        "  Found entry: depth={}, ply={}, our_depth={}, our_ply={}",
+                        entry.depth, entry.ply, depth, ply
+                    )
                 }
-            }
-
-            // Even if we can't use the score, we can still use the best move for ordering
-            if entry.best_move.is_some() {
-                self.hits += 1;
-                return Some((f32::NAN, entry.best_move.clone())); // NAN signals "use move only"
+                None => println!("  No entry found"),
             }
         }
 
-        self.misses += 1;
-        None
+        if let Some(entry) = self.table.get(&hash) {
+            // Check if stored search was deep enough
+            let has_usable_score = entry.depth >= depth;
+
+            let score = if has_usable_score {
+                Some(self.adjust_mate_score_from_tt(entry.score, ply))
+            } else {
+                None
+            };
+
+            // Check if we can use this score based on bound type
+            let score_is_cutoff = if let Some(s) = score {
+                match entry.bound_type {
+                    BoundType::Exact => true,
+                    BoundType::LowerBound => s >= beta,
+                    BoundType::UpperBound => s <= alpha,
+                }
+            } else {
+                false
+            };
+
+            match (score_is_cutoff, score, &entry.best_move) {
+                // Best case: we have a cutoff score
+                (true, Some(s), _) => {
+                    self.hits += 1;
+                    ProbeResult::Score(s)
+                }
+                // Useful case: we have a move for ordering (but no usable score)
+                (false, _, Some(mv)) => {
+                    self.hits += 1;
+                    ProbeResult::Move(mv.clone())
+                }
+                // No useful information
+                _ => {
+                    self.misses += 1;
+                    ProbeResult::Miss
+                }
+            }
+        } else {
+            self.misses += 1;
+            ProbeResult::Miss
+        }
     }
 
     /// Store an entry in the transposition table
+    ///
+    /// # Parameters
+    /// * `hash` - Zobrist hash of the position
+    /// * `best_move` - Best move found
+    /// * `score` - Search score
+    /// * `depth` - Remaining depth that was searched
+    /// * `ply` - Distance from root (for mate score adjustment)
+    /// * `bound_type` - Type of bound
     pub fn store(
         &mut self,
         hash: u64,
         best_move: Option<PlayerMove>,
         score: f32,
         depth: usize,
+        ply: usize,
         bound_type: BoundType,
     ) {
+        // Improved replacement logic considering both depth and ply
+        if let Some(existing) = self.table.get(&hash) {
+            // Keep deeper searches, but also prefer entries from closer to root for same depth
+            let should_keep_existing = existing.depth > depth
+                || (existing.depth == depth
+                    && existing.ply < ply
+                    && existing.age >= self.current_age.saturating_sub(2));
+
+            if should_keep_existing {
+                return;
+            }
+        }
+
         // Adjust mate scores for storage
-        let adjusted_score = self.adjust_mate_score_for_tt(score, depth);
+        let adjusted_score = self.adjust_mate_score_for_tt(score, ply);
 
         let entry = TTEntry::new(
             hash,
             best_move,
             adjusted_score,
             depth,
+            ply,
             bound_type,
             self.current_age,
         );
@@ -154,7 +211,7 @@ impl TranspositionTable {
 
     /// Adjust mate scores when storing to TT (relative to current position)
     fn adjust_mate_score_for_tt(&self, score: f32, ply: usize) -> f32 {
-        if score.abs() > crate::static_evaluation::values::MATE_THRESHOLD {
+        if score.abs() > values::MATE_THRESHOLD {
             if score > 0.0 {
                 score + ply as f32
             } else {
@@ -167,7 +224,7 @@ impl TranspositionTable {
 
     /// Adjust mate scores when retrieving from TT (relative to current position)
     fn adjust_mate_score_from_tt(&self, score: f32, ply: usize) -> f32 {
-        if score.abs() > crate::static_evaluation::values::MATE_THRESHOLD {
+        if score.abs() > values::MATE_THRESHOLD {
             if score > 0.0 {
                 score - ply as f32
             } else {
@@ -180,12 +237,11 @@ impl TranspositionTable {
 
     /// Make room in the table by removing old/shallow entries
     fn make_room(&mut self) {
-        // Simple replacement scheme: remove entries from older generations
-        // or with lower depth if same generation
+        // Improved replacement scheme considering depth, ply, and age
         if let Some((&worst_hash, _)) = self
             .table
             .iter()
-            .min_by_key(|(_, entry)| (entry.age, entry.depth))
+            .min_by_key(|(_, entry)| (entry.age, entry.depth, std::cmp::Reverse(entry.ply)))
         {
             self.table.remove(&worst_hash);
         }

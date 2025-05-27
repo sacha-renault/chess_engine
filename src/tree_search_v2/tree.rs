@@ -9,6 +9,7 @@ use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
 use super::search_result::SearchResult;
+use super::transposition_table::{get_bound_type, ProbeResult, TranspositionTable};
 use super::tree_node::NodeHandle;
 use super::tree_node_pool::TreeNodePool;
 
@@ -16,6 +17,7 @@ use super::tree_node_pool::TreeNodePool;
 #[builder(pattern = "owned")]
 pub struct TreeSearch {
     pool: TreeNodePool,
+    tt: TranspositionTable,
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
     max_q_depth: usize,
@@ -29,12 +31,18 @@ impl TreeSearchBuilder {
         self.pool = Some(TreeNodePool::with_capacity(capacity));
         self
     }
+
+    pub fn tt_capacity(mut self, capacity: usize) -> Self {
+        self.tt = Some(TranspositionTable::with_capacity(capacity));
+        self
+    }
 }
 
 impl TreeSearch {
     pub fn iterative_search(&mut self, position: Engine) -> Option<SearchResult> {
         // Clear pool for new search
         self.pool.clear();
+        self.tt.new_search();
 
         // Create root node
         let root = self.pool.allocate_node(position, 0.0, None, None, None)?;
@@ -46,7 +54,7 @@ impl TreeSearch {
 
         // Iterative deepening
         for i_depth in 1..=self.max_depth {
-            if let Ok(dscore) = self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
+            if let Ok(dscore) = self.negamax(root, i_depth, 0, f32::NEG_INFINITY, f32::INFINITY) {
                 score = dscore;
                 depth_reached = i_depth;
                 node_count_reached = self.pool.len();
@@ -54,6 +62,16 @@ impl TreeSearch {
                 break;
             }
         }
+
+        // Print TT stats for debugging
+        let (tt_size, hits, misses, hit_rate) = self.tt.stats();
+        println!(
+            "TT size={}, hits={}, misses={}, hit_rate={:.2}%",
+            tt_size,
+            hits,
+            misses,
+            hit_rate * 100.0
+        );
 
         // Extract principale variation
         let best_move = self.get_best_move(root)?;
@@ -71,9 +89,26 @@ impl TreeSearch {
         &mut self,
         node_handle: NodeHandle,
         depth: usize,
+        ply: usize,
         mut alpha: f32,
         beta: f32,
     ) -> Result<f32, ()> {
+        // TT handling
+        let original_alpha = alpha;
+        let mut best_move = None;
+        let mut tt_move = None;
+        let hash = self
+            .pool
+            .get_node(node_handle)
+            .ok_or(())?
+            .get_engine()
+            .compute_board_hash();
+        match self.tt.probe(hash, depth, ply, alpha, beta) {
+            ProbeResult::Score(score) => return Ok(score),
+            ProbeResult::Move(tt_best_move) => tt_move = Some(tt_best_move),
+            _ => {} // That's a miss ... Sad but we can normal search !
+        }
+
         if depth == 0 {
             if self.is_tactical_node(node_handle) {
                 return self.quiescence_search(node_handle, alpha, beta, 0);
@@ -99,7 +134,7 @@ impl TreeSearch {
             self.generate_children(node_handle)?;
         }
 
-        let children = self.get_children_sorted_by_score(node_handle)?;
+        let children = self.get_children_sorted_by_score(node_handle, tt_move)?;
 
         if children.is_empty() {
             // Terminal position - return the static evaluation
@@ -119,7 +154,8 @@ impl TreeSearch {
             let score = -self.negamax(
                 child_handle,
                 depth - 1,
-                -widened_beta, // Negate the widened values
+                ply + 1,
+                -widened_beta,
                 -widened_alpha,
             )?;
 
@@ -134,13 +170,23 @@ impl TreeSearch {
                 score
             };
 
-            best_score = best_score.max(adjusted_score);
+            if adjusted_score > best_score {
+                best_score = adjusted_score;
+                if let Some(child_node) = self.pool.get_node(child_handle) {
+                    best_move = child_node.get_move().clone();
+                }
+            }
             alpha = alpha.max(adjusted_score);
 
             if alpha >= beta {
                 break;
             }
         }
+
+        // Store in transposition table
+        let bound_type = get_bound_type(best_score, original_alpha, beta);
+        self.tt
+            .store(hash, best_move, best_score, depth, ply, bound_type);
 
         // Store the best score for this node
         self.pool
@@ -198,7 +244,16 @@ impl TreeSearch {
             self.generate_children(node_handle)?;
         }
 
-        let children = self.get_children_sorted_by_score(node_handle)?;
+        let children = self.get_children_sorted_by_score(node_handle, None)?;
+        if children.is_empty() {
+            // Terminal position - return the static evaluation
+            return Ok(self
+                .pool
+                .get_node(node_handle)
+                .expect("`negamax` need a valid node handle")
+                .get_score());
+        }
+
         let mut best_score = stand_pat;
 
         for child_handle in children {
@@ -357,7 +412,11 @@ impl TreeSearch {
     ///
     /// # Returns
     /// Vector of node handles sorted by there score
-    fn get_children_sorted_by_score(&self, handle: NodeHandle) -> Result<Vec<NodeHandle>, ()> {
+    fn get_children_sorted_by_score(
+        &self,
+        handle: NodeHandle,
+        tt_move: Option<PlayerMove>,
+    ) -> Result<Vec<NodeHandle>, ()> {
         let children = self.pool.get_node(handle).ok_or(())?.get_children().clone();
 
         let mut scored_children = children
@@ -383,7 +442,24 @@ impl TreeSearch {
             })
             .collect::<Result<Vec<_>, ()>>()?;
 
-        scored_children.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored_children.sort_by(|a, b| {
+            // Check if either move matches the TT move
+            let a_node = self.pool.get_node(a.0).unwrap();
+            let b_node = self.pool.get_node(b.0).unwrap();
+
+            let a_is_tt = tt_move
+                .as_ref()
+                .map_or(false, |tt| a_node.get_move().as_ref() == Some(tt));
+            let b_is_tt = tt_move
+                .as_ref()
+                .map_or(false, |tt| b_node.get_move().as_ref() == Some(tt));
+
+            match (a_is_tt, b_is_tt) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal),
+            }
+        });
 
         Ok(scored_children
             .into_iter()
@@ -397,7 +473,7 @@ impl TreeSearch {
         let mut best_score = f32::NEG_INFINITY;
 
         // Explore children and return the one with the best score
-        for node_handle in self.get_children_sorted_by_score(root_handle).ok()? {
+        for node_handle in self.get_children_sorted_by_score(root_handle, None).ok()? {
             if let Some(node) = self.pool.get_node(node_handle) {
                 let score = -node.get_best_score()?;
                 if score > best_score {
