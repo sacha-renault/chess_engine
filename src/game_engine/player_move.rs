@@ -1,5 +1,6 @@
 use super::utility::coordinates_to_u64;
-use crate::pieces::Piece;
+use crate::{pieces::Piece, prelude::string_from_move};
+use std::fmt;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum CastlingMove {
@@ -63,4 +64,15 @@ pub enum PlayerMove {
     Normal(NormalMove),
     Castling(CastlingMove),
     Promotion(PromotionMove),
+}
+
+impl fmt::Display for PlayerMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let move_type = match self {
+            PlayerMove::Castling(_) => "CastlingMove",
+            PlayerMove::Normal(_) => "NormalMove",
+            PlayerMove::Promotion(_) => "Promotion",
+        };
+        write!(f, "{}({})", move_type, string_from_move(self))
+    }
 }

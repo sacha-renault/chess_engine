@@ -3,6 +3,7 @@ use chess_engine::prelude::evaluators::{AdvancedEvaluator, BasicEvaluator};
 use chess_engine::prelude::Engine;
 use chess_engine::prelude::TreeSearch;
 use chess_engine::prelude::{print_board, string_from_move};
+use chess_engine::tree_search_v2::tree::TreeSearchBuilder;
 
 use std::io::Write;
 
@@ -46,29 +47,12 @@ fn play_against_robot(mut engine: Engine, mut tree: TreeSearch) {
             }
         };
 
-        let next_move = tree.iterative_search(engine.clone(), 8).unwrap();
+        let next_move = tree.iterative_search(engine.clone()).unwrap();
         let _ = engine.play(*next_move.best_move());
 
         print_board(engine.get_board());
 
-        println!(
-            "{} played: {} with score : {}, depth : {} and max depth : {}",
-            played_str,
-            string_from_move(next_move.best_move()),
-            next_move.score(),
-            next_move.depth(),
-            next_move.max_depth()
-        );
-
-        println!(
-            "Principale variation : {}",
-            next_move
-                .principale_variation()
-                .iter()
-                .map(|item| string_from_move(item))
-                .collect::<Vec<_>>()
-                .join(" > ")
-        );
+        println!("{} {}", played_str, next_move);
 
         // user input
         let mut incorrect_move = true;
@@ -133,7 +117,13 @@ fn play_against_robot(mut engine: Engine, mut tree: TreeSearch) {
 fn main() {
     // Init the tree
     let evaluator = AdvancedEvaluator::default();
-    let tree = TreeSearch::new(1e6 as usize, Box::new(evaluator));
+    let tree = TreeSearchBuilder::default()
+        .pool_capacity(1e7 as usize)
+        .evaluator(Box::new(evaluator))
+        .max_depth(8)
+        .max_q_depth(8)
+        .build()
+        .unwrap();
 
     // init the engine
     let mut engine = Engine::new();

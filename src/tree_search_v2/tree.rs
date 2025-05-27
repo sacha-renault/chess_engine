@@ -1,6 +1,8 @@
+use derive_builder::Builder;
+
 use crate::pieces::Piece;
 use crate::prelude::evaluators::utility::get_value_by_piece;
-use crate::prelude::{string_from_move, Engine, PlayerMove};
+use crate::prelude::{Engine, PlayerMove};
 use crate::static_evaluation::evaluator_trait::Evaluator;
 use crate::static_evaluation::values;
 
@@ -8,20 +10,24 @@ use super::search_result::SearchResult;
 use super::tree_node::NodeHandle;
 use super::tree_node_pool::TreeNodePool;
 
+#[derive(Builder)]
+#[builder(pattern = "owned")]
 pub struct TreeSearch {
     pool: TreeNodePool,
     evaluator: Box<dyn Evaluator>,
+    max_depth: usize,
+    max_q_depth: usize,
+}
+
+impl TreeSearchBuilder {
+    pub fn pool_capacity(mut self, capacity: usize) -> Self {
+        self.pool = Some(TreeNodePool::with_capacity(capacity));
+        self
+    }
 }
 
 impl TreeSearch {
-    pub fn new(pool_capacity: usize, evaluator: Box<dyn Evaluator>) -> Self {
-        Self {
-            pool: TreeNodePool::with_capacity(pool_capacity),
-            evaluator,
-        }
-    }
-
-    pub fn iterative_search(&mut self, position: Engine, depth: u8) -> Option<SearchResult> {
+    pub fn iterative_search(&mut self, position: Engine) -> Option<SearchResult> {
         // Clear pool for new search
         self.pool.clear();
 
@@ -31,12 +37,14 @@ impl TreeSearch {
         // Init best score
         let mut score = 0.;
         let mut depth_reached = 0;
+        let mut node_count_reached = 0;
 
         // Iterative deepening
-        for i_depth in 1..=depth {
+        for i_depth in 1..=self.max_depth {
             if let Ok(dscore) = self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
                 score = dscore;
                 depth_reached = i_depth;
+                node_count_reached = self.pool.len();
             } else {
                 break;
             }
@@ -44,19 +52,26 @@ impl TreeSearch {
 
         // Extract principale variation
         let pv = self.extract_principal_variation(root);
-        Some(SearchResult::new(pv, score, depth_reached.into()))
+        let max_qdepth = self.get_tree_max_depth(root);
+        Some(SearchResult::new(
+            pv,
+            score,
+            depth_reached.into(),
+            max_qdepth,
+            node_count_reached,
+        ))
     }
 
     fn negamax(
         &mut self,
         node_handle: NodeHandle,
-        depth: u8,
+        depth: usize,
         mut alpha: f32,
         beta: f32,
     ) -> Result<f32, ()> {
         if depth == 0 {
             if self.is_tactical_node(node_handle) {
-                return self.quiescence_search(node_handle, alpha, beta);
+                return self.quiescence_search(node_handle, alpha, beta, 0);
             } else {
                 let static_eval = self.pool.get_node(node_handle).ok_or(())?.get_score();
 
@@ -129,6 +144,7 @@ impl TreeSearch {
         node_handle: NodeHandle,
         mut alpha: f32,
         beta: f32,
+        current_q_depth: usize,
     ) -> Result<f32, ()> {
         let stand_pat = self.pool.get_node(node_handle).ok_or(())?.get_score();
 
@@ -141,6 +157,15 @@ impl TreeSearch {
         }
 
         alpha = alpha.max(stand_pat);
+
+        // Early return if we've reached max qsearch depth
+        if current_q_depth >= self.max_q_depth {
+            self.pool
+                .get_node_mut(node_handle)
+                .ok_or(())?
+                .set_best_score(stand_pat);
+            return Ok(stand_pat);
+        }
 
         // Delta pruning
         if stand_pat + get_value_by_piece(Piece::Queen) < alpha {
@@ -166,7 +191,21 @@ impl TreeSearch {
 
         for child_handle in children {
             if self.is_tactical_node(child_handle) {
-                let score = -self.quiescence_search(child_handle, -beta, -alpha)?;
+                //skip obvious bad captures at deeper levels
+                if current_q_depth > 2 {
+                    if let Some(child_node) = self.pool.get_node(child_handle) {
+                        // Skip if this looks like a losing capture
+                        if let Some(captured_piece) = child_node.get_captured_piece() {
+                            let capture_value = get_value_by_piece(captured_piece);
+                            if stand_pat + capture_value + 100.0 < alpha {
+                                continue; // Skip this capture
+                            }
+                        }
+                    }
+                }
+
+                let score =
+                    -self.quiescence_search(child_handle, -beta, -alpha, current_q_depth + 1)?;
 
                 best_score = best_score.max(score);
                 alpha = alpha.max(score);
@@ -386,5 +425,14 @@ impl TreeSearch {
         }
 
         pv
+    }
+
+    fn get_tree_max_depth(&self, handle: NodeHandle) -> usize {
+        if let Some(node) = self.pool.get_node(handle) {
+            return node.get_children().iter().fold(0, |current_max, handle| {
+                current_max.max(self.get_tree_max_depth(*handle))
+            }) + 1;
+        }
+        0
     }
 }

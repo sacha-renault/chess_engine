@@ -10,6 +10,12 @@ pub struct TreeNodePool {
     allocated_count: usize,
 }
 
+impl Default for TreeNodePool {
+    fn default() -> Self {
+        Self::with_capacity(1)
+    }
+}
+
 impl TreeNodePool {
     /// Create a new pool with the specified capacity
     pub fn with_capacity(capacity: usize) -> Self {
