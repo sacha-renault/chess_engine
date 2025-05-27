@@ -17,6 +17,9 @@ pub struct TreeSearch {
     evaluator: Box<dyn Evaluator>,
     max_depth: usize,
     max_q_depth: usize,
+
+    #[builder(default = 0.)]
+    window_margin: f32,
 }
 
 impl TreeSearchBuilder {
@@ -109,7 +112,14 @@ impl TreeSearch {
 
         for child_handle in children {
             // Standard negamax recursion
-            let score = -self.negamax(child_handle, depth - 1, -beta, -alpha)?;
+            let widened_alpha = alpha - self.window_margin;
+            let widened_beta = beta + self.window_margin;
+            let score = -self.negamax(
+                child_handle,
+                depth - 1,
+                -widened_beta, // Negate the widened values
+                -widened_alpha,
+            )?;
 
             // Mate score adjustment
             let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
