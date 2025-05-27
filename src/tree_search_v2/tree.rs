@@ -1,3 +1,5 @@
+use core::f32;
+
 use derive_builder::Builder;
 
 use crate::pieces::Piece;
@@ -43,8 +45,8 @@ impl TreeSearch {
         let mut node_count_reached = 0;
 
         // Iterative deepening
-        for i_depth in 0..self.max_depth {
-            if let Ok(dscore) = self.negamax(root, i_depth + 1, f32::NEG_INFINITY, f32::INFINITY) {
+        for i_depth in 1..=self.max_depth {
+            if let Ok(dscore) = self.negamax(root, i_depth, f32::NEG_INFINITY, f32::INFINITY) {
                 score = dscore;
                 depth_reached = i_depth;
                 node_count_reached = self.pool.len();
@@ -54,10 +56,10 @@ impl TreeSearch {
         }
 
         // Extract principale variation
-        let pv = self.extract_principal_variation(root);
+        let best_move = self.get_best_move(root)?;
         let max_qdepth = self.get_tree_max_depth(root);
         Some(SearchResult::new(
-            pv,
+            best_move,
             score,
             depth_reached.into(),
             max_qdepth,
@@ -362,8 +364,8 @@ impl TreeSearch {
             .iter()
             .map(|&child_handle| {
                 let child = self.pool.get_node(child_handle).ok_or(())?;
-                // let base_score = child.get_best_score().unwrap_or(child.get_score());
-                let base_score = child.get_score();
+                let base_score = child.get_best_score().unwrap_or(child.get_score());
+                // let base_score = child.get_score();
 
                 let player_move = child.get_move().ok_or(())?;
                 let moved_piece = child.get_moved_piece();
@@ -389,116 +391,135 @@ impl TreeSearch {
             .collect())
     }
 
-    fn extract_principal_variation(&self, mut current_handle: NodeHandle) -> Vec<PlayerMove> {
-        let mut pv = Vec::new();
+    fn get_best_move(&self, root_handle: NodeHandle) -> Option<PlayerMove> {
+        // init the best move at none
+        let mut best_move = None;
+        let mut best_score = f32::NEG_INFINITY;
 
-        loop {
-            let current_node = match self.pool.get_node(current_handle) {
-                Some(node) => node,
-                None => {
-                    println!("PV: No node found for handle");
-                    break;
+        // Explore children and return the one with the best score
+        for node_handle in self.get_children_sorted_by_score(root_handle).ok()? {
+            if let Some(node) = self.pool.get_node(node_handle) {
+                let score = -node.get_best_score()?;
+                if score > best_score {
+                    best_move = Some(node.get_move().clone()?);
+                    best_score = score;
                 }
-            };
-
-            if current_node.get_children().is_empty() {
-                // DEBUG: Check why this node has no children
-                let engine = current_node.get_engine();
-                let is_check = engine.is_king_checked();
-                let has_children_computed = current_node.has_children_computed();
-
-                println!("PV: No children, stopping at depth {}", pv.len());
-                println!("PV: Node has_children_computed: {}", has_children_computed);
-                println!("PV: King in check: {}", is_check);
-
-                if has_children_computed {
-                    println!("PV: This is a TERMINAL position (mate or stalemate)");
-                    if is_check {
-                        println!("PV: *** CHECKMATE FOUND! ***");
-                    } else {
-                        println!("PV: Stalemate position");
-                    }
-                } else {
-                    println!("PV: Children not computed (search depth limit or leaf)");
-                }
-
-                // Also check the node's score for confirmation
-                if let Some(best_score) = current_node.get_best_score() {
-                    println!("PV: Final position score: {}", best_score);
-                    if best_score.abs() > values::MATE_THRESHOLD {
-                        println!("PV: *** MATE SCORE CONFIRMED! ***");
-                    }
-                }
-
-                break;
-            }
-
-            println!(
-                "PV: At depth {}, checking {} children",
-                pv.len(),
-                current_node.get_children().len()
-            );
-
-            let mut best_child_handle = None;
-            let mut best_score = f32::NEG_INFINITY;
-            let mut evaluated_children = 0;
-
-            for &child_handle in current_node.get_children() {
-                if let Some(child_node) = self.pool.get_node(child_handle) {
-                    // Check if child has best_score
-                    if let Some(child_best_score) = child_node.get_best_score() {
-                        evaluated_children += 1;
-                        let child_score = -child_best_score;
-
-                        if child_score > best_score {
-                            best_score = child_score;
-                            best_child_handle = Some(child_handle);
-                        }
-                    } else {
-                        // This child wasn't fully evaluated
-                        println!("PV: Child without best_score found");
-                    }
-                }
-            }
-
-            println!(
-                "PV: {}/{} children have best_score",
-                evaluated_children,
-                current_node.get_children().len()
-            );
-
-            match best_child_handle {
-                Some(handle) => {
-                    if let Some(best_child) = self.pool.get_node(handle) {
-                        if let Some(move_) = best_child.get_move() {
-                            pv.push(move_.clone());
-                            println!("PV: Added move, now {} moves deep", pv.len());
-                            current_handle = handle;
-                        } else {
-                            println!("PV: Best child has no move");
-                            break;
-                        }
-                    } else {
-                        println!("PV: Best child handle invalid");
-                        break;
-                    }
-                }
-                None => {
-                    println!("PV: No best child found (no evaluated children)");
-                    break;
-                }
-            }
-
-            // Safety limit
-            if pv.len() >= 20 {
-                println!("PV: Hit safety limit");
-                break;
             }
         }
 
-        println!("PV: Final length: {}", pv.len());
-        pv
+        best_move
     }
+
+    // fn extract_principal_variation(&self, mut current_handle: NodeHandle) -> Vec<PlayerMove> {
+    //     let mut pv = Vec::new();
+
+    //     loop {
+    //         let current_node = match self.pool.get_node(current_handle) {
+    //             Some(node) => node,
+    //             None => {
+    //                 println!("PV: No node found for handle");
+    //                 break;
+    //             }
+    //         };
+
+    //         if current_node.get_children().is_empty() {
+    //             // DEBUG: Check why this node has no children
+    //             let engine = current_node.get_engine();
+    //             let is_check = engine.is_king_checked();
+    //             let has_children_computed = current_node.has_children_computed();
+
+    //             println!("PV: No children, stopping at depth {}", pv.len());
+    //             println!("PV: Node has_children_computed: {}", has_children_computed);
+    //             println!("PV: King in check: {}", is_check);
+
+    //             if has_children_computed {
+    //                 println!("PV: This is a TERMINAL position (mate or stalemate)");
+    //                 if is_check {
+    //                     println!("PV: *** CHECKMATE FOUND! ***");
+    //                 } else {
+    //                     println!("PV: Stalemate position");
+    //                 }
+    //             } else {
+    //                 println!("PV: Children not computed (search depth limit or leaf)");
+    //             }
+
+    //             // Also check the node's score for confirmation
+    //             if let Some(best_score) = current_node.get_best_score() {
+    //                 println!("PV: Final position score: {}", best_score);
+    //                 if best_score.abs() > values::MATE_THRESHOLD {
+    //                     println!("PV: *** MATE SCORE CONFIRMED! ***");
+    //                 }
+    //             }
+
+    //             break;
+    //         }
+
+    //         println!(
+    //             "PV: At depth {}, checking {} children",
+    //             pv.len(),
+    //             current_node.get_children().len()
+    //         );
+
+    //         let mut best_child_handle = None;
+    //         let mut best_score = f32::NEG_INFINITY;
+    //         let mut evaluated_children = 0;
+
+    //         for &child_handle in current_node.get_children() {
+    //             if let Some(child_node) = self.pool.get_node(child_handle) {
+    //                 // Check if child has best_score
+    //                 if let Some(child_best_score) = child_node.get_best_score() {
+    //                     evaluated_children += 1;
+    //                     let child_score = -child_best_score;
+
+    //                     if child_score > best_score {
+    //                         best_score = child_score;
+    //                         best_child_handle = Some(child_handle);
+    //                     }
+    //                 } else {
+    //                     // This child wasn't fully evaluated
+    //                     println!("PV: Child without best_score found");
+    //                 }
+    //             }
+    //         }
+
+    //         println!(
+    //             "PV: {}/{} children have best_score",
+    //             evaluated_children,
+    //             current_node.get_children().len()
+    //         );
+
+    //         match best_child_handle {
+    //             Some(handle) => {
+    //                 if let Some(best_child) = self.pool.get_node(handle) {
+    //                     if let Some(move_) = best_child.get_move() {
+    //                         pv.push(move_.clone());
+    //                         println!("PV: Added move, now {} moves deep", pv.len());
+    //                         current_handle = handle;
+    //                     } else {
+    //                         println!("PV: Best child has no move");
+    //                         break;
+    //                     }
+    //                 } else {
+    //                     println!("PV: Best child handle invalid");
+    //                     break;
+    //                 }
+    //             }
+    //             None => {
+    //                 println!("PV: No best child found (no evaluated children)");
+    //                 break;
+    //             }
+    //         }
+
+    //         // Safety limit
+    //         if pv.len() >= 20 {
+    //             println!("PV: Hit safety limit");
+    //             break;
+    //         }
+    //     }
+
+    //     println!("PV: Final length: {}", pv.len());
+    //     pv
+    // }
 
     fn get_tree_max_depth(&self, handle: NodeHandle) -> usize {
         if let Some(node) = self.pool.get_node(handle) {
