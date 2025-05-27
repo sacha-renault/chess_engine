@@ -10,7 +10,7 @@ use super::utility::{
 pub struct BasicEvaluator {}
 
 impl BasicEvaluator {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         BasicEvaluator {}
     }
 }

@@ -64,7 +64,7 @@ impl fmt::Display for SearchResult {
 
         write!(
             f,
-            "Search Result:\n  Score: {:.2}\n  Depth/QDepth/MaxDepth: {}/{}/{}\n  Nodes: {}\n  PV: {}",
+            "Search Result:\n  Score: {:.2}\n  Depth/PvDepth/MaxDepth: {}/{}/{}\n  Nodes: {}\n  PV: {}",
             self.score,
             self.depth,
             self.qdepth(),
