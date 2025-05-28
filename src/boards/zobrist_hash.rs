@@ -1,7 +1,7 @@
 use super::{Board, ColorBoard};
 use crate::pieces::Color;
-use rand::Rng;
 use once_cell::sync::Lazy;
+use rand::Rng;
 
 const NUM_SQUARES: usize = 64;
 const NUM_PIECE_TYPES: usize = 6; // Pawn, Knight, Bishop, Rook, Queen, King
@@ -51,10 +51,9 @@ impl Zobrist {
         hash ^= self.castling_rights[castling_index];
 
         // Add en passant
-        if board.white.en_passant != 0 {
+        if white_to_play && board.white.en_passant != 0 {
             hash ^= self.en_passant[board.white.en_passant.trailing_zeros() as usize];
-        }
-        if board.black.en_passant != 0 {
+        } else if !white_to_play && board.black.en_passant != 0 {
             hash ^= self.en_passant[board.black.en_passant.trailing_zeros() as usize];
         }
 

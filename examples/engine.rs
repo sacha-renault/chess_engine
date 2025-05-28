@@ -5,6 +5,7 @@ use chess_engine::prelude::TreeSearch;
 use chess_engine::prelude::{print_board, string_from_move};
 use chess_engine::tree_search_v2::tree::TreeSearchBuilder;
 
+use std::collections::HashMap;
 use std::io::Write;
 
 macro_rules! input {
@@ -129,13 +130,13 @@ fn main() {
 
     // init the engine
     let mut engine = Engine::new();
-    //     engine
-    //         .play_pgn_str(
-    //             r"1. d4 Nf6 2. Bf4 g6 3. a4 e5 4. Bxe5 h6 5. b4 d6 6. Bxf6 Qxf6 7. e4 c5 8. c3 Nc6
-    // 9. g4 Bd7 10. h4 cxd4 11. cxd4 Qxd4 12. Qxd4 Nxd4 13. e5 dxe5 14. Bg2 Bxb4+ 15.
-    // Nd2 Bc3 Rc1 e4 f3 Nc2", // f3 Nc2 Rc2 Bb2
-    //         )
-    //         .unwrap();
+    engine
+        .play_pgn_str(
+            r"1. d4 Nf6 2. Bf4 g6 3. a4 e5 4. Bxe5 h6 5. b4 d6 6. Bxf6 Qxf6 7. e4 c5 8. c3 Nc6
+    9. g4 Bd7 10. h4 cxd4 11. cxd4 Qxd4 12. Qxd4 Nxd4 13. e5 dxe5 14. Bg2 Bxb4+ 15.
+    Nd2 Bc3 Rc1 e4 f3 Nc2", // f3 Nc2 Rc2 Bb2
+        )
+        .unwrap();
 
     // search best move
     play_against_robot(engine, tree);

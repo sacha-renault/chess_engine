@@ -1,5 +1,4 @@
 use core::f32;
-
 use derive_builder::Builder;
 
 use crate::pieces::Piece;
@@ -63,16 +62,6 @@ impl TreeSearch {
             }
         }
 
-        // Print TT stats for debugging
-        let (tt_size, hits, misses, hit_rate) = self.tt.stats();
-        println!(
-            "TT size={}, hits={}, misses={}, hit_rate={:.2}%",
-            tt_size,
-            hits,
-            misses,
-            hit_rate * 100.0
-        );
-
         // Extract principale variation
         let best_move = self.get_best_move(root)?;
         let max_qdepth = self.get_tree_max_depth(root);
@@ -102,99 +91,98 @@ impl TreeSearch {
             .get_node(node_handle)
             .ok_or(())?
             .get_engine()
-            .compute_board_hash();
+            .zobrist_hash();
+
         match self.tt.probe(hash, depth, ply, alpha, beta) {
             ProbeResult::Score(score) => return Ok(score),
             ProbeResult::Move(tt_best_move) => tt_move = Some(tt_best_move),
-            _ => {} // That's a miss ... Sad but we can normal search !
+            _ => {}
         }
 
-        if depth == 0 {
+        let final_score = if depth == 0 {
             if self.is_tactical_node(node_handle) {
-                return self.quiescence_search(node_handle, alpha, beta, 0);
+                self.quiescence_search(node_handle, alpha, beta, 0)?
             } else {
                 let static_eval = self.pool.get_node(node_handle).ok_or(())?.get_score();
-
-                // Set the best_score for this leaf node
                 self.pool
                     .get_node_mut(node_handle)
                     .ok_or(())?
                     .set_best_score(static_eval);
-
-                return Ok(static_eval);
+                static_eval
             }
-        }
-
-        if !self
-            .pool
-            .get_node(node_handle)
-            .expect("`negamax` need a valid node handle")
-            .has_children_computed()
-        {
-            self.generate_children(node_handle)?;
-        }
-
-        let children = self.get_children_sorted_by_score(node_handle, tt_move)?;
-
-        if children.is_empty() {
-            // Terminal position - return the static evaluation
-            return Ok(self
+        } else {
+            // Generate children if needed
+            if !self
                 .pool
                 .get_node(node_handle)
-                .expect("`negamax` need a valid node handle")
-                .get_score());
-        }
+                .expect("valid handle")
+                .has_children_computed()
+            {
+                self.generate_children(node_handle)?;
+            }
 
-        let mut best_score = f32::NEG_INFINITY;
+            let children = self.get_children_sorted_by_score(node_handle, tt_move)?;
 
-        for child_handle in children {
-            // Standard negamax recursion
-            let widened_alpha = alpha - self.window_margin;
-            let widened_beta = beta + self.window_margin;
-            let score = -self.negamax(
-                child_handle,
-                depth - 1,
-                ply + 1,
-                -widened_beta,
-                -widened_alpha,
-            )?;
-
-            // Mate score adjustment
-            let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
-                if score > 0.0 {
-                    score - 1.0
-                } else {
-                    score + 1.0
-                }
+            if children.is_empty() {
+                // Terminal position
+                self.pool
+                    .get_node(node_handle)
+                    .expect("valid handle")
+                    .get_score()
             } else {
-                score
-            };
+                // Main search loop
+                let mut best_score = f32::NEG_INFINITY;
 
-            if adjusted_score > best_score {
-                best_score = adjusted_score;
-                if let Some(child_node) = self.pool.get_node(child_handle) {
-                    best_move = child_node.get_move().clone();
+                for child_handle in children {
+                    let widened_alpha = alpha - self.window_margin;
+                    let widened_beta = beta + self.window_margin;
+                    let score = -self.negamax(
+                        child_handle,
+                        depth - 1,
+                        ply + 1,
+                        -widened_beta,
+                        -widened_alpha,
+                    )?;
+
+                    let adjusted_score = if score.abs() > values::MATE_THRESHOLD {
+                        if score > 0.0 {
+                            score - 1.0
+                        } else {
+                            score + 1.0
+                        }
+                    } else {
+                        score
+                    };
+
+                    if adjusted_score > best_score {
+                        best_score = adjusted_score;
+                        if let Some(child_node) = self.pool.get_node(child_handle) {
+                            best_move = child_node.get_move().clone();
+                        }
+                    }
+                    alpha = alpha.max(adjusted_score);
+
+                    if alpha >= beta {
+                        break;
+                    }
                 }
-            }
-            alpha = alpha.max(adjusted_score);
 
-            if alpha >= beta {
-                break;
+                best_score
             }
-        }
+        };
 
-        // Store in transposition table
-        let bound_type = get_bound_type(best_score, original_alpha, beta);
+        // Store in transposition table for ALL paths
+        let bound_type = get_bound_type(final_score, original_alpha, beta);
         self.tt
-            .store(hash, best_move, best_score, depth, ply, bound_type);
+            .store(hash, best_move, final_score, depth, ply, bound_type);
 
         // Store the best score for this node
         self.pool
             .get_node_mut(node_handle)
-            .expect("`negamax` children need a valid node handle")
-            .set_best_score(best_score);
+            .expect("valid handle")
+            .set_best_score(final_score);
 
-        Ok(best_score)
+        Ok(final_score)
     }
 
     fn quiescence_search(

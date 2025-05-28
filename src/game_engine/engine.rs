@@ -893,7 +893,7 @@ impl Engine {
     ///
     /// # Returns
     /// A 64-bit unsigned integer representing the hash of the node.
-    pub fn compute_board_hash(&self) -> u64 {
+    pub fn zobrist_hash(&self) -> u64 {
         HASHER.compute_hash(&self.board, self.white_to_play())
     }
 }

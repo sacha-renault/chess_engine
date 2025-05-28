@@ -97,21 +97,6 @@ impl TranspositionTable {
         alpha: f32,
         beta: f32,
     ) -> ProbeResult {
-        if (self.hits + self.misses) % 100000 == 0 {
-            println!("Probing hash: {:x} at depth {} ply {}", hash, depth, ply);
-
-            // Check if we're storing this position
-            match self.table.get(&hash) {
-                Some(entry) => {
-                    println!(
-                        "  Found entry: depth={}, ply={}, our_depth={}, our_ply={}",
-                        entry.depth, entry.ply, depth, ply
-                    )
-                }
-                None => println!("  No entry found"),
-            }
-        }
-
         if let Some(entry) = self.table.get(&hash) {
             // Check if stored search was deep enough
             let has_usable_score = entry.depth >= depth;
@@ -176,11 +161,8 @@ impl TranspositionTable {
     ) {
         // Improved replacement logic considering both depth and ply
         if let Some(existing) = self.table.get(&hash) {
-            // Keep deeper searches, but also prefer entries from closer to root for same depth
-            let should_keep_existing = existing.depth > depth
-                || (existing.depth == depth
-                    && existing.ply < ply
-                    && existing.age >= self.current_age.saturating_sub(2));
+            let should_keep_existing =
+                existing.depth > depth + 1 && existing.age >= self.current_age.saturating_sub(1);
 
             if should_keep_existing {
                 return;
@@ -226,9 +208,9 @@ impl TranspositionTable {
     fn adjust_mate_score_from_tt(&self, score: f32, ply: usize) -> f32 {
         if score.abs() > values::MATE_THRESHOLD {
             if score > 0.0 {
-                score - ply as f32
-            } else {
                 score + ply as f32
+            } else {
+                score - ply as f32
             }
         } else {
             score
