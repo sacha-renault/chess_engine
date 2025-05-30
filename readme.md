@@ -4,7 +4,7 @@ A chess engine implementation in rust.
 
 ## Overview
 
-This project implements a chess engine capable of playing chess according to standard rules.
+/!\ since tree v2 start to be implemented, the engine is kinda buggy, the engine is currently on a really unstable state.
 
 ## Features
 
